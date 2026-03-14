@@ -15,13 +15,13 @@ const Payments = () => {
   const fetchPayments = async () => {
     try {
       const response = await paymentsAPI.getAll();
-      setPayments(response.data);
+      setPayments(response.data?.data?.payments || []);
     } catch (error) {
       console.error('Error fetching payments:', error);
       // Dummy data
       setPayments([
-        { id: 1, booking: { id: 1 }, user: { name: 'John Doe' }, amount: 10.00, method: 'credit_card', status: 'completed', createdAt: '2024-01-15T12:00:00Z' },
-        { id: 2, booking: { id: 2 }, user: { name: 'Jane Smith' }, amount: 12.00, method: 'paypal', status: 'completed', createdAt: '2024-01-14T16:00:00Z' },
+        { id: 1, booking: { bookingReference: 'BK001' }, user: { name: 'John Doe' }, amount: 10.00, paymentMethod: 'credit_card', status: 'completed', createdAt: '2024-01-15T12:00:00Z' },
+        { id: 2, booking: { bookingReference: 'BK002' }, user: { name: 'Jane Smith' }, amount: 12.00, paymentMethod: 'paypal', status: 'completed', createdAt: '2024-01-14T16:00:00Z' },
       ]);
     } finally {
       setLoading(false);

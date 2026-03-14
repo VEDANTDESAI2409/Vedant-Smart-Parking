@@ -3,7 +3,7 @@ const { validationResult } = require('express-validator');
 const Vehicle = require('../models/Vehicle');
 const ActivityLog = require('../models/ActivityLog');
 
-// @desc    Get all vehicles for a user
+// @desc    Get all vehicles for a user or all vehicles for admin
 // @route   GET /api/vehicles
 // @access  Private
 exports.getVehicles = async (req, res) => {
@@ -13,7 +13,21 @@ exports.getVehicles = async (req, res) => {
     const skip = (page - 1) * limit;
 
     // Build filter
-    const filter = { owner: req.user.id, isActive: true };
+    const filter = {};
+
+    // If not admin, only show user's own vehicles
+    if (req.user.role !== 'admin' && req.user.role !== 'superadmin') {
+      filter.owner = req.user.id;
+      filter.isActive = true;
+    } else {
+      // Admin can see all vehicles, with optional filters
+      if (req.query.owner) {
+        filter.owner = req.query.owner;
+      }
+      if (req.query.isActive !== undefined) {
+        filter.isActive = req.query.isActive === 'true';
+      }
+    }
 
     if (req.query.vehicleType) {
       filter.vehicleType = req.query.vehicleType;
@@ -28,6 +42,7 @@ exports.getVehicles = async (req, res) => {
     }
 
     const vehicles = await Vehicle.find(filter)
+      .populate('owner', 'name email')
       .sort(sort)
       .limit(limit)
       .skip(skip);

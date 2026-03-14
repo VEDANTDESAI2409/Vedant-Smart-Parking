@@ -16,13 +16,13 @@ const Vehicles = () => {
   const fetchVehicles = async () => {
     try {
       const response = await vehiclesAPI.getAll();
-      setVehicles(response.data);
+      setVehicles(response.data?.data?.vehicles || []);
     } catch (error) {
       console.error('Error fetching vehicles:', error);
       // Dummy data
       setVehicles([
-        { id: 1, licensePlate: 'ABC-123', model: 'Toyota Camry', color: 'Blue', user: { name: 'John Doe' }, status: 'active' },
-        { id: 2, licensePlate: 'XYZ-789', model: 'Honda Civic', color: 'Red', user: { name: 'Jane Smith' }, status: 'active' },
+        { id: 1, licensePlate: 'ABC-123', model: 'Toyota Camry', color: 'Blue', owner: { name: 'John Doe' }, isActive: true },
+        { id: 2, licensePlate: 'XYZ-789', model: 'Honda Civic', color: 'Red', owner: { name: 'Jane Smith' }, isActive: true },
       ]);
     } finally {
       setLoading(false);

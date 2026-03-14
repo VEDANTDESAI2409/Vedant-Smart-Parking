@@ -26,32 +26,126 @@ const AdminRoutes = () => {
 
   return (
     <Routes>
+      {/* Login route - no layout */}
       <Route
         path="login"
         element={!isAuthenticated ? <Login /> : <Navigate to="/admin/dashboard" replace />}
       />
+
+      {/* Protected routes with layout */}
       <Route
-        path="*"
+        path="dashboard"
         element={
           isAuthenticated ? (
             <AdminLayout>
-              <Routes>
-                <Route path="dashboard" element={<Dashboard />} />
-                <Route path="parking-slots" element={<ParkingSlots />} />
-                <Route path="bookings" element={<Bookings />} />
-                <Route path="users" element={<Users />} />
-                <Route path="vehicles" element={<Vehicles />} />
-                <Route path="payments" element={<Payments />} />
-                <Route path="reports" element={<Reports />} />
-                <Route path="settings" element={<Settings />} />
-                <Route path="profile" element={<Profile />} />
-                <Route path="*" element={<Navigate to="/admin/dashboard" replace />} />
-              </Routes>
+              <Dashboard />
             </AdminLayout>
           ) : (
             <Navigate to="/admin/login" replace />
           )
         }
+      />
+      <Route
+        path="parking-slots"
+        element={
+          isAuthenticated ? (
+            <AdminLayout>
+              <ParkingSlots />
+            </AdminLayout>
+          ) : (
+            <Navigate to="/admin/login" replace />
+          )
+        }
+      />
+      <Route
+        path="bookings"
+        element={
+          isAuthenticated ? (
+            <AdminLayout>
+              <Bookings />
+            </AdminLayout>
+          ) : (
+            <Navigate to="/admin/login" replace />
+          )
+        }
+      />
+      <Route
+        path="users"
+        element={
+          isAuthenticated ? (
+            <AdminLayout>
+              <Users />
+            </AdminLayout>
+          ) : (
+            <Navigate to="/admin/login" replace />
+          )
+        }
+      />
+      <Route
+        path="vehicles"
+        element={
+          isAuthenticated ? (
+            <AdminLayout>
+              <Vehicles />
+            </AdminLayout>
+          ) : (
+            <Navigate to="/admin/login" replace />
+          )
+        }
+      />
+      <Route
+        path="payments"
+        element={
+          isAuthenticated ? (
+            <AdminLayout>
+              <Payments />
+            </AdminLayout>
+          ) : (
+            <Navigate to="/admin/login" replace />
+          )
+        }
+      />
+      <Route
+        path="reports"
+        element={
+          isAuthenticated ? (
+            <AdminLayout>
+              <Reports />
+            </AdminLayout>
+          ) : (
+            <Navigate to="/admin/login" replace />
+          )
+        }
+      />
+      <Route
+        path="settings"
+        element={
+          isAuthenticated ? (
+            <AdminLayout>
+              <Settings />
+            </AdminLayout>
+          ) : (
+            <Navigate to="/admin/login" replace />
+          )
+        }
+      />
+      <Route
+        path="profile"
+        element={
+          isAuthenticated ? (
+            <AdminLayout>
+              <Profile />
+            </AdminLayout>
+          ) : (
+            <Navigate to="/admin/login" replace />
+          )
+        }
+      />
+
+      {/* Catch-all route */}
+      <Route
+        path="*"
+        element={<Navigate to={isAuthenticated ? "/admin/dashboard" : "/admin/login"} replace />}
       />
     </Routes>
   );
