@@ -40,13 +40,13 @@ const userIdValidation = [
 router.use(protect);
 
 // Admin only routes
-router.get('/', authorize('admin'), getUsers);
-router.delete('/:id', authorize('admin'), userIdValidation, deleteUser);
+router.get('/', authorize('admin', 'superadmin'), getUsers);
+router.delete('/:id', authorize('admin', 'superadmin'), userIdValidation, deleteUser);
 
 // Routes accessible by admin or user themselves
 router.get('/:id', userIdValidation, getUser);
 router.put('/:id', userIdValidation, updateUserValidation, updateUser);
 router.get('/:id/stats', userIdValidation, getUserStats);
-router.get('/:id/activity', authorize('admin'), userIdValidation, getUserActivity);
+router.get('/:id/activity', authorize('admin', 'superadmin'), userIdValidation, getUserActivity);
 
 module.exports = router;
