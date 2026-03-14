@@ -141,7 +141,7 @@ router.get('/:id', slotIdValidation, getSlot);
 
 // Protected routes (Admin only)
 router.use(protect);
-router.use(authorize('admin'));
+router.use(authorize('admin', 'superadmin'));
 
 router.post('/', createSlotValidation, createSlot);
 router.put('/:id', slotIdValidation, updateSlotValidation, updateSlot);
