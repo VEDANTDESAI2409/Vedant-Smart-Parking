@@ -16,13 +16,13 @@ const Vehicles = () => {
   const fetchVehicles = async () => {
     try {
       const response = await vehiclesAPI.getAll();
-      setVehicles(response.data);
+      setVehicles(response.data.data.vehicles || []);
     } catch (error) {
       console.error('Error fetching vehicles:', error);
       // Dummy data
       setVehicles([
-        { id: 1, licensePlate: 'ABC-123', model: 'Toyota Camry', color: 'Blue', user: { name: 'John Doe' }, status: 'active' },
-        { id: 2, licensePlate: 'XYZ-789', model: 'Honda Civic', color: 'Red', user: { name: 'Jane Smith' }, status: 'active' },
+        { _id: 1, licensePlate: 'ABC-123', make: 'Toyota', model: 'Camry', color: 'Blue', vehicleType: 'car', owner: { name: 'John Doe' }, isActive: true },
+        { _id: 2, licensePlate: 'XYZ-789', make: 'Honda', model: 'Civic', color: 'Red', vehicleType: 'car', owner: { name: 'Jane Smith' }, isActive: true },
       ]);
     } finally {
       setLoading(false);
@@ -31,14 +31,15 @@ const Vehicles = () => {
 
   const columns = [
     { header: 'License Plate', key: 'licensePlate' },
-    { header: 'Model', key: 'model' },
+    { header: 'Make & Model', key: 'model', render: (row) => `${row.make} ${row.model}` },
     { header: 'Color', key: 'color' },
-    { header: 'Owner', key: 'user', render: (row) => row.user.name },
-    { header: 'Status', key: 'status', render: (row) => (
+    { header: 'Owner', key: 'owner', render: (row) => row.owner?.name || 'N/A' },
+    { header: 'Type', key: 'vehicleType' },
+    { header: 'Status', key: 'isActive', render: (row) => (
       <span className={`px-2 py-1 text-xs rounded-full ${
-        row.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+        row.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
       }`}>
-        {row.status}
+        {row.isActive ? 'active' : 'inactive'}
       </span>
     )},
     { header: 'Actions', key: 'actions', render: (row) => (
