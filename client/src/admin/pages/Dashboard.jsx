@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FaParking, FaCalendarAlt, FaUsers, FaCar, FaCreditCard, FaChartLine } from 'react-icons/fa';
+import { FaParking, FaCalendarAlt, FaUsers, FaCar, FaCreditCard, FaChartLine, FaFileDownload, FaClock, FaStar } from 'react-icons/fa';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
 import Card from '../../components/Card';
 import { reportsAPI } from '../../services/api';
@@ -24,6 +24,26 @@ const Dashboard = () => {
     }
   };
 
+  // --- NEW FEATURE: CSV EXPORT ---
+  const downloadCSVReport = () => {
+    if (!stats) return;
+    const reportData = [
+      ['Metric', 'Value'],
+      ['Total Slots', stats.totalSlots],
+      ['Occupied Slots', stats.occupiedSlots],
+      ['Pending Slots', stats.pendingSlots],
+      ['Most Used Slot Type', stats.mostUsedSlotType],
+      ['Top Vehicle Type', stats.mostBookedVehicleType],
+      ['Total Revenue', stats.totalRevenue],
+    ];
+    const csvContent = "data:text/csv;charset=utf-8," + reportData.map(e => e.join(",")).join("\n");
+    const link = document.createElement("a");
+    link.setAttribute("href", encodeURI(csvContent));
+    link.setAttribute("download", "Dashboard_Report.csv");
+    document.body.appendChild(link);
+    link.click();
+  };
+
   const statCards = [
     {
       title: 'Total Parking Slots',
@@ -39,6 +59,29 @@ const Dashboard = () => {
       color: 'text-green-600',
       bgColor: 'bg-green-100',
     },
+    // --- NEW STATS CARDS ---
+    {
+      title: 'Pending Slots',
+      value: stats?.pendingSlots ?? 'No data',
+      icon: FaClock,
+      color: 'text-yellow-600',
+      bgColor: 'bg-yellow-100',
+    },
+    {
+      title: 'Popular Slot Type',
+      value: stats?.mostUsedSlotType ?? 'No data',
+      icon: FaStar,
+      color: 'text-pink-600',
+      bgColor: 'bg-pink-100',
+    },
+    {
+      title: 'Top Vehicle Type',
+      value: stats?.mostBookedVehicleType ?? 'No data',
+      icon: FaCar,
+      color: 'text-orange-600',
+      bgColor: 'bg-orange-100',
+    },
+    // ----------------------
     {
       title: 'Active Bookings',
       value: stats?.activeBookings ?? 'No data',
@@ -52,13 +95,6 @@ const Dashboard = () => {
       icon: FaUsers,
       color: 'text-indigo-600',
       bgColor: 'bg-indigo-100',
-    },
-    {
-      title: 'Total Vehicles',
-      value: stats?.totalVehicles ?? 'No data',
-      icon: FaCar,
-      color: 'text-orange-600',
-      bgColor: 'bg-orange-100',
     },
     {
       title: 'Total Revenue',
@@ -81,12 +117,22 @@ const Dashboard = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
-        <div className="text-sm text-gray-600 dark:text-gray-400">
-          Last updated: {new Date().toLocaleString()}
+        
+        {/* --- NEW FEATURE: EXPORT BUTTON --- */}
+        <div className="flex items-center gap-4">
+          <button 
+            onClick={downloadCSVReport}
+            className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
+          >
+            <FaFileDownload /> Export CSV
+          </button>
+          <div className="text-sm text-gray-600 dark:text-gray-400">
+            Last updated: {new Date().toLocaleString()}
+          </div>
         </div>
       </div>
 
-      {/* Stats Cards */}
+      {/* Stats Cards - Now includes your 3 new cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {statCards.map((card, index) => (
           <Card key={index} className="p-6">
@@ -103,9 +149,8 @@ const Dashboard = () => {
         ))}
       </div>
 
-      {/* Charts */}
+      {/* --- ALL YOUR ORIGINAL CHARTS STAY HERE --- */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Revenue Chart */}
         <Card title="Monthly Revenue" className="p-6">
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={stats.monthlyRevenue}>
@@ -118,7 +163,6 @@ const Dashboard = () => {
           </ResponsiveContainer>
         </Card>
 
-        {/* Occupancy Chart */}
         <Card title="Daily Occupancy Trend" className="p-6">
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={stats.occupancyData}>
@@ -132,7 +176,6 @@ const Dashboard = () => {
         </Card>
       </div>
 
-      {/* Booking Status Pie Chart */}
       <Card title="Booking Status Distribution" className="p-6">
         <div className="flex items-center justify-center">
           <ResponsiveContainer width="100%" height={300}>
