@@ -316,7 +316,7 @@ const seedDatabase = async () => {
 
 🔐 Admin Login Credentials:
 Email: admin@smartparking.com
-Password: Admin123!
+Password: admin123
 
 Email: manager@smartparking.com
 Password: Manager123!
