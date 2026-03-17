@@ -9,37 +9,50 @@ const ActivityLog = require('../models/ActivityLog');
 // @access  Public
 exports.getSlots = async (req, res) => {
   try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 20;
+    const page = parseInt(req.query.page, 10) || 1;
+    const limit = parseInt(req.query.limit, 10) || 50;
     const skip = (page - 1) * limit;
 
-    // Build filter object
     const filter = {};
-    if (req.query.location) {
-      filter.location = { $regex: req.query.location, $options: 'i' };
+
+    if (req.query.city) {
+      filter.city = { $regex: req.query.city, $options: 'i' };
     }
+
     if (req.query.area) {
       filter.area = { $regex: req.query.area, $options: 'i' };
     }
+
+    if (req.query.location) {
+      filter.$or = [
+        { city: { $regex: req.query.location, $options: 'i' } },
+        { area: { $regex: req.query.location, $options: 'i' } },
+        { landmark: { $regex: req.query.location, $options: 'i' } },
+        { slotLocation: { $regex: req.query.location, $options: 'i' } }
+      ];
+    }
+
     if (req.query.slotType) {
       filter.slotType = req.query.slotType;
     }
+
     if (req.query.vehicleType) {
-      filter.vehicleType = req.query.vehicleType === 'any' ? { $in: ['car', 'motorcycle', 'truck', 'van', 'suv', 'any'] } : req.query.vehicleType;
+      filter.vehicleType = req.query.vehicleType;
     }
+
     if (req.query.status) {
       filter.status = req.query.status;
     }
+
     if (req.query.isActive !== undefined) {
       filter.isActive = req.query.isActive === 'true';
     }
 
-    // Build sort object
     const sort = {};
     if (req.query.sortBy) {
       sort[req.query.sortBy] = req.query.sortOrder === 'desc' ? -1 : 1;
     } else {
-      sort.slotNumber = 1;
+      sort.createdAt = -1;
     }
 
     const slots = await ParkingSlot.find(filter)
@@ -117,23 +130,40 @@ exports.createSlot = async (req, res) => {
       });
     }
 
-    const slot = await ParkingSlot.create(req.body);
+    const payload = {
+      city: req.body.city,
+      area: req.body.area,
+      pincode: req.body.pincode,
+      landmark: req.body.landmark,
+      vehicleType: req.body.vehicleType,
+      slotType: req.body.slotType,
+      slotLocation: req.body.slotLocation,
+      price: req.body.price,
+      status: req.body.status || 'available',
+      isActive: req.body.isActive ?? true
+    };
 
-    // Log activity
-    await ActivityLog.logActivity({
-      admin: req.user.id,
-      action: 'slot_created',
-      resource: 'slot',
-      resourceId: slot._id,
-      description: `New parking slot created: ${slot.slotNumber}`,
-      details: {
-        location: slot.location,
-        area: slot.area,
-        slotType: slot.slotType
-      },
-      ipAddress: req.ip,
-      userAgent: req.get('User-Agent')
-    });
+    const slot = await ParkingSlot.create(payload);
+
+    if (req.user?.id) {
+      await ActivityLog.logActivity({
+        admin: req.user.id,
+        action: 'slot_created',
+        resource: 'slot',
+        resourceId: slot._id,
+        description: `New parking slot created: ${slot.slotNumber || slot.slotLocation}`,
+        details: {
+          city: slot.city,
+          area: slot.area,
+          landmark: slot.landmark,
+          slotType: slot.slotType,
+          vehicleType: slot.vehicleType,
+          slotLocation: slot.slotLocation
+        },
+        ipAddress: req.ip,
+        userAgent: req.get('User-Agent')
+      });
+    }
 
     res.status(201).json({
       success: true,
@@ -142,15 +172,17 @@ exports.createSlot = async (req, res) => {
     });
   } catch (error) {
     console.error('Create slot error:', error);
+
     if (error.code === 11000) {
       return res.status(400).json({
         success: false,
-        message: 'Slot number already exists'
+        message: 'Duplicate slot detected'
       });
     }
+
     res.status(500).json({
       success: false,
-      message: 'Server error creating parking slot'
+      message: error.message || 'Server error creating parking slot'
     });
   }
 };
@@ -169,11 +201,7 @@ exports.updateSlot = async (req, res) => {
       });
     }
 
-    const slot = await ParkingSlot.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true, runValidators: true }
-    );
+    const slot = await ParkingSlot.findById(req.params.id);
 
     if (!slot) {
       return res.status(404).json({
@@ -182,17 +210,40 @@ exports.updateSlot = async (req, res) => {
       });
     }
 
-    // Log activity
-    await ActivityLog.logActivity({
-      admin: req.user.id,
-      action: 'slot_updated',
-      resource: 'slot',
-      resourceId: slot._id,
-      description: `Parking slot updated: ${slot.slotNumber}`,
-      details: req.body,
-      ipAddress: req.ip,
-      userAgent: req.get('User-Agent')
+    const allowedUpdates = {
+      city: req.body.city,
+      area: req.body.area,
+      pincode: req.body.pincode,
+      landmark: req.body.landmark,
+      vehicleType: req.body.vehicleType,
+      slotType: req.body.slotType,
+      slotLocation: req.body.slotLocation,
+      price: req.body.price,
+      status: req.body.status,
+      isActive: req.body.isActive
+    };
+
+    Object.keys(allowedUpdates).forEach((key) => {
+      if (allowedUpdates[key] === undefined) {
+        delete allowedUpdates[key];
+      }
     });
+
+    Object.assign(slot, allowedUpdates);
+    await slot.save();
+
+    if (req.user?.id) {
+      await ActivityLog.logActivity({
+        admin: req.user.id,
+        action: 'slot_updated',
+        resource: 'slot',
+        resourceId: slot._id,
+        description: `Parking slot updated: ${slot.slotNumber || slot.slotLocation}`,
+        details: allowedUpdates,
+        ipAddress: req.ip,
+        userAgent: req.get('User-Agent')
+      });
+    }
 
     res.json({
       success: true,
@@ -203,7 +254,7 @@ exports.updateSlot = async (req, res) => {
     console.error('Update slot error:', error);
     res.status(500).json({
       success: false,
-      message: 'Server error updating parking slot'
+      message: error.message || 'Server error updating parking slot'
     });
   }
 };
@@ -222,7 +273,6 @@ exports.deleteSlot = async (req, res) => {
       });
     }
 
-    // Check if slot has active bookings
     const activeBookings = await Booking.countDocuments({
       parkingSlot: req.params.id,
       status: { $in: ['confirmed', 'active'] }
@@ -237,17 +287,18 @@ exports.deleteSlot = async (req, res) => {
 
     await ParkingSlot.findByIdAndDelete(req.params.id);
 
-    // Log activity
-    await ActivityLog.logActivity({
-      admin: req.user.id,
-      action: 'slot_deleted',
-      resource: 'slot',
-      resourceId: req.params.id,
-      description: `Parking slot deleted: ${slot.slotNumber}`,
-      severity: 'high',
-      ipAddress: req.ip,
-      userAgent: req.get('User-Agent')
-    });
+    if (req.user?.id) {
+      await ActivityLog.logActivity({
+        admin: req.user.id,
+        action: 'slot_deleted',
+        resource: 'slot',
+        resourceId: req.params.id,
+        description: `Parking slot deleted: ${slot.slotNumber || slot.slotLocation}`,
+        severity: 'high',
+        ipAddress: req.ip,
+        userAgent: req.get('User-Agent')
+      });
+    }
 
     res.json({
       success: true,
@@ -286,35 +337,34 @@ exports.getAvailableSlots = async (req, res) => {
       });
     }
 
-    // Build filter
     const filter = {
       status: 'available',
       isActive: true
     };
 
     if (vehicleType) {
-      filter.vehicleType = vehicleType === 'any' ? { $in: ['car', 'motorcycle', 'truck', 'van', 'suv', 'any'] } : vehicleType;
+      filter.vehicleType = vehicleType;
     }
 
     if (location) {
-      filter.location = { $regex: location, $options: 'i' };
+      filter.$or = [
+        { city: { $regex: location, $options: 'i' } },
+        { area: { $regex: location, $options: 'i' } },
+        { landmark: { $regex: location, $options: 'i' } },
+        { slotLocation: { $regex: location, $options: 'i' } }
+      ];
     }
 
     if (area) {
       filter.area = { $regex: area, $options: 'i' };
     }
 
-    const slots = await ParkingSlot.find(filter).sort({ slotNumber: 1 });
+    const slots = await ParkingSlot.find(filter).sort({ createdAt: -1 });
 
-    // Filter out slots with conflicting bookings
     const availableSlots = [];
 
     for (const slot of slots) {
-      const conflictingBookings = await Booking.findConflictingBookings(
-        slot._id,
-        start,
-        end
-      );
+      const conflictingBookings = await Booking.findConflictingBookings(slot._id, start, end);
 
       if (conflictingBookings.length === 0 && slot.isAvailableForBooking(start, end)) {
         availableSlots.push(slot);
@@ -329,7 +379,7 @@ exports.getAvailableSlots = async (req, res) => {
         searchCriteria: {
           startTime: start,
           endTime: end,
-          vehicleType: vehicleType || 'any',
+          vehicleType: vehicleType || null,
           location,
           area
         }
@@ -351,9 +401,8 @@ exports.getSlotStats = async (req, res) => {
   try {
     const slotId = req.params.id;
 
-    // Get booking statistics for this slot
     const bookingStats = await Booking.aggregate([
-      { $match: { parkingSlot: mongoose.Types.ObjectId(slotId) } },
+      { $match: { parkingSlot: new mongoose.Types.ObjectId(slotId) } },
       {
         $group: {
           _id: null,
@@ -373,7 +422,6 @@ exports.getSlotStats = async (req, res) => {
       }
     ]);
 
-    // Get occupancy rate (last 30 days)
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
@@ -383,7 +431,7 @@ exports.getSlotStats = async (req, res) => {
     });
 
     const totalHours = recentBookings.reduce((sum, booking) => sum + booking.duration, 0);
-    const occupancyRate = (totalHours / (30 * 24)) * 100; // Percentage
+    const occupancyRate = (totalHours / (30 * 24)) * 100;
 
     const stats = {
       bookings: bookingStats[0] || {
@@ -395,7 +443,7 @@ exports.getSlotStats = async (req, res) => {
         averageBookingDuration: 0
       },
       occupancy: {
-        rate: Math.min(occupancyRate, 100), // Cap at 100%
+        rate: Math.min(occupancyRate, 100),
         totalHours,
         periodDays: 30
       }
@@ -430,7 +478,6 @@ exports.scheduleMaintenance = async (req, res) => {
       });
     }
 
-    // Check if slot has active bookings during maintenance period
     const activeBookings = await Booking.countDocuments({
       parkingSlot: req.params.id,
       status: { $in: ['confirmed', 'active'] },
@@ -456,18 +503,19 @@ exports.scheduleMaintenance = async (req, res) => {
     slot.status = 'maintenance';
     await slot.save();
 
-    // Log activity
-    await ActivityLog.logActivity({
-      admin: req.user.id,
-      action: 'slot_maintenance_scheduled',
-      resource: 'slot',
-      resourceId: slot._id,
-      description: `Maintenance scheduled for slot: ${slot.slotNumber}`,
-      details: maintenance,
-      severity: 'medium',
-      ipAddress: req.ip,
-      userAgent: req.get('User-Agent')
-    });
+    if (req.user?.id) {
+      await ActivityLog.logActivity({
+        admin: req.user.id,
+        action: 'slot_maintenance_scheduled',
+        resource: 'slot',
+        resourceId: slot._id,
+        description: `Maintenance scheduled for slot: ${slot.slotNumber || slot.slotLocation}`,
+        details: maintenance,
+        severity: 'medium',
+        ipAddress: req.ip,
+        userAgent: req.get('User-Agent')
+      });
+    }
 
     res.json({
       success: true,
