@@ -1,0 +1,9 @@
+node_modules/
+client/node_modules/
+.vite/
+client/.vite/
+dist/
+client/dist/
+build/
+.env
+.vscode/

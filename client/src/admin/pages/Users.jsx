@@ -16,13 +16,13 @@ const Users = () => {
   const fetchUsers = async () => {
     try {
       const response = await usersAPI.getAll();
-      setUsers(response.data);
+      setUsers(response.data.data.users || []);
     } catch (error) {
       console.error('Error fetching users:', error);
       // Dummy data
       setUsers([
-        { id: 1, name: 'John Doe', email: 'john@example.com', phone: '+1234567890', status: 'active', createdAt: '2024-01-15T10:00:00Z' },
-        { id: 2, name: 'Jane Smith', email: 'jane@example.com', phone: '+1234567891', status: 'active', createdAt: '2024-01-14T10:00:00Z' },
+        { _id: 1, name: 'John Doe', email: 'john@example.com', phone: '+1234567890', isActive: true, createdAt: '2024-01-15T10:00:00Z' },
+        { _id: 2, name: 'Jane Smith', email: 'jane@example.com', phone: '+1234567891', isActive: true, createdAt: '2024-01-14T10:00:00Z' },
       ]);
     } finally {
       setLoading(false);
@@ -33,11 +33,11 @@ const Users = () => {
     { header: 'Name', key: 'name' },
     { header: 'Email', key: 'email' },
     { header: 'Phone', key: 'phone' },
-    { header: 'Status', key: 'status', render: (row) => (
+    { header: 'Status', key: 'isActive', render: (row) => (
       <span className={`px-2 py-1 text-xs rounded-full ${
-        row.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+        row.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
       }`}>
-        {row.status}
+        {row.isActive ? 'active' : 'inactive'}
       </span>
     )},
     { header: 'Created', key: 'createdAt', render: (row) => new Date(row.createdAt).toLocaleDateString() },
