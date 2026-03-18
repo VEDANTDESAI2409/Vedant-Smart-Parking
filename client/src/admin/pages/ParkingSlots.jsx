@@ -26,6 +26,7 @@ const ParkingSlots = () => {
   const [editingSlot, setEditingSlot] = useState(null);
   const [formData, setFormData] = useState(initialFormData);
   const [submitting, setSubmitting] = useState(false);
+  const [debugInfo, setDebugInfo] = useState('');
 
   useEffect(() => {
     fetchSlots();
@@ -34,12 +35,46 @@ const ParkingSlots = () => {
   const fetchSlots = async () => {
     try {
       setLoading(true);
+      setDebugInfo('');
+
       const response = await slotsAPI.getAll();
-      const apiSlots = response?.data?.data?.slots || [];
+
+      console.log('GET /api/slots full response:', response);
+      console.log('GET /api/slots response.data:', response.data);
+
+      const responseData = response?.data;
+
+      let apiSlots = [];
+
+      if (Array.isArray(responseData?.data?.slots)) {
+        apiSlots = responseData.data.slots;
+      } else if (Array.isArray(responseData?.slots)) {
+        apiSlots = responseData.slots;
+      } else if (Array.isArray(responseData?.data)) {
+        apiSlots = responseData.data;
+      } else if (Array.isArray(responseData)) {
+        apiSlots = responseData;
+      }
+
+      console.log('Parsed slots:', apiSlots);
       setSlots(apiSlots);
+
+      setDebugInfo(
+        `Fetched successfully. Total slots received: ${Array.isArray(apiSlots) ? apiSlots.length : 0}`
+      );
     } catch (error) {
       console.error('Error fetching slots:', error);
+      console.error('Error response:', error?.response);
+      console.error('Error response data:', error?.response?.data);
+
       setSlots([]);
+      setDebugInfo(
+        `Fetch failed: ${
+          error?.response?.data?.message ||
+          error?.message ||
+          'Unknown error'
+        }`
+      );
     } finally {
       setLoading(false);
     }
@@ -242,7 +277,11 @@ const ParkingSlots = () => {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Parking Slots</h1>
+        <div>
+          <h1 className="text-2xl font-bold">Parking Slots</h1>
+          <p className="text-sm text-gray-500 mt-1">{debugInfo}</p>
+        </div>
+
         <Button onClick={openCreateModal}>
           <FaPlus className="mr-2" />
           Add Slot
