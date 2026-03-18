@@ -13,6 +13,7 @@ import Payments from '../admin/pages/Payments';
 import Reports from '../admin/pages/Reports';
 import Settings from '../admin/pages/Settings';
 import Profile from '../admin/pages/Profile';
+import ManageServiceLocation from '../admin/pages/ManageServiceLocation';
 
 // Layout
 import AdminLayout from '../admin/AdminLayout';
@@ -42,6 +43,10 @@ const AdminRoutes = () => {
                 <Route path="users" element={<Users />} />
                 <Route path="vehicles" element={<Vehicles />} />
                 <Route path="payments" element={<Payments />} />
+                <Route path="city" element={<ManageServiceLocation type="city" />} />
+                <Route path="pincode" element={<ManageServiceLocation type="pincode" />} />
+                <Route path="area" element={<ManageServiceLocation type="area" />} />
+                <Route path="location" element={<ManageServiceLocation type="location" />} />
                 <Route path="reports" element={<Reports />} />
                 <Route path="settings" element={<Settings />} />
                 <Route path="profile" element={<Profile />} />
