@@ -12,11 +12,20 @@ exports.getVehicles = async (req, res) => {
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
 
-    // Build filter
-    const filter = { owner: req.user.id, isActive: true };
+    // Build filter - for admin, get all vehicles; for user, get only their vehicles
+    const filter = req.user.role === 'admin' || req.user.role === 'superadmin'
+      ? { isActive: true }
+      : { owner: req.user.id, isActive: true };
 
     if (req.query.vehicleType) {
       filter.vehicleType = req.query.vehicleType;
+    }
+    if (req.query.search) {
+      filter.$or = [
+        { licensePlate: { $regex: req.query.search, $options: 'i' } },
+        { make: { $regex: req.query.search, $options: 'i' } },
+        { model: { $regex: req.query.search, $options: 'i' } }
+      ];
     }
 
     // Build sort
@@ -28,6 +37,7 @@ exports.getVehicles = async (req, res) => {
     }
 
     const vehicles = await Vehicle.find(filter)
+      .populate('owner', 'name email phone')
       .sort(sort)
       .limit(limit)
       .skip(skip);
