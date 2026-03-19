@@ -6,12 +6,19 @@ import Button from '../../components/Button';
 import Modal from '../../components/Modal';
 import Table from '../../components/Table';
 import Card from '../../components/Card';
-import { slotsAPI } from '../../services/api';
+import {
+  slotsAPI,
+  citiesAPI,
+  pincodesAPI,
+  areasAPI,
+  locationsAPI,
+} from '../../services/api';
 
 const initialFormData = {
   city: '',
-  area: '',
   pincode: '',
+  area: '',
+  location: '',
   landmark: '',
   vehicleType: 'car',
   slotType: 'normal',
@@ -28,9 +35,56 @@ const ParkingSlots = () => {
   const [submitting, setSubmitting] = useState(false);
   const [debugInfo, setDebugInfo] = useState('');
 
+  const [cities, setCities] = useState([]);
+  const [pincodes, setPincodes] = useState([]);
+  const [areas, setAreas] = useState([]);
+  const [locations, setLocations] = useState([]);
+
+  const [loadingCities, setLoadingCities] = useState(false);
+  const [loadingPincodes, setLoadingPincodes] = useState(false);
+  const [loadingAreas, setLoadingAreas] = useState(false);
+  const [loadingLocations, setLoadingLocations] = useState(false);
+
   useEffect(() => {
     fetchSlots();
   }, []);
+
+  useEffect(() => {
+    if (modalOpen) {
+      fetchCities();
+    }
+  }, [modalOpen]);
+
+  useEffect(() => {
+    // whenever the selected city changes, reset child selections
+    if (!formData.city) {
+      setPincodes([]);
+      setFormData((prev) => ({ ...prev, pincode: '', area: '', location: '' }));
+      return;
+    }
+
+    fetchPincodes(formData.city);
+  }, [formData.city]);
+
+  useEffect(() => {
+    if (!formData.pincode) {
+      setAreas([]);
+      setFormData((prev) => ({ ...prev, area: '', location: '' }));
+      return;
+    }
+
+    fetchAreas(formData.pincode);
+  }, [formData.pincode]);
+
+  useEffect(() => {
+    if (!formData.area) {
+      setLocations([]);
+      setFormData((prev) => ({ ...prev, location: '' }));
+      return;
+    }
+
+    fetchLocations(formData.area);
+  }, [formData.area]);
 
   const fetchSlots = async () => {
     try {
@@ -80,6 +134,91 @@ const ParkingSlots = () => {
     }
   };
 
+  const fetchCities = async () => {
+    try {
+      setLoadingCities(true);
+      const response = await citiesAPI.getAll();
+      const list = response?.data?.data?.cities || [];
+      setCities(list);
+    } catch (error) {
+      console.error('Error fetching cities:', error);
+      setCities([]);
+    } finally {
+      setLoadingCities(false);
+    }
+  };
+
+  const fetchPincodes = async (cityValue) => {
+    try {
+      setLoadingPincodes(true);
+      const response = await pincodesAPI.getAll();
+      let list = response?.data?.data?.pincodes || [];
+
+      // Filter by city if possible
+      if (cityValue) {
+        list = list.filter((item) => {
+          // Support both field names `city` and `cityId`
+          if (item.city) return item.city === cityValue;
+          if (item.cityId) return item.cityId === cityValue;
+          return true;
+        });
+      }
+
+      setPincodes(list);
+    } catch (error) {
+      console.error('Error fetching pincodes:', error);
+      setPincodes([]);
+    } finally {
+      setLoadingPincodes(false);
+    }
+  };
+
+  const fetchAreas = async (pincodeValue) => {
+    try {
+      setLoadingAreas(true);
+      const response = await areasAPI.getAll();
+      let list = response?.data?.data?.areas || [];
+
+      if (pincodeValue) {
+        list = list.filter((item) => {
+          if (item.pincode) return item.pincode === pincodeValue;
+          if (item.pincodeId) return item.pincodeId === pincodeValue;
+          return true;
+        });
+      }
+
+      setAreas(list);
+    } catch (error) {
+      console.error('Error fetching areas:', error);
+      setAreas([]);
+    } finally {
+      setLoadingAreas(false);
+    }
+  };
+
+  const fetchLocations = async (areaValue) => {
+    try {
+      setLoadingLocations(true);
+      const response = await locationsAPI.getAll();
+      let list = response?.data?.data?.locations || [];
+
+      if (areaValue) {
+        list = list.filter((item) => {
+          if (item.area) return item.area === areaValue;
+          if (item.areaId) return item.areaId === areaValue;
+          return true;
+        });
+      }
+
+      setLocations(list);
+    } catch (error) {
+      console.error('Error fetching locations:', error);
+      setLocations([]);
+    } finally {
+      setLoadingLocations(false);
+    }
+  };
+
   const handleInputChange = (field, value) => {
     setFormData((prev) => ({
       ...prev,
@@ -100,9 +239,10 @@ const ParkingSlots = () => {
   const handleEdit = (slot) => {
     setEditingSlot(slot);
     setFormData({
-      city: slot.city || '',
-      area: slot.area || '',
-      pincode: slot.pincode || '',
+      city: slot.city || slot.cityId || '',
+      pincode: slot.pincode || slot.pincodeId || '',
+      area: slot.area || slot.areaId || '',
+      location: slot.location || slot.locationId || '',
       landmark: slot.landmark || '',
       vehicleType: slot.vehicleType || 'car',
       slotType: slot.slotType || 'normal',
@@ -113,9 +253,10 @@ const ParkingSlots = () => {
   };
 
   const validateForm = () => {
-    if (!formData.city.trim()) return 'City is required';
-    if (!formData.area.trim()) return 'Area is required';
-    if (!/^\d{6}$/.test(formData.pincode.trim())) return 'Pincode must be 6 digits';
+    if (!formData.city) return 'City is required';
+    if (!formData.pincode) return 'Pincode is required';
+    if (!formData.area) return 'Area is required';
+    if (!formData.location) return 'Location is required';
     if (!formData.landmark.trim()) return 'Landmark is required';
     if (!['car', 'bike'].includes(formData.vehicleType)) return 'Vehicle type must be car or bike';
     if (!['normal', 'ev', 'disabled'].includes(formData.slotType)) return 'Invalid slot type';
@@ -136,9 +277,10 @@ const ParkingSlots = () => {
     }
 
     const payload = {
-      city: formData.city.trim(),
-      area: formData.area.trim(),
-      pincode: formData.pincode.trim(),
+      city: formData.city,
+      pincode: formData.pincode,
+      area: formData.area,
+      location: formData.location,
       landmark: formData.landmark.trim(),
       vehicleType: formData.vehicleType,
       slotType: formData.slotType,
@@ -313,41 +455,79 @@ const ParkingSlots = () => {
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                 City
               </label>
-              <input
-                type="text"
+              <select
                 value={formData.city}
                 onChange={(e) => handleInputChange('city', e.target.value)}
                 className="mt-1 w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                 required
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Area
-              </label>
-              <input
-                type="text"
-                value={formData.area}
-                onChange={(e) => handleInputChange('area', e.target.value)}
-                className="mt-1 w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                required
-              />
+              >
+                <option value="">Select a city</option>
+                {cities.map((city) => (
+                  <option key={city._id || city.name} value={city._id || city.name}>
+                    {city.name}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                 Pincode
               </label>
-              <input
-                type="text"
-                inputMode="numeric"
-                maxLength={6}
+              <select
                 value={formData.pincode}
-                onChange={(e) => handleInputChange('pincode', e.target.value.replace(/\D/g, ''))}
-                className="mt-1 w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                onChange={(e) => handleInputChange('pincode', e.target.value)}
+                disabled={!formData.city}
+                className="mt-1 w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white disabled:bg-gray-900/40 disabled:cursor-not-allowed"
                 required
-              />
+              >
+                <option value="">{!formData.city ? 'Select a city first' : 'Select a pincode'}</option>
+                {pincodes.map((pincode) => (
+                  <option key={pincode._id || pincode.name} value={pincode._id || pincode.name}>
+                    {pincode.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Area
+              </label>
+              <select
+                value={formData.area}
+                onChange={(e) => handleInputChange('area', e.target.value)}
+                disabled={!formData.pincode}
+                className="mt-1 w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white disabled:bg-gray-900/40 disabled:cursor-not-allowed"
+                required
+              >
+                <option value="">{!formData.pincode ? 'Select a pincode first' : 'Select an area'}</option>
+                {areas.map((area) => (
+                  <option key={area._id || area.name} value={area._id || area.name}>
+                    {area.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Location
+              </label>
+              <select
+                value={formData.location}
+                onChange={(e) => handleInputChange('location', e.target.value)}
+                disabled={!formData.area}
+                className="mt-1 w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white disabled:bg-gray-900/40 disabled:cursor-not-allowed"
+                required
+              >
+                <option value="">{!formData.area ? 'Select an area first' : 'Select a location'}</option>
+                {locations.map((location) => (
+                  <option key={location._id || location.name} value={location._id || location.name}>
+                    {location.name}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div>
