@@ -1,168 +1,348 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { FaPlus, FaEdit, FaTrash, FaEye } from 'react-icons/fa';
+import React, { useEffect, useState } from 'react';
+import { FaEdit, FaPlus, FaTrash } from 'react-icons/fa';
+
 import Button from '../../components/Button';
+import Card from '../../components/Card';
 import Modal from '../../components/Modal';
 import Table from '../../components/Table';
-import Card from '../../components/Card';
-import { slotsAPI } from '../../services/api';
+import {
+  areasAPI,
+  citiesAPI,
+  locationsAPI,
+  pincodesAPI,
+  slotsAPI,
+} from '../../services/api';
+
+const getCollection = (response, key) =>
+  response?.data?.data?.[key] ||
+  response?.data?.[key] ||
+  response?.data?.data ||
+  response?.data ||
+  [];
+
+const getCityName = (item) => item?.city || item?.cityId || '';
+const getPincodeValue = (item) => item?.pincode || item?.pincodeId || '';
+const getAreaValue = (item) => item?.area || item?.areaId || '';
+const getLocationValue = (item) => item?.location || item?.locationId || item?.name || '';
 
 const ParkingSlots = () => {
-  const navigate = useNavigate();
   const [slots, setSlots] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingSlot, setEditingSlot] = useState(null);
-  const [formData, setFormData] = useState({
-    slotNumber: '',
-    location: '',
-    type: 'standard',
-    status: 'available',
-    pricePerHour: '',
-  });
+  const [submitting, setSubmitting] = useState(false);
+
+  const [cities, setCities] = useState([]);
+  const [pincodes, setPincodes] = useState([]);
+  const [areas, setAreas] = useState([]);
+  const [locations, setLocations] = useState([]);
+
+  const [city, setCity] = useState('');
+  const [pincode, setPincode] = useState('');
+  const [area, setArea] = useState('');
+  const [location, setLocation] = useState('');
+  const [landmark, setLandmark] = useState('');
+  const [vehicleType, setVehicleType] = useState('car');
+  const [slotType, setSlotType] = useState('normal');
+  const [slotLocation, setSlotLocation] = useState('');
+  const [price, setPrice] = useState('');
 
   useEffect(() => {
     fetchSlots();
   }, []);
 
+  useEffect(() => {
+    if (modalOpen) {
+      fetchCities();
+    }
+  }, [modalOpen]);
+
+  useEffect(() => {
+    if (!city) {
+      setPincodes([]);
+      return;
+    }
+    fetchPincodes(city);
+  }, [city]);
+
+  useEffect(() => {
+    if (!pincode) {
+      setAreas([]);
+      return;
+    }
+    fetchAreas(pincode);
+  }, [pincode]);
+
+  useEffect(() => {
+    if (!area) {
+      setLocations([]);
+      return;
+    }
+    fetchLocations(area);
+  }, [area]);
+
   const fetchSlots = async () => {
     try {
+      setLoading(true);
       const response = await slotsAPI.getAll();
-      if (response.data?.data?.slots) {
-        setSlots(response.data.data.slots);
-      } else {
-        console.error('Unexpected API response format');
-      }
+      const list = getCollection(response, 'slots');
+      setSlots(Array.isArray(list) ? list : []);
     } catch (error) {
       console.error('Error fetching slots:', error);
-      // Dummy data for development
-      setSlots([
-        {
-          id: 1,
-          slotNumber: 'A001',
-          location: 'Floor 1, Section A',
-          type: 'standard',
-          status: 'occupied',
-          pricePerHour: 5.00,
-          createdAt: '2024-01-15T10:00:00Z',
-        },
-        {
-          id: 2,
-          slotNumber: 'A002',
-          location: 'Floor 1, Section A',
-          type: 'premium',
-          status: 'available',
-          pricePerHour: 8.00,
-          createdAt: '2024-01-15T10:00:00Z',
-        },
-        {
-          id: 3,
-          slotNumber: 'B001',
-          location: 'Floor 1, Section B',
-          type: 'standard',
-          status: 'maintenance',
-          pricePerHour: 5.00,
-          createdAt: '2024-01-15T10:00:00Z',
-        },
-      ]);
+      setSlots([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const fetchCities = async () => {
     try {
-      if (editingSlot) {
-        await slotsAPI.update(editingSlot.id, formData);
-      } else {
-        await slotsAPI.create(formData);
-      }
-      fetchSlots();
-      setModalOpen(false);
-      resetForm();
+      const response = await citiesAPI.getAll();
+      const list = getCollection(response, 'cities');
+      setCities(Array.isArray(list) ? list : []);
     } catch (error) {
-      console.error('Error saving slot:', error);
+      console.error('Error fetching cities:', error);
+      setCities([]);
     }
   };
 
-  const handleEdit = (slot) => {
-    setEditingSlot(slot);
-    setFormData({
-      slotNumber: slot.slotNumber,
-      location: slot.location,
-      type: slot.type,
-      status: slot.status,
-      pricePerHour: slot.pricePerHour,
-    });
-    setModalOpen(true);
+  const fetchPincodes = async (selectedCity) => {
+    try {
+      const response = await pincodesAPI.getAll();
+      let list = getCollection(response, 'pincodes');
+      list = list.filter((item) => getCityName(item) === selectedCity);
+      setPincodes(Array.isArray(list) ? list : []);
+    } catch (error) {
+      console.error('Error fetching pincodes:', error);
+      setPincodes([]);
+    }
   };
 
-  const handleDelete = async (id) => {
-    if (window.confirm('Are you sure you want to delete this parking slot?')) {
-      try {
-        await slotsAPI.delete(id);
-        fetchSlots();
-      } catch (error) {
-        console.error('Error deleting slot:', error);
-      }
+  const fetchAreas = async (selectedPincode) => {
+    try {
+      const response = await areasAPI.getAll();
+      let list = getCollection(response, 'areas');
+      list = list.filter((item) => getPincodeValue(item) === selectedPincode);
+      setAreas(Array.isArray(list) ? list : []);
+    } catch (error) {
+      console.error('Error fetching areas:', error);
+      setAreas([]);
+    }
+  };
+
+  const fetchLocations = async (selectedArea) => {
+    try {
+      const response = await locationsAPI.getAll();
+      let list = getCollection(response, 'locations');
+      list = list.filter((item) => getAreaValue(item) === selectedArea);
+      setLocations(Array.isArray(list) ? list : []);
+    } catch (error) {
+      console.error('Error fetching locations:', error);
+      setLocations([]);
     }
   };
 
   const resetForm = () => {
     setEditingSlot(null);
-    setFormData({
-      slotNumber: '',
-      location: '',
-      type: 'standard',
-      status: 'available',
-      pricePerHour: '',
-    });
+    setCity('');
+    setPincode('');
+    setArea('');
+    setLocation('');
+    setLandmark('');
+    setVehicleType('car');
+    setSlotType('normal');
+    setSlotLocation('');
+    setPrice('');
+    setPincodes([]);
+    setAreas([]);
+    setLocations([]);
+  };
+
+  const openCreateModal = () => {
+    resetForm();
+    setModalOpen(true);
+  };
+
+  const handleCityChange = (value) => {
+    setCity(value);
+    setPincode('');
+    setArea('');
+    setLocation('');
+    setPincodes([]);
+    setAreas([]);
+    setLocations([]);
+  };
+
+  const handlePincodeChange = (value) => {
+    setPincode(value);
+    setArea('');
+    setLocation('');
+    setAreas([]);
+    setLocations([]);
+  };
+
+  const handleAreaChange = (value) => {
+    setArea(value);
+    setLocation('');
+    setLocations([]);
+  };
+
+  const handleEdit = async (slot) => {
+    const slotCity = getCityName(slot);
+    const slotPincode = getPincodeValue(slot);
+    const slotArea = getAreaValue(slot);
+
+    setEditingSlot(slot);
+    setCity(slotCity);
+    setPincode(slotPincode);
+    setArea(slotArea);
+    setLocation(getLocationValue(slot));
+    setLandmark(slot.landmark || '');
+    setVehicleType(slot.vehicleType || 'car');
+    setSlotType(slot.slotType || 'normal');
+    setSlotLocation(slot.slotLocation || '');
+    setPrice(slot.price ?? '');
+    setModalOpen(true);
+
+    if (slotCity) {
+      await fetchPincodes(slotCity);
+    }
+    if (slotPincode) {
+      await fetchAreas(slotPincode);
+    }
+    if (slotArea) {
+      await fetchLocations(slotArea);
+    }
+  };
+
+  const validateForm = () => {
+    if (!city) return 'City is required';
+    if (!pincode) return 'Pincode is required';
+    if (!area) return 'Area is required';
+    if (!location) return 'Location is required';
+    if (!landmark.trim()) return 'Landmark is required';
+    if (!slotLocation.trim()) return 'Slot location is required';
+    if (price === '' || Number.isNaN(Number(price)) || Number(price) < 0) {
+      return 'Price must be a valid positive number';
+    }
+    return null;
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    const validationError = validateForm();
+    if (validationError) {
+      alert(validationError);
+      return;
+    }
+
+    const payload = {
+      city,
+      pincode,
+      area,
+      location,
+      landmark: landmark.trim(),
+      vehicleType,
+      slotType,
+      slotLocation: slotLocation.trim(),
+      price: Number(price),
+    };
+
+    try {
+      setSubmitting(true);
+
+      if (editingSlot) {
+        await slotsAPI.update(editingSlot._id, payload);
+      } else {
+        await slotsAPI.create(payload);
+      }
+
+      await fetchSlots();
+      setModalOpen(false);
+      resetForm();
+      alert(editingSlot ? 'Slot updated successfully' : 'Slot created successfully');
+    } catch (error) {
+      console.error('Error saving slot:', error);
+      const serverErrors = error?.response?.data?.errors;
+      if (Array.isArray(serverErrors) && serverErrors.length > 0) {
+        alert(serverErrors.map((item) => item.msg).join('\n'));
+        return;
+      }
+      alert(error?.response?.data?.message || 'Failed to save slot');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('Delete this slot?')) return;
+
+    try {
+      await slotsAPI.delete(id);
+      await fetchSlots();
+      alert('Slot deleted successfully');
+    } catch (error) {
+      console.error('Delete error:', error);
+      alert(error?.response?.data?.message || 'Failed to delete slot');
+    }
   };
 
   const columns = [
-    { header: 'Slot Number', key: 'slotNumber' },
+    { header: 'City', key: 'city' },
+    { header: 'Pincode', key: 'pincode' },
+    { header: 'Area', key: 'area' },
     { header: 'Location', key: 'location' },
-    { header: 'Type', key: 'type', render: (row) => (
-      <span className={`px-2 py-1 text-xs rounded-full ${
-        row.type === 'premium' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'
-      }`}>
-        {row.type}
-      </span>
-    )},
-    { header: 'Status', key: 'status', render: (row) => (
-      <span className={`px-2 py-1 text-xs rounded-full ${
-        row.status === 'available' ? 'bg-green-100 text-green-800' :
-        row.status === 'occupied' ? 'bg-red-100 text-red-800' :
-        'bg-yellow-100 text-yellow-800'
-      }`}>
-        {row.status}
-      </span>
-    )},
-    { header: 'Price/Hour', key: 'pricePerHour', render: (row) => `$${row.pricePerHour}` },
-    { header: 'Actions', key: 'actions', render: (row) => (
-      <div className="flex space-x-2">
-        <button
-          onClick={() => handleEdit(row)}
-          className="text-blue-600 hover:text-blue-800"
-        >
-          <FaEdit />
-        </button>
-        <button
-          onClick={() => handleDelete(row.id)}
-          className="text-red-600 hover:text-red-800"
-        >
-          <FaTrash />
-        </button>
-      </div>
-    )},
+    { header: 'Landmark', key: 'landmark' },
+    {
+      header: 'Vehicle Type',
+      key: 'vehicleType',
+      render: (row) => <span className="capitalize">{row.vehicleType || 'N/A'}</span>,
+    },
+    {
+      header: 'Slot Type',
+      key: 'slotType',
+      render: (row) => <span className="capitalize">{row.slotType || 'N/A'}</span>,
+    },
+    { header: 'Slot Location', key: 'slotLocation' },
+    {
+      header: 'Price',
+      key: 'price',
+      render: (row) => `₹${row.price ?? 0}`,
+    },
+    {
+      header: 'Actions',
+      key: 'actions',
+      render: (row) => (
+        <div className="flex space-x-2">
+          <button
+            onClick={() => handleEdit(row)}
+            className="p-2 text-blue-600 hover:bg-blue-100 rounded-md"
+            title="Edit"
+          >
+            <FaEdit />
+          </button>
+          <button
+            onClick={() => handleDelete(row._id)}
+            className="p-2 text-red-600 hover:bg-red-100 rounded-md"
+            title="Delete"
+          >
+            <FaTrash />
+          </button>
+        </div>
+      ),
+    },
   ];
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Parking Slots</h1>
-        <Button onClick={() => setModalOpen(true)}>
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-2xl font-bold">Parking Slots</h1>
+          <p className="text-sm text-gray-500 mt-1">Create slots with dependent location mapping.</p>
+        </div>
+
+        <Button onClick={openCreateModal}>
           <FaPlus className="mr-2" />
           Add Slot
         </Button>
@@ -180,83 +360,167 @@ const ParkingSlots = () => {
       <Modal
         isOpen={modalOpen}
         onClose={() => {
-          setModalOpen(false);
-          resetForm();
+          if (!submitting) {
+            setModalOpen(false);
+            resetForm();
+          }
         }}
-        title={editingSlot ? 'Edit Parking Slot' : 'Add Parking Slot'}
+        title={editingSlot ? 'Edit Slot' : 'Add Slot'}
       >
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Slot Number
-            </label>
-            <input
-              type="text"
-              value={formData.slotNumber}
-              onChange={(e) => setFormData({ ...formData, slotNumber: e.target.value })}
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-              required
-            />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                City
+              </label>
+              <select
+                value={city}
+                onChange={(e) => handleCityChange(e.target.value)}
+                className="mt-1 w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                required
+              >
+                <option value="">Select a city</option>
+                {cities.map((item) => (
+                  <option key={item._id || item.name} value={item.name}>
+                    {item.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Pincode
+              </label>
+              <select
+                value={pincode}
+                onChange={(e) => handlePincodeChange(e.target.value)}
+                disabled={!city}
+                className="mt-1 w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white disabled:bg-gray-900/40 disabled:cursor-not-allowed"
+                required
+              >
+                <option value="">{!city ? 'Select a city first' : 'Select a pincode'}</option>
+                {pincodes.map((item) => (
+                  <option key={item._id || item.name} value={item.name}>
+                    {item.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Area
+              </label>
+              <select
+                value={area}
+                onChange={(e) => handleAreaChange(e.target.value)}
+                disabled={!pincode}
+                className="mt-1 w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white disabled:bg-gray-900/40 disabled:cursor-not-allowed"
+                required
+              >
+                <option value="">{!pincode ? 'Select a pincode first' : 'Select an area'}</option>
+                {areas.map((item) => (
+                  <option key={item._id || item.name} value={item.name}>
+                    {item.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Location
+              </label>
+              <select
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
+                disabled={!area}
+                className="mt-1 w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white disabled:bg-gray-900/40 disabled:cursor-not-allowed"
+                required
+              >
+                <option value="">{!area ? 'Select an area first' : 'Select a location'}</option>
+                {locations.map((item) => (
+                  <option key={item._id || item.name} value={item.name}>
+                    {item.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Landmark
+              </label>
+              <input
+                type="text"
+                value={landmark}
+                onChange={(e) => setLandmark(e.target.value)}
+                className="mt-1 w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Vehicle Type
+              </label>
+              <select
+                value={vehicleType}
+                onChange={(e) => setVehicleType(e.target.value)}
+                className="mt-1 w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+              >
+                <option value="car">Car</option>
+                <option value="bike">Bike</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Slot Type
+              </label>
+              <select
+                value={slotType}
+                onChange={(e) => setSlotType(e.target.value)}
+                className="mt-1 w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+              >
+                <option value="normal">Normal</option>
+                <option value="vip">VIP</option>
+                <option value="reserved">Reserved</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Slot Location
+              </label>
+              <input
+                type="text"
+                value={slotLocation}
+                onChange={(e) => setSlotLocation(e.target.value)}
+                className="mt-1 w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                placeholder="e.g. Floor 1, Section B"
+                required
+              />
+            </div>
+
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Price
+              </label>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={price}
+                onChange={(e) => setPrice(e.target.value)}
+                className="mt-1 w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                required
+              />
+            </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Location
-            </label>
-            <input
-              type="text"
-              value={formData.location}
-              onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Type
-            </label>
-            <select
-              value={formData.type}
-              onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-            >
-              <option value="standard">Standard</option>
-              <option value="premium">Premium</option>
-              <option value="disabled">Disabled</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Status
-            </label>
-            <select
-              value={formData.status}
-              onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-            >
-              <option value="available">Available</option>
-              <option value="occupied">Occupied</option>
-              <option value="maintenance">Maintenance</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Price per Hour ($)
-            </label>
-            <input
-              type="number"
-              step="0.01"
-              value={formData.pricePerHour}
-              onChange={(e) => setFormData({ ...formData, pricePerHour: parseFloat(e.target.value) })}
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-              required
-            />
-          </div>
-
-          <div className="flex justify-end space-x-3">
+          <div className="flex justify-end gap-3 pt-2">
             <Button
               type="button"
               variant="outline"
@@ -264,11 +528,12 @@ const ParkingSlots = () => {
                 setModalOpen(false);
                 resetForm();
               }}
+              disabled={submitting}
             >
               Cancel
             </Button>
-            <Button type="submit">
-              {editingSlot ? 'Update' : 'Create'}
+            <Button type="submit" disabled={submitting}>
+              {submitting ? 'Saving...' : editingSlot ? 'Update Slot' : 'Create Slot'}
             </Button>
           </div>
         </form>
