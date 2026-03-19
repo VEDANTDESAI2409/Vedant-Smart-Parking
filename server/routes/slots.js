@@ -17,19 +17,20 @@ const router = express.Router();
 
 const createSlotValidation = [
   body('city').notEmpty().withMessage('City is required'),
-  body('area').notEmpty().withMessage('Area is required'),
   body('pincode')
     .notEmpty()
     .withMessage('Pincode is required')
     .matches(/^\d{6}$/)
     .withMessage('Pincode must be 6 digits'),
+  body('area').notEmpty().withMessage('Area is required'),
+  body('location').notEmpty().withMessage('Location is required'),
   body('landmark').notEmpty().withMessage('Landmark is required'),
   body('vehicleType')
     .isIn(['car', 'bike'])
     .withMessage('Vehicle type must be car or bike'),
   body('slotType')
-    .isIn(['normal', 'ev', 'disabled'])
-    .withMessage('Slot type must be normal, ev, or disabled'),
+    .isIn(['normal', 'vip', 'reserved'])
+    .withMessage('Slot type must be normal, vip, or reserved'),
   body('slotLocation').notEmpty().withMessage('Slot location is required'),
   body('price')
     .isFloat({ min: 0 })
@@ -38,11 +39,12 @@ const createSlotValidation = [
 
 const updateSlotValidation = [
   body('city').optional().notEmpty().withMessage('City cannot be empty'),
-  body('area').optional().notEmpty().withMessage('Area cannot be empty'),
   body('pincode')
     .optional()
     .matches(/^\d{6}$/)
     .withMessage('Pincode must be 6 digits'),
+  body('area').optional().notEmpty().withMessage('Area cannot be empty'),
+  body('location').optional().notEmpty().withMessage('Location cannot be empty'),
   body('landmark').optional().notEmpty().withMessage('Landmark cannot be empty'),
   body('vehicleType')
     .optional()
@@ -50,8 +52,8 @@ const updateSlotValidation = [
     .withMessage('Vehicle type must be car or bike'),
   body('slotType')
     .optional()
-    .isIn(['normal', 'ev', 'disabled'])
-    .withMessage('Slot type must be normal, ev, or disabled'),
+    .isIn(['normal', 'vip', 'reserved'])
+    .withMessage('Slot type must be normal, vip, or reserved'),
   body('slotLocation')
     .optional()
     .notEmpty()
@@ -59,11 +61,7 @@ const updateSlotValidation = [
   body('price')
     .optional()
     .isFloat({ min: 0 })
-    .withMessage('Price must be a positive number'),
-  body('status')
-    .optional()
-    .isIn(['available', 'occupied', 'maintenance', 'reserved', 'blocked'])
-    .withMessage('Invalid status')
+    .withMessage('Price must be a positive number')
 ];
 
 const slotIdValidation = [

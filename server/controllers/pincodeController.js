@@ -1,4 +1,5 @@
 const asyncHandler = require('express-async-handler');
+const { validationResult } = require('express-validator');
 const Pincode = require('../models/Pincode');
 
 // @desc    Get all pincodes
@@ -36,14 +37,21 @@ const getPincode = asyncHandler(async (req, res) => {
 // @route   POST /api/pincodes
 // @access  Private/Admin
 const createPincode = asyncHandler(async (req, res) => {
-  const { name, status } = req.body;
-
-  if (!name) {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
     res.status(400);
-    throw new Error('Please provide pincode');
+    throw new Error(errors.array().map((item) => item.msg).join(', '));
+  }
+
+  const { city, name, status } = req.body;
+
+  if (!city || !name) {
+    res.status(400);
+    throw new Error('Please provide city and pincode');
   }
 
   const pincode = await Pincode.create({
+    city: String(city).trim(),
     name: String(name).trim(),
     status: status !== undefined ? Boolean(status) : true,
   });
@@ -59,6 +67,12 @@ const createPincode = asyncHandler(async (req, res) => {
 // @route   PUT /api/pincodes/:id
 // @access  Private/Admin
 const updatePincode = asyncHandler(async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    res.status(400);
+    throw new Error(errors.array().map((item) => item.msg).join(', '));
+  }
+
   const pincode = await Pincode.findById(req.params.id);
 
   if (!pincode) {
@@ -66,8 +80,9 @@ const updatePincode = asyncHandler(async (req, res) => {
     throw new Error('Pincode not found');
   }
 
-  const { name, status } = req.body;
+  const { city, name, status } = req.body;
 
+  pincode.city = city !== undefined ? String(city).trim() : pincode.city;
   pincode.name = name !== undefined ? String(name).trim() : pincode.name;
   pincode.status = status !== undefined ? Boolean(status) : pincode.status;
 

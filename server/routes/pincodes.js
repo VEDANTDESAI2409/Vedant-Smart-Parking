@@ -14,6 +14,10 @@ const router = express.Router();
 
 // Validation rules
 const createPincodeValidation = [
+  body('city')
+    .trim()
+    .isLength({ min: 1, max: 50 })
+    .withMessage('City is required'),
   body('name')
     .trim()
     .matches(/^\d{6}$/)
@@ -25,6 +29,11 @@ const createPincodeValidation = [
 ];
 
 const updatePincodeValidation = [
+  body('city')
+    .optional()
+    .trim()
+    .isLength({ min: 1, max: 50 })
+    .withMessage('City is required'),
   body('name')
     .optional()
     .trim()
