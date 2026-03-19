@@ -5,12 +5,14 @@ import { MdElectricBolt } from 'react-icons/md';
 import Button from '../../components/Button';
 import Modal from '../../components/Modal';
 import Table from '../../components/Table';
+import Card from '../../components/Card';
 import { slotsAPI } from '../../services/api';
 
 const initialFormData = {
   city: '',
-  area: '',
   pincode: '',
+  area: '',
+  location: '',
   landmark: '',
   vehicleType: 'car',
   slotType: 'normal',
@@ -26,12 +28,47 @@ const ParkingSlots = () => {
   const [formData, setFormData] = useState(initialFormData);
   const [submitting, setSubmitting] = useState(false);
   const [debugInfo, setDebugInfo] = useState('');
-  // 1. Add searchTerm state
-  const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
     fetchSlots();
   }, []);
+
+  useEffect(() => {
+    if (modalOpen) {
+      fetchCities();
+    }
+  }, [modalOpen]);
+
+  useEffect(() => {
+    // whenever the selected city changes, reset child selections
+    if (!formData.city) {
+      setPincodes([]);
+      setFormData((prev) => ({ ...prev, pincode: '', area: '', location: '' }));
+      return;
+    }
+
+    fetchPincodes(formData.city);
+  }, [formData.city]);
+
+  useEffect(() => {
+    if (!formData.pincode) {
+      setAreas([]);
+      setFormData((prev) => ({ ...prev, area: '', location: '' }));
+      return;
+    }
+
+    fetchAreas(formData.pincode);
+  }, [formData.pincode]);
+
+  useEffect(() => {
+    if (!formData.area) {
+      setLocations([]);
+      setFormData((prev) => ({ ...prev, location: '' }));
+      return;
+    }
+
+    fetchLocations(formData.area);
+  }, [formData.area]);
 
   const fetchSlots = async () => {
     try {
@@ -56,22 +93,6 @@ const ParkingSlots = () => {
     }
   };
 
-  // 2. Implement the filtering logic
-  const filteredSlots = useMemo(() => {
-    const lowerSearch = searchTerm.toLowerCase().trim();
-    if (!lowerSearch) return slots;
-
-    return slots.filter((slot) => {
-      return (
-        slot.city?.toLowerCase().includes(lowerSearch) ||
-        slot.area?.toLowerCase().includes(lowerSearch) ||
-        slot.slotLocation?.toLowerCase().includes(lowerSearch) ||
-        slot.pincode?.toString().includes(lowerSearch) ||
-        slot.landmark?.toLowerCase().includes(lowerSearch)
-      );
-    });
-  }, [slots, searchTerm]);
-
   const handleInputChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
@@ -89,9 +110,10 @@ const ParkingSlots = () => {
   const handleEdit = (slot) => {
     setEditingSlot(slot);
     setFormData({
-      city: slot.city || '',
-      area: slot.area || '',
-      pincode: slot.pincode || '',
+      city: slot.city || slot.cityId || '',
+      pincode: slot.pincode || slot.pincodeId || '',
+      area: slot.area || slot.areaId || '',
+      location: slot.location || slot.locationId || '',
       landmark: slot.landmark || '',
       vehicleType: slot.vehicleType || 'car',
       slotType: slot.slotType || 'normal',
@@ -102,9 +124,10 @@ const ParkingSlots = () => {
   };
 
   const validateForm = () => {
-    if (!formData.city.trim()) return 'City is required';
-    if (!formData.area.trim()) return 'Area is required';
-    if (!/^\d{6}$/.test(formData.pincode.trim())) return 'Pincode must be 6 digits';
+    if (!formData.city) return 'City is required';
+    if (!formData.pincode) return 'Pincode is required';
+    if (!formData.area) return 'Area is required';
+    if (!formData.location) return 'Location is required';
     if (!formData.landmark.trim()) return 'Landmark is required';
     if (!['car', 'bike'].includes(formData.vehicleType)) return 'Vehicle type must be car or bike';
     if (!['normal', 'ev', 'disabled'].includes(formData.slotType)) return 'Invalid slot type';
@@ -120,7 +143,17 @@ const ParkingSlots = () => {
     const validationError = validateForm();
     if (validationError) { alert(validationError); return; }
 
-    const payload = { ...formData, price: Number(formData.price) };
+    const payload = {
+      city: formData.city.trim(),
+      area: formData.area.trim(),
+      pincode: formData.pincode.trim(),
+      landmark: formData.landmark.trim(),
+      vehicleType: formData.vehicleType,
+      slotType: formData.slotType,
+      slotLocation: formData.slotLocation.trim(),
+      price: Number(formData.price),
+    };
+
     try {
       setSubmitting(true);
       if (editingSlot) await slotsAPI.update(editingSlot._id, payload);
@@ -279,41 +312,48 @@ const ParkingSlots = () => {
         onClose={() => !submitting && setModalOpen(false)}
         title={editingSlot ? 'Edit Slot' : 'Add Slot'}
       >
-        <form onSubmit={handleSubmit} className="p-2 space-y-5">
-           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <div>
-                <label className="block text-xs font-black uppercase tracking-widest text-slate-400 mb-2">City</label>
-                <input
-                  type="text"
-                  value={formData.city}
-                  onChange={(e) => handleInputChange('city', e.target.value)}
-                  className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border-none ring-1 ring-slate-200 dark:ring-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm dark:text-white"
-                  required
-                />
-              </div>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                City
+              </label>
+              <input
+                type="text"
+                value={formData.city}
+                onChange={(e) => handleInputChange('city', e.target.value)}
+                className="mt-1 w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                required
+              />
+            </div>
 
-              <div>
-                <label className="block text-xs font-black uppercase tracking-widest text-slate-400 mb-2">Area</label>
-                <input
-                  type="text"
-                  value={formData.area}
-                  onChange={(e) => handleInputChange('area', e.target.value)}
-                  className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border-none ring-1 ring-slate-200 dark:ring-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm dark:text-white"
-                  required
-                />
-              </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Area
+              </label>
+              <input
+                type="text"
+                value={formData.area}
+                onChange={(e) => handleInputChange('area', e.target.value)}
+                className="mt-1 w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                required
+              />
+            </div>
 
-              <div>
-                <label className="block text-xs font-black uppercase tracking-widest text-slate-400 mb-2">Pincode</label>
-                <input
-                  type="text"
-                  maxLength={6}
-                  value={formData.pincode}
-                  onChange={(e) => handleInputChange('pincode', e.target.value.replace(/\D/g, ''))}
-                  className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border-none ring-1 ring-slate-200 dark:ring-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm dark:text-white"
-                  required
-                />
-              </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Pincode
+              </label>
+              <input
+                type="text"
+                inputMode="numeric"
+                maxLength={6}
+                value={formData.pincode}
+                onChange={(e) => handleInputChange('pincode', e.target.value.replace(/\D/g, ''))}
+                className="mt-1 w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                required
+              />
+            </div>
 
               <div>
                 <label className="block text-xs font-black uppercase tracking-widest text-slate-400 mb-2">Landmark</label>
