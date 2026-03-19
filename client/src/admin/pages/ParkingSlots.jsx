@@ -463,7 +463,7 @@ const ParkingSlots = () => {
               >
                 <option value="">Select a city</option>
                 {cities.map((city) => (
-                  <option key={city._id || city.name} value={city._id || city.name}>
+                  <option key={city._id || city.name} value={city.name}>
                     {city.name}
                   </option>
                 ))}
@@ -483,7 +483,7 @@ const ParkingSlots = () => {
               >
                 <option value="">{!formData.city ? 'Select a city first' : 'Select a pincode'}</option>
                 {pincodes.map((pincode) => (
-                  <option key={pincode._id || pincode.name} value={pincode._id || pincode.name}>
+                  <option key={pincode._id || pincode.name} value={pincode.name}>
                     {pincode.name}
                   </option>
                 ))}
@@ -503,7 +503,7 @@ const ParkingSlots = () => {
               >
                 <option value="">{!formData.pincode ? 'Select a pincode first' : 'Select an area'}</option>
                 {areas.map((area) => (
-                  <option key={area._id || area.name} value={area._id || area.name}>
+                  <option key={area._id || area.name} value={area.name}>
                     {area.name}
                   </option>
                 ))}
@@ -523,7 +523,7 @@ const ParkingSlots = () => {
               >
                 <option value="">{!formData.area ? 'Select an area first' : 'Select a location'}</option>
                 {locations.map((location) => (
-                  <option key={location._id || location.name} value={location._id || location.name}>
+                  <option key={location._id || location.name} value={location.name}>
                     {location.name}
                   </option>
                 ))}
