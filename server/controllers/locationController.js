@@ -1,4 +1,5 @@
 const asyncHandler = require('express-async-handler');
+const { validationResult } = require('express-validator');
 const Location = require('../models/Location');
 
 // @desc    Get all locations
@@ -36,14 +37,23 @@ const getLocation = asyncHandler(async (req, res) => {
 // @route   POST /api/locations
 // @access  Private/Admin
 const createLocation = asyncHandler(async (req, res) => {
-  const { name, status } = req.body;
-
-  if (!name) {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
     res.status(400);
-    throw new Error('Please provide location name');
+    throw new Error(errors.array().map((item) => item.msg).join(', '));
+  }
+
+  const { city, pincode, area, name, status } = req.body;
+
+  if (!city || !pincode || !area || !name) {
+    res.status(400);
+    throw new Error('Please provide city, pincode, area, and location name');
   }
 
   const location = await Location.create({
+    city: String(city).trim(),
+    pincode: String(pincode).trim(),
+    area: String(area).trim(),
     name: String(name).trim(),
     status: status !== undefined ? Boolean(status) : true,
   });
@@ -59,6 +69,12 @@ const createLocation = asyncHandler(async (req, res) => {
 // @route   PUT /api/locations/:id
 // @access  Private/Admin
 const updateLocation = asyncHandler(async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    res.status(400);
+    throw new Error(errors.array().map((item) => item.msg).join(', '));
+  }
+
   const location = await Location.findById(req.params.id);
 
   if (!location) {
@@ -66,8 +82,11 @@ const updateLocation = asyncHandler(async (req, res) => {
     throw new Error('Location not found');
   }
 
-  const { name, status } = req.body;
+  const { city, pincode, area, name, status } = req.body;
 
+  location.city = city !== undefined ? String(city).trim() : location.city;
+  location.pincode = pincode !== undefined ? String(pincode).trim() : location.pincode;
+  location.area = area !== undefined ? String(area).trim() : location.area;
   location.name = name !== undefined ? String(name).trim() : location.name;
   location.status = status !== undefined ? Boolean(status) : location.status;
 

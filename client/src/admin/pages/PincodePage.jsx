@@ -5,14 +5,33 @@ import Button from '../../components/Button';
 import Modal from '../../components/Modal';
 import Table from '../../components/Table';
 import Card from '../../components/Card';
-import { pincodesAPI } from '../../services/api';
+import { citiesAPI, pincodesAPI } from '../../services/api';
+
+const initialFormData = { city: '', name: '', status: true };
+
+const getPincodesFromResponse = (response) =>
+  response?.data?.data?.pincodes ||
+  response?.data?.pincodes ||
+  response?.data?.data ||
+  response?.data ||
+  [];
+
+const getCitiesFromResponse = (response) =>
+  response?.data?.data?.cities ||
+  response?.data?.cities ||
+  response?.data?.data ||
+  response?.data ||
+  [];
+
+const getCityName = (item) => item?.city || item?.cityId || '';
 
 const PincodePage = () => {
   const [pincodes, setPincodes] = useState([]);
+  const [cities, setCities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingPincode, setEditingPincode] = useState(null);
-  const [formData, setFormData] = useState({ name: '', status: true });
+  const [formData, setFormData] = useState(initialFormData);
   const [submitting, setSubmitting] = useState(false);
 
   const handleInputChange = (field, value) => {
@@ -24,14 +43,15 @@ const PincodePage = () => {
 
   useEffect(() => {
     fetchPincodes();
+    fetchCities();
   }, []);
 
   const fetchPincodes = async () => {
     try {
       setLoading(true);
       const response = await pincodesAPI.getAll();
-      const list = response?.data?.data?.pincodes || [];
-      setPincodes(list);
+      const list = getPincodesFromResponse(response);
+      setPincodes(Array.isArray(list) ? list : []);
     } catch (error) {
       console.error('Error fetching pincodes:', error);
       setPincodes([]);
@@ -40,9 +60,20 @@ const PincodePage = () => {
     }
   };
 
+  const fetchCities = async () => {
+    try {
+      const response = await citiesAPI.getAll();
+      const list = getCitiesFromResponse(response);
+      setCities(Array.isArray(list) ? list : []);
+    } catch (error) {
+      console.error('Error fetching cities:', error);
+      setCities([]);
+    }
+  };
+
   const resetForm = () => {
     setEditingPincode(null);
-    setFormData({ name: '', status: true });
+    setFormData(initialFormData);
   };
 
   const openCreateModal = () => {
@@ -53,6 +84,7 @@ const PincodePage = () => {
   const handleEdit = (pincode) => {
     setEditingPincode(pincode);
     setFormData({
+      city: getCityName(pincode),
       name: pincode.name || '',
       status: pincode.status ?? true,
     });
@@ -60,6 +92,7 @@ const PincodePage = () => {
   };
 
   const validateForm = () => {
+    if (!formData.city) return 'City is required';
     if (!formData.name.trim()) return 'Pincode is required';
     if (!/^\d{6}$/.test(formData.name.trim())) return 'Pincode must be 6 digits';
     return null;
@@ -75,6 +108,7 @@ const PincodePage = () => {
     }
 
     const payload = {
+      city: formData.city,
       name: formData.name.trim(),
       status: formData.status,
     };
@@ -114,6 +148,7 @@ const PincodePage = () => {
   };
 
   const columns = [
+    { header: 'City', key: 'city', render: (row) => <span className="capitalize">{getCityName(row) || 'N/A'}</span> },
     { header: 'Pincode', key: 'name' },
     {
       header: 'Status',
@@ -185,6 +220,25 @@ const PincodePage = () => {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              City
+            </label>
+            <select
+              value={formData.city}
+              onChange={(e) => handleInputChange('city', e.target.value)}
+              className="mt-1 w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+              required
+            >
+              <option value="">Select a city</option>
+              {cities.map((city) => (
+                <option key={city._id || city.name} value={city.name}>
+                  {city.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
               Pincode
             </label>
             <input
@@ -196,17 +250,29 @@ const PincodePage = () => {
             />
           </div>
 
-          <div className="flex items-center space-x-2">
-            <input
-              type="checkbox"
-              id="status"
-              checked={formData.status}
-              onChange={(e) => handleInputChange('status', e.target.checked)}
-              className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
-            />
-            <label htmlFor="status" className="text-sm font-medium text-gray-700 dark:text-gray-300">
-              Active
-            </label>
+          <div className="flex items-center justify-between rounded-lg border border-gray-200 dark:border-gray-600 px-4 py-3">
+            <div>
+              <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Status</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                {formData.status ? 'Active' : 'Inactive'}
+              </p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={formData.status}
+              onClick={() => handleInputChange('status', !formData.status)}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                formData.status ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-600'
+              }`}
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                  formData.status ? 'translate-x-6' : 'translate-x-1'
+                }`}
+              />
+            </button>
+            <span className="sr-only">Status</span>
           </div>
 
           <div className="flex justify-end space-x-3">

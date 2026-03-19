@@ -1,4 +1,5 @@
 const asyncHandler = require('express-async-handler');
+const { validationResult } = require('express-validator');
 const ParkingSlot = require('../models/ParkingSlot');
 
 // @desc    Get all parking slots
@@ -45,10 +46,19 @@ const getSlot = asyncHandler(async (req, res) => {
 // @route   POST /api/slots
 // @access  Private/Admin
 const createSlot = asyncHandler(async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      errors: errors.array(),
+    });
+  }
+
   const {
     city,
-    area,
     pincode,
+    area,
+    location,
     landmark,
     vehicleType,
     slotType,
@@ -58,8 +68,9 @@ const createSlot = asyncHandler(async (req, res) => {
 
   if (
     !city ||
-    !area ||
     !pincode ||
+    !area ||
+    !location ||
     !landmark ||
     !vehicleType ||
     !slotType ||
@@ -74,8 +85,9 @@ const createSlot = asyncHandler(async (req, res) => {
 
   const slot = await ParkingSlot.create({
     city: String(city).trim(),
-    area: String(area).trim(),
     pincode: String(pincode).trim(),
+    area: String(area).trim(),
+    location: String(location).trim(),
     landmark: String(landmark).trim(),
     vehicleType: String(vehicleType).trim(),
     slotType: String(slotType).trim(),
@@ -94,6 +106,14 @@ const createSlot = asyncHandler(async (req, res) => {
 // @route   PUT /api/slots/:id
 // @access  Private/Admin
 const updateSlot = asyncHandler(async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      errors: errors.array(),
+    });
+  }
+
   const slot = await ParkingSlot.findById(req.params.id);
 
   if (!slot) {
@@ -103,8 +123,9 @@ const updateSlot = asyncHandler(async (req, res) => {
 
   const {
     city,
-    area,
     pincode,
+    area,
+    location,
     landmark,
     vehicleType,
     slotType,
@@ -113,8 +134,9 @@ const updateSlot = asyncHandler(async (req, res) => {
   } = req.body;
 
   slot.city = city !== undefined ? String(city).trim() : slot.city;
-  slot.area = area !== undefined ? String(area).trim() : slot.area;
   slot.pincode = pincode !== undefined ? String(pincode).trim() : slot.pincode;
+  slot.area = area !== undefined ? String(area).trim() : slot.area;
+  slot.location = location !== undefined ? String(location).trim() : slot.location;
   slot.landmark = landmark !== undefined ? String(landmark).trim() : slot.landmark;
   slot.vehicleType = vehicleType !== undefined ? String(vehicleType).trim() : slot.vehicleType;
   slot.slotType = slotType !== undefined ? String(slotType).trim() : slot.slotType;
