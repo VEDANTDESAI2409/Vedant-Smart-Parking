@@ -40,6 +40,8 @@ export const authAPI = {
   login: (credentials) => api.post('/auth/login', credentials),
   logout: () => api.post('/auth/logout'),
   getProfile: () => api.get('/auth/profile'),
+  // --- ADDED THIS LINE ---
+  updateAdminProfile: (data) => api.put('/auth/admin/profile', data),
 };
 
 export const slotsAPI = {

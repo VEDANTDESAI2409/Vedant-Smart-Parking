@@ -54,12 +54,23 @@ export const AuthProvider = ({ children }) => {
     delete axios.defaults.headers.common['Authorization'];
   };
 
+  // --- NEW FUNCTION ADDED HERE ---
+  const updateUserData = (newData) => {
+    setUser((prevUser) => {
+      const updatedUser = { ...prevUser, ...newData };
+      // Sync with localStorage so changes persist on page refresh
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+      return updatedUser;
+    });
+  };
+
   const value = {
     user,
     isAuthenticated,
     loading,
     login,
     logout,
+    updateUserData, // Added to the exported context value
   };
 
   return (
