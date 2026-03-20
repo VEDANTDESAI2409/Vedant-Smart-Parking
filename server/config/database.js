@@ -1,4 +1,30 @@
 const mongoose = require('mongoose');
+const City = require('../models/City');
+const Pincode = require('../models/Pincode');
+const Area = require('../models/Area');
+const Location = require('../models/Location');
+
+const syncCoreIndexes = async () => {
+  const models = [
+    { name: 'City', model: City },
+    { name: 'Pincode', model: Pincode },
+    { name: 'Area', model: Area },
+    { name: 'Location', model: Location },
+  ];
+
+  const results = await Promise.allSettled(
+    models.map(async ({ name, model }) => {
+      await model.syncIndexes();
+      console.log(`${name} indexes synced`);
+    })
+  );
+
+  results.forEach((result, index) => {
+    if (result.status === 'rejected') {
+      console.error(`Failed to sync ${models[index].name} indexes:`, result.reason.message);
+    }
+  });
+};
 
 const connectDB = async () => {
   try {
@@ -10,6 +36,7 @@ const connectDB = async () => {
     });
 
     console.log(`MongoDB Connected: ${conn.connection.host}`);
+    await syncCoreIndexes();
 
     // Handle connection events
     mongoose.connection.on('error', (err) => {
