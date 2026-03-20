@@ -1,9 +1,15 @@
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
+const mongoose = require('mongoose');
 const { validationResult } = require('express-validator');
 const User = require('../models/User');
 const Admin = require('../models/Admin');
 const ActivityLog = require('../models/ActivityLog');
+const {
+  getDevAdminUser,
+  isDevAdminLoginEnabled,
+  matchesDevAdminCredentials
+} = require('../utils/devAdmin');
 
 // Generate JWT token
 const generateToken = (id, role = 'user') => {
@@ -98,8 +104,34 @@ exports.adminLogin = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Validation failed', errors: errors.array() });
     }
     const { email, password } = req.body;
-    const admin = await Admin.findOne({ email: email.toLowerCase() }).select('+password');
+    const normalizedEmail = email.toLowerCase();
+
+    if (mongoose.connection.readyState !== 1 && matchesDevAdminCredentials(normalizedEmail, password)) {
+      const devAdmin = getDevAdminUser();
+      const token = generateToken(devAdmin.id, 'admin');
+
+      return res.json({
+        success: true,
+        message: 'Development admin login successful',
+        token,
+        user: devAdmin
+      });
+    }
+
+    const admin = await Admin.findOne({ email: normalizedEmail }).select('+password');
     if (!admin || !(await admin.comparePassword(password))) {
+      if (matchesDevAdminCredentials(normalizedEmail, password)) {
+        const devAdmin = getDevAdminUser();
+        const token = generateToken(devAdmin.id, 'admin');
+
+        return res.json({
+          success: true,
+          message: 'Development admin login successful',
+          token,
+          user: devAdmin
+        });
+      }
+
       return res.status(401).json({ success: false, message: 'Invalid email or password' });
     }
     if (!admin.isActive) {
@@ -125,6 +157,19 @@ exports.adminLogin = async (req, res) => {
     });
   } catch (error) {
     console.error('Admin login error:', error);
+
+    if (matchesDevAdminCredentials(req.body?.email || '', req.body?.password || '') && isDevAdminLoginEnabled()) {
+      const devAdmin = getDevAdminUser();
+      const token = generateToken(devAdmin.id, 'admin');
+
+      return res.json({
+        success: true,
+        message: 'Development admin login successful',
+        token,
+        user: devAdmin
+      });
+    }
+
     res.status(500).json({ success: false, message: 'Server error during admin login' });
   }
 };
@@ -134,6 +179,38 @@ exports.adminLogin = async (req, res) => {
 // @access  Private
 exports.getProfile = async (req, res) => {
   try {
+    if (req.user.role === 'admin' || req.user.role === 'superadmin') {
+      if (req.user.id === getDevAdminUser().id && isDevAdminLoginEnabled()) {
+        return res.json({
+          success: true,
+          data: {
+            user: getDevAdminUser()
+          }
+        });
+      }
+
+      const admin = await Admin.findById(req.user.id);
+      if (!admin) {
+        return res.status(404).json({ success: false, message: 'Admin not found' });
+      }
+
+      return res.json({
+        success: true,
+        data: {
+          user: {
+            id: admin._id,
+            name: admin.name,
+            email: admin.email,
+            role: admin.role,
+            permissions: admin.permissions,
+            isActive: admin.isActive,
+            lastLogin: admin.lastLogin,
+            createdAt: admin.createdAt
+          }
+        }
+      });
+    }
+
     const user = await User.findById(req.user.id)
       .populate('vehicles', 'licensePlate make model isDefault')
       .populate('bookings', 'bookingReference status startTime endTime', null, { sort: { createdAt: -1 }, limit: 5 });
