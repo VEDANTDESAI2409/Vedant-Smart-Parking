@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { FaTrash, FaSearch, FaCalendarAlt, FaFileCsv } from 'react-icons/fa';
+import Swal from 'sweetalert2';
 import { MdPayments } from "react-icons/md";
 import Table from '../../components/Table';
 import { paymentsAPI } from '../../services/api';
+import { showSuccess } from '../../utils/toastService';
 
 const Payments = () => {
   const [payments, setPayments] = useState([
@@ -33,9 +35,24 @@ const Payments = () => {
   };
 
   // 1. Delete Logic: Filters the current state to remove the ID
-  const handleDelete = (id) => {
-    if (window.confirm("Are you sure you want to delete this payment record?")) {
+  const handleDelete = async (id) => {
+    const result = await Swal.fire({
+      title: 'Delete Payment Record?',
+      text: 'This payment entry will be removed from the list.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, Delete',
+      cancelButtonText: 'Cancel',
+      confirmButtonColor: '#dc2626',
+      cancelButtonColor: '#64748b',
+      background: '#ffffff',
+      color: '#0f172a',
+      borderRadius: '12px',
+    });
+
+    if (result.isConfirmed) {
       setPayments(prev => prev.filter(p => p._id !== id));
+      showSuccess('Payment record deleted successfully');
       // Optional: Add API call here -> await paymentsAPI.delete(id);
     }
   };
