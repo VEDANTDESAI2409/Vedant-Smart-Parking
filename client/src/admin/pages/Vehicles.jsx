@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { FaPlus, FaEdit, FaTrash, FaCar, FaMotorcycle, FaTruck, FaTimes, FaSearch } from 'react-icons/fa';
 import Swal from 'sweetalert2';
 import { vehiclesAPI } from '../../services/api';
+import SearchableSelect from '../../components/SearchableSelect';
 import { showError, showSuccess } from '../../utils/toastService';
 
 const Vehicles = () => {
@@ -126,12 +127,24 @@ const Vehicles = () => {
     { 
       header: 'LICENSE PLATE', 
       render: (row) => (
-        <div className="flex items-center border-2 border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 overflow-hidden shadow-sm w-32">
-          <div className="bg-blue-700 w-3 h-7 flex flex-col items-center justify-center text-[5px] text-white font-bold leading-none">
-            <span>I</span><span>N</span><span>D</span>
+        <div className="flex min-w-[220px] max-w-[240px] items-center overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-r from-white to-slate-50 shadow-[0_10px_30px_rgba(15,23,42,0.08)] dark:border-slate-700 dark:from-slate-800 dark:to-slate-800/80 dark:shadow-none">
+          <div className="flex h-14 w-9 flex-col items-center justify-center bg-blue-700 text-[7px] font-black leading-none tracking-[0.24em] text-white">
+            <span>I</span>
+            <span>N</span>
+            <span>D</span>
           </div>
-          <div className="flex-1 text-center font-mono font-black text-slate-900 dark:text-white text-[11px]">
-            {formatIndianPlate(row.licensePlate)}
+          <div className="flex flex-1 items-center justify-between px-4">
+            <div className="min-w-0">
+              <p className="text-[9px] font-black uppercase tracking-[0.28em] text-slate-400 dark:text-slate-500">
+                License Plate
+              </p>
+              <p className="mt-1 truncate font-mono text-[15px] font-black tracking-[0.18em] text-slate-900 dark:text-white">
+                {formatIndianPlate(row.licensePlate)}
+              </p>
+            </div>
+            <div className="ml-3 rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-slate-500 dark:bg-slate-700/70 dark:text-slate-300">
+              {row.category || 'car'}
+            </div>
           </div>
         </div>
       )
@@ -173,6 +186,18 @@ const Vehicles = () => {
         </div>
       )
     },
+  ];
+
+  const categoryOptions = [
+    { value: 'car', label: 'Car' },
+    { value: 'motorcycle', label: 'Motorcycle' },
+    { value: 'truck', label: 'Truck' },
+  ];
+
+  const fuelTypeOptions = [
+    { value: 'petrol', label: 'Petrol' },
+    { value: 'diesel', label: 'Diesel' },
+    { value: 'electric', label: 'Electric' },
   ];
 
   return (
@@ -263,19 +288,25 @@ const Vehicles = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1">Category</label>
-                  <select name="category" value={formData.category} onChange={handleInputChange} className="w-full bg-slate-50 dark:bg-slate-800 border-none ring-1 ring-slate-200 dark:ring-slate-700 rounded-xl p-3 dark:text-white">
-                    <option value="car">Car</option>
-                    <option value="motorcycle">Motorcycle</option>
-                    <option value="truck">Truck</option>
-                  </select>
+                  <SearchableSelect
+                    value={formData.category}
+                    onChange={(value) => setFormData((prev) => ({ ...prev, category: value }))}
+                    options={categoryOptions}
+                    placeholder="Select category"
+                    className="[&>button]:mt-0 [&>button]:rounded-xl [&>button]:border-none [&>button]:bg-slate-50 [&>button]:p-3 [&>button]:ring-1 [&>button]:ring-slate-200 dark:[&>button]:bg-slate-800 dark:[&>button]:ring-slate-700"
+                    menuClassName="dark:border-slate-700 dark:bg-slate-900"
+                  />
                 </div>
                 <div>
                   <label className="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1">Fuel</label>
-                  <select name="fuelType" value={formData.fuelType} onChange={handleInputChange} className="w-full bg-slate-50 dark:bg-slate-800 border-none ring-1 ring-slate-200 dark:ring-slate-700 rounded-xl p-3 dark:text-white">
-                    <option value="petrol">Petrol</option>
-                    <option value="diesel">Diesel</option>
-                    <option value="electric">Electric</option>
-                  </select>
+                  <SearchableSelect
+                    value={formData.fuelType}
+                    onChange={(value) => setFormData((prev) => ({ ...prev, fuelType: value }))}
+                    options={fuelTypeOptions}
+                    placeholder="Select fuel type"
+                    className="[&>button]:mt-0 [&>button]:rounded-xl [&>button]:border-none [&>button]:bg-slate-50 [&>button]:p-3 [&>button]:ring-1 [&>button]:ring-slate-200 dark:[&>button]:bg-slate-800 dark:[&>button]:ring-slate-700"
+                    menuClassName="dark:border-slate-700 dark:bg-slate-900"
+                  />
                 </div>
               </div>
 

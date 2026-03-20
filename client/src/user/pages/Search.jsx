@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { FaSearch, FaMapMarkerAlt, FaClock, FaDollarSign } from 'react-icons/fa';
+import SearchableSelect from '../../components/SearchableSelect';
 
 const Search = () => {
   const [searchParams, setSearchParams] = useState({
@@ -10,6 +11,14 @@ const Search = () => {
   });
 
   const [searchResults, setSearchResults] = useState([]);
+
+  const durationOptions = [
+    { value: '1', label: '1 hour' },
+    { value: '2', label: '2 hours' },
+    { value: '4', label: '4 hours' },
+    { value: '8', label: '8 hours' },
+    { value: '24', label: '24 hours' },
+  ];
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -102,18 +111,13 @@ const Search = () => {
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Duration (hours)
               </label>
-              <select
+              <SearchableSelect
                 value={searchParams.duration}
-                onChange={(e) => setSearchParams({ ...searchParams, duration: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-              >
-                <option value="">Select duration</option>
-                <option value="1">1 hour</option>
-                <option value="2">2 hours</option>
-                <option value="4">4 hours</option>
-                <option value="8">8 hours</option>
-                <option value="24">24 hours</option>
-              </select>
+                onChange={(value) => setSearchParams({ ...searchParams, duration: value })}
+                options={durationOptions}
+                placeholder="Select duration"
+                className="[&>button]:mt-0 [&>button]:rounded-md [&>button]:border-gray-300 dark:[&>button]:border-gray-600 dark:[&>button]:bg-gray-700"
+              />
             </div>
             <div className="md:col-span-2 lg:col-span-4">
               <button
