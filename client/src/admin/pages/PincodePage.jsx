@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { FaEdit, FaFileImport, FaPlus, FaTrash } from 'react-icons/fa';
+import Swal from 'sweetalert2';
 
 import Button from '../../components/Button';
 import Modal from '../../components/Modal';
@@ -7,6 +8,7 @@ import Table from '../../components/Table';
 import Card from '../../components/Card';
 import DataImportModal from '../components/DataImportModal';
 import { citiesAPI, pincodesAPI } from '../../services/api';
+import { showError, showSuccess, showWarning } from '../../utils/toastService';
 
 const initialFormData = { cityId: '', pincode: '', status: true };
 
@@ -79,12 +81,12 @@ const PincodePage = () => {
     event.preventDefault();
 
     if (!formData.cityId) {
-      alert('City is required');
+      showWarning('City is required');
       return;
     }
 
     if (!/^\d{6}$/.test(formData.pincode.trim())) {
-      alert('Pincode must be exactly 6 digits');
+      showWarning('Pincode must be exactly 6 digits');
       return;
     }
 
@@ -106,27 +108,41 @@ const PincodePage = () => {
       await fetchPincodes();
       setModalOpen(false);
       resetForm();
-      alert(editingPincode ? 'Pincode updated successfully' : 'Pincode created successfully');
+      showSuccess(editingPincode ? 'Pincode updated successfully' : 'Pincode created successfully');
     } catch (error) {
       console.error('Error saving pincode:', error);
-      alert(error?.response?.data?.message || 'Failed to save pincode');
+      showError(error?.response?.data?.message || 'Failed to save pincode');
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Delete this pincode?')) {
+    const result = await Swal.fire({
+      title: 'Delete Pincode?',
+      text: 'This pincode will be removed from the system.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, Delete',
+      cancelButtonText: 'Cancel',
+      confirmButtonColor: '#dc2626',
+      cancelButtonColor: '#64748b',
+      background: '#ffffff',
+      color: '#0f172a',
+      borderRadius: '12px',
+    });
+
+    if (!result.isConfirmed) {
       return;
     }
 
     try {
       await pincodesAPI.delete(id);
       await fetchPincodes();
-      alert('Pincode deleted successfully');
+      showSuccess('Pincode deleted successfully');
     } catch (error) {
       console.error('Delete error:', error);
-      alert(error?.response?.data?.message || 'Failed to delete pincode');
+      showError(error?.response?.data?.message || 'Failed to delete pincode');
     }
   };
 

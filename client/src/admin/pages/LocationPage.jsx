@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { FaEdit, FaFileImport, FaPlus, FaTrash } from 'react-icons/fa';
+import Swal from 'sweetalert2';
 
 import Button from '../../components/Button';
 import Modal from '../../components/Modal';
@@ -7,6 +8,7 @@ import Table from '../../components/Table';
 import Card from '../../components/Card';
 import DataImportModal from '../components/DataImportModal';
 import { areasAPI, citiesAPI, locationsAPI, pincodesAPI } from '../../services/api';
+import { showError, showSuccess, showWarning } from '../../utils/toastService';
 
 const initialFormData = {
   cityId: '',
@@ -132,12 +134,12 @@ const LocationPage = () => {
     event.preventDefault();
 
     if (!formData.cityId || !formData.pincodeId || !formData.areaId || !formData.name.trim()) {
-      alert('City, pincode, area, and location name are required');
+      showWarning('City, pincode, area, and location name are required');
       return;
     }
 
     if (formData.lat === '' || formData.lng === '') {
-      alert('Latitude and longitude are required');
+      showWarning('Latitude and longitude are required');
       return;
     }
 
@@ -163,27 +165,41 @@ const LocationPage = () => {
       await fetchLocations();
       setModalOpen(false);
       resetForm();
-      alert(editingLocation ? 'Location updated successfully' : 'Location created successfully');
+      showSuccess(editingLocation ? 'Location updated successfully' : 'Location created successfully');
     } catch (error) {
       console.error('Error saving location:', error);
-      alert(error?.response?.data?.message || 'Failed to save location');
+      showError(error?.response?.data?.message || 'Failed to save location');
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Delete this location?')) {
+    const result = await Swal.fire({
+      title: 'Delete Location?',
+      text: 'This location will be removed from the system.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, Delete',
+      cancelButtonText: 'Cancel',
+      confirmButtonColor: '#dc2626',
+      cancelButtonColor: '#64748b',
+      background: '#ffffff',
+      color: '#0f172a',
+      borderRadius: '12px',
+    });
+
+    if (!result.isConfirmed) {
       return;
     }
 
     try {
       await locationsAPI.delete(id);
       await fetchLocations();
-      alert('Location deleted successfully');
+      showSuccess('Location deleted successfully');
     } catch (error) {
       console.error('Delete error:', error);
-      alert(error?.response?.data?.message || 'Failed to delete location');
+      showError(error?.response?.data?.message || 'Failed to delete location');
     }
   };
 
@@ -201,7 +217,7 @@ const LocationPage = () => {
       await fetchLocations();
     } catch (error) {
       console.error('Error updating location status:', error);
-      alert(error?.response?.data?.message || 'Failed to update location status');
+      showError(error?.response?.data?.message || 'Failed to update location status');
     }
   };
 

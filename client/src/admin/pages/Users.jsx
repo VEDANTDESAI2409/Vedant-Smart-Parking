@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { FaFileCsv, FaSearch, FaTrash, FaPhone, FaEdit, FaCalendarAlt, FaTicketAlt } from 'react-icons/fa';
+import Swal from 'sweetalert2';
 import Table from '../../components/Table';
 import { usersAPI } from '../../services/api';
+import { showSuccess } from '../../utils/toastService';
 
 const Users = () => {
   const [users, setUsers] = useState([]);
@@ -58,9 +60,24 @@ const Users = () => {
     console.log("Edit user:", user);
   };
 
-  const handleDelete = (id) => {
-    if(window.confirm("Delete this user?")) {
-       setUsers(prev => prev.filter(user => user._id !== id));
+  const handleDelete = async (id) => {
+    const result = await Swal.fire({
+      title: 'Delete User?',
+      text: 'This user will be removed from the list.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, Delete',
+      cancelButtonText: 'Cancel',
+      confirmButtonColor: '#dc2626',
+      cancelButtonColor: '#64748b',
+      background: '#ffffff',
+      color: '#0f172a',
+      borderRadius: '12px',
+    });
+
+    if (result.isConfirmed) {
+      setUsers(prev => prev.filter(user => user._id !== id));
+      showSuccess('User deleted successfully');
     }
   };
 
