@@ -1,7 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
-const { connectDB } = require('./config/database');
+const { connectDB, checkConnection } = require('./config/database');
 const { errorHandler, notFound } = require('./middleware/errorHandler');
 
 // Load environment variables
@@ -38,7 +38,8 @@ app.get('/health', (req, res) => {
     success: true,
     message: 'Smart Parking System API is running',
     timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV || 'development'
+    environment: process.env.NODE_ENV || 'development',
+    databaseConnected: checkConnection()
   });
 });
 

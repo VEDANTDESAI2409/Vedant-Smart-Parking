@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Papa from 'papaparse';
 import Modal from '../../components/Modal';
 import Button from '../../components/Button';
+import SearchableSelect from '../../components/SearchableSelect';
 import { areasAPI, citiesAPI, importsAPI, pincodesAPI } from '../../services/api';
 import { showError, showInfo, showSuccess, showWarning } from '../../utils/toastService';
 
@@ -123,6 +124,30 @@ const DataImportModal = ({ isOpen, onClose, onImported, type }) => {
   const canSelectArea = type === 'location';
 
   const sampleHeader = useMemo(() => config.headers.join(' / '), [config.headers]);
+  const cityOptions = useMemo(
+    () =>
+      cities.map((city) => ({
+        value: city._id,
+        label: `${city.name} (${city.state})`,
+      })),
+    [cities]
+  );
+  const pincodeOptions = useMemo(
+    () =>
+      pincodes.map((pincode) => ({
+        value: pincode._id,
+        label: pincode.pincode,
+      })),
+    [pincodes]
+  );
+  const areaOptions = useMemo(
+    () =>
+      areas.map((area) => ({
+        value: area._id,
+        label: area.name,
+      })),
+    [areas]
+  );
 
   const selectFile = (nextFile) => {
     if (!nextFile) {
@@ -352,63 +377,45 @@ const DataImportModal = ({ isOpen, onClose, onImported, type }) => {
         {canSelectCity && (
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Select City</label>
-            <select
+            <SearchableSelect
               value={selectedCityId}
-              onChange={(e) => {
-                setSelectedCityId(e.target.value);
+              onChange={(value) => {
+                setSelectedCityId(value);
                 setSelectedPincodeId('');
                 setSelectedAreaId('');
               }}
-              className="mt-1 w-full rounded-lg border px-3 py-2 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-            >
-              <option value="">Select a city</option>
-              {cities.map((city) => (
-                <option key={city._id} value={city._id}>
-                  {city.name} ({city.state})
-                </option>
-              ))}
-            </select>
+              options={cityOptions}
+              placeholder="Select a city"
+            />
           </div>
         )}
 
         {canSelectPincode && (
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Select Pincode</label>
-            <select
+            <SearchableSelect
               value={selectedPincodeId}
-              onChange={(e) => {
-                setSelectedPincodeId(e.target.value);
+              onChange={(value) => {
+                setSelectedPincodeId(value);
                 setSelectedAreaId('');
               }}
+              options={pincodeOptions}
+              placeholder={selectedCityId ? 'Select a pincode' : 'Select a city first'}
               disabled={!selectedCityId}
-              className="mt-1 w-full rounded-lg border px-3 py-2 disabled:cursor-not-allowed disabled:bg-gray-100 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:disabled:bg-gray-800"
-            >
-              <option value="">{selectedCityId ? 'Select a pincode' : 'Select a city first'}</option>
-              {pincodes.map((pincode) => (
-                <option key={pincode._id} value={pincode._id}>
-                  {pincode.pincode}
-                </option>
-              ))}
-            </select>
+            />
           </div>
         )}
 
         {canSelectArea && (
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Select Area</label>
-            <select
+            <SearchableSelect
               value={selectedAreaId}
-              onChange={(e) => setSelectedAreaId(e.target.value)}
+              onChange={setSelectedAreaId}
+              options={areaOptions}
+              placeholder={selectedPincodeId ? 'Select an area' : 'Select a pincode first'}
               disabled={!selectedPincodeId}
-              className="mt-1 w-full rounded-lg border px-3 py-2 disabled:cursor-not-allowed disabled:bg-gray-100 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:disabled:bg-gray-800"
-            >
-              <option value="">{selectedPincodeId ? 'Select an area' : 'Select a pincode first'}</option>
-              {areas.map((area) => (
-                <option key={area._id} value={area._id}>
-                  {area.name}
-                </option>
-              ))}
-            </select>
+            />
           </div>
         )}
 

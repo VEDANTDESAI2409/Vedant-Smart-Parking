@@ -6,6 +6,7 @@ import Button from '../../components/Button';
 import Modal from '../../components/Modal';
 import Table from '../../components/Table';
 import Card from '../../components/Card';
+import SearchableSelect from '../../components/SearchableSelect';
 import DataImportModal from '../components/DataImportModal';
 import { citiesAPI, pincodesAPI } from '../../services/api';
 import { showError, showSuccess, showWarning } from '../../utils/toastService';
@@ -59,6 +60,11 @@ const PincodePage = () => {
     setEditingPincode(null);
     setFormData(initialFormData);
   };
+
+  const cityOptions = cities.map((city) => ({
+    value: city._id,
+    label: `${city.name} (${city.state})`,
+  }));
 
   const handleInputChange = (field, value) => {
     setFormData((prev) => ({
@@ -222,19 +228,12 @@ const PincodePage = () => {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">City</label>
-            <select
+            <SearchableSelect
               value={formData.cityId}
-              onChange={(e) => handleInputChange('cityId', e.target.value)}
-              className="mt-1 w-full rounded-lg border px-3 py-2 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-              required
-            >
-              <option value="">Select a city</option>
-              {cities.map((city) => (
-                <option key={city._id} value={city._id}>
-                  {city.name} ({city.state})
-                </option>
-              ))}
-            </select>
+              onChange={(value) => handleInputChange('cityId', value)}
+              options={cityOptions}
+              placeholder="Select a city"
+            />
           </div>
 
           <div>

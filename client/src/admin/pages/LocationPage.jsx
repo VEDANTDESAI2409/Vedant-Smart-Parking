@@ -6,6 +6,7 @@ import Button from '../../components/Button';
 import Modal from '../../components/Modal';
 import Table from '../../components/Table';
 import Card from '../../components/Card';
+import SearchableSelect from '../../components/SearchableSelect';
 import DataImportModal from '../components/DataImportModal';
 import { areasAPI, citiesAPI, locationsAPI, pincodesAPI } from '../../services/api';
 import { showError, showSuccess, showWarning } from '../../utils/toastService';
@@ -102,6 +103,33 @@ const LocationPage = () => {
         (item) => getId(item.cityId) === formData.cityId && getId(item.pincodeId) === formData.pincodeId
       ),
     [areas, formData.cityId, formData.pincodeId]
+  );
+
+  const cityOptions = useMemo(
+    () =>
+      cities.map((city) => ({
+        value: city._id,
+        label: `${city.name} (${city.state})`,
+      })),
+    [cities]
+  );
+
+  const pincodeOptions = useMemo(
+    () =>
+      filteredPincodes.map((item) => ({
+        value: item._id,
+        label: item.pincode,
+      })),
+    [filteredPincodes]
+  );
+
+  const areaOptions = useMemo(
+    () =>
+      filteredAreas.map((item) => ({
+        value: item._id,
+        label: item.name,
+      })),
+    [filteredAreas]
   );
 
   const resetForm = () => {
@@ -316,68 +344,47 @@ const LocationPage = () => {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">City</label>
-            <select
+            <SearchableSelect
               value={formData.cityId}
-              onChange={(e) =>
+              onChange={(value) =>
                 setFormData((prev) => ({
                   ...prev,
-                  cityId: e.target.value,
+                  cityId: value,
                   pincodeId: '',
                   areaId: '',
                 }))
               }
-              className="mt-1 w-full rounded-lg border px-3 py-2 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-              required
-            >
-              <option value="">Select a city</option>
-              {cities.map((city) => (
-                <option key={city._id} value={city._id}>
-                  {city.name} ({city.state})
-                </option>
-              ))}
-            </select>
+              options={cityOptions}
+              placeholder="Select a city"
+            />
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Pincode</label>
-            <select
+            <SearchableSelect
               value={formData.pincodeId}
-              onChange={(e) =>
+              onChange={(value) =>
                 setFormData((prev) => ({
                   ...prev,
-                  pincodeId: e.target.value,
+                  pincodeId: value,
                   areaId: '',
                 }))
               }
+              options={pincodeOptions}
+              placeholder={formData.cityId ? 'Select a pincode' : 'Select a city first'}
               disabled={!formData.cityId}
-              className="mt-1 w-full rounded-lg border px-3 py-2 disabled:cursor-not-allowed disabled:bg-gray-100 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:disabled:bg-gray-800"
-              required
-            >
-              <option value="">{formData.cityId ? 'Select a pincode' : 'Select a city first'}</option>
-              {filteredPincodes.map((item) => (
-                <option key={item._id} value={item._id}>
-                  {item.pincode}
-                </option>
-              ))}
-            </select>
+            />
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Area</label>
-            <select
+            <SearchableSelect
               value={formData.areaId}
-              onChange={(e) => handleInputChange('areaId', e.target.value)}
+              onChange={(value) => handleInputChange('areaId', value)}
+              options={areaOptions}
+              placeholder={formData.pincodeId ? 'Select an area' : 'Select a pincode first'}
               disabled={!formData.pincodeId}
-              className="mt-1 w-full rounded-lg border px-3 py-2 disabled:cursor-not-allowed disabled:bg-gray-100 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:disabled:bg-gray-800"
-              required
-            >
-              <option value="">{formData.pincodeId ? 'Select an area' : 'Select a pincode first'}</option>
-              {filteredAreas.map((item) => (
-                <option key={item._id} value={item._id}>
-                  {item.name}
-                </option>
-              ))}
-            </select>
+            />
           </div>
 
           <div>

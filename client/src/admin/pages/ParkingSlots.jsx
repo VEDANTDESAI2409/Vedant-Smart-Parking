@@ -5,6 +5,7 @@ import Swal from 'sweetalert2';
 import Button from '../../components/Button';
 import Card from '../../components/Card';
 import Modal from '../../components/Modal';
+import SearchableSelect from '../../components/SearchableSelect';
 import Table from '../../components/Table';
 import {
   areasAPI,
@@ -27,6 +28,11 @@ const getCityName = (item) => item?.cityId?.name || item?.city || item?.name || 
 const getPincodeValue = (item) => item?.pincodeId?.pincode || item?.pincode || '';
 const getAreaValue = (item) => item?.areaId?.name || item?.area || item?.name || '';
 const getLocationValue = (item) => item?.locationId?.name || item?.location || item?.name || '';
+const mapOptions = (items, getLabel) =>
+  items.map((item) => ({
+    value: item._id,
+    label: getLabel(item),
+  }));
 
 const ParkingSlots = () => {
   const [slots, setSlots] = useState([]);
@@ -404,6 +410,20 @@ const ParkingSlots = () => {
     },
   ];
 
+  const cityOptions = mapOptions(cities, (item) => item.name);
+  const pincodeOptions = mapOptions(pincodes, (item) => item.pincode);
+  const areaOptions = mapOptions(areas, (item) => item.name);
+  const locationOptions = mapOptions(locations, (item) => item.name);
+  const vehicleTypeOptions = [
+    { value: 'car', label: 'Car' },
+    { value: 'bike', label: 'Bike' },
+  ];
+  const slotTypeOptions = [
+    { value: 'normal', label: 'Normal' },
+    { value: 'vip', label: 'VIP' },
+    { value: 'reserved', label: 'Reserved' },
+  ];
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -441,73 +461,45 @@ const ParkingSlots = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">City</label>
-              <select
+              <SearchableSelect
                 value={cityId}
-                onChange={(e) => handleCityChange(e.target.value)}
-                className="mt-1 w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                required
-              >
-                <option value="">Select a city</option>
-                {cities.map((item) => (
-                  <option key={item._id} value={item._id}>
-                    {item.name}
-                  </option>
-                ))}
-              </select>
+                onChange={handleCityChange}
+                options={cityOptions}
+                placeholder="Select a city"
+              />
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Pincode</label>
-              <select
+              <SearchableSelect
                 value={pincodeId}
-                onChange={(e) => handlePincodeChange(e.target.value)}
+                onChange={handlePincodeChange}
+                options={pincodeOptions}
+                placeholder={!cityId ? 'Select a city first' : 'Select a pincode'}
                 disabled={!cityId}
-                className="mt-1 w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white disabled:bg-gray-900/40 disabled:cursor-not-allowed"
-                required
-              >
-                <option value="">{!cityId ? 'Select a city first' : 'Select a pincode'}</option>
-                {pincodes.map((item) => (
-                  <option key={item._id} value={item._id}>
-                    {item.pincode}
-                  </option>
-                ))}
-              </select>
+              />
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Area</label>
-              <select
+              <SearchableSelect
                 value={areaId}
-                onChange={(e) => handleAreaChange(e.target.value)}
+                onChange={handleAreaChange}
+                options={areaOptions}
+                placeholder={!pincodeId ? 'Select a pincode first' : 'Select an area'}
                 disabled={!pincodeId}
-                className="mt-1 w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white disabled:bg-gray-900/40 disabled:cursor-not-allowed"
-                required
-              >
-                <option value="">{!pincodeId ? 'Select a pincode first' : 'Select an area'}</option>
-                {areas.map((item) => (
-                  <option key={item._id} value={item._id}>
-                    {item.name}
-                  </option>
-                ))}
-              </select>
+              />
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Location</label>
-              <select
+              <SearchableSelect
                 value={locationId}
-                onChange={(e) => setLocationId(e.target.value)}
+                onChange={setLocationId}
+                options={locationOptions}
+                placeholder={!areaId ? 'Select an area first' : 'Select a location'}
                 disabled={!areaId}
-                className="mt-1 w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white disabled:bg-gray-900/40 disabled:cursor-not-allowed"
-                required
-              >
-                <option value="">{!areaId ? 'Select an area first' : 'Select a location'}</option>
-                {locations.map((item) => (
-                  <option key={item._id} value={item._id}>
-                    {item.name}
-                  </option>
-                ))}
-              </select>
+              />
             </div>
 
             <div>
@@ -523,27 +515,22 @@ const ParkingSlots = () => {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Vehicle Type</label>
-              <select
+              <SearchableSelect
                 value={vehicleType}
-                onChange={(e) => setVehicleType(e.target.value)}
-                className="mt-1 w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-              >
-                <option value="car">Car</option>
-                <option value="bike">Bike</option>
-              </select>
+                onChange={setVehicleType}
+                options={vehicleTypeOptions}
+                placeholder="Select a vehicle type"
+              />
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Slot Type</label>
-              <select
+              <SearchableSelect
                 value={slotType}
-                onChange={(e) => setSlotType(e.target.value)}
-                className="mt-1 w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-              >
-                <option value="normal">Normal</option>
-                <option value="vip">VIP</option>
-                <option value="reserved">Reserved</option>
-              </select>
+                onChange={setSlotType}
+                options={slotTypeOptions}
+                placeholder="Select a slot type"
+              />
             </div>
 
             <div>
