@@ -1,7 +1,9 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { ToastContainer } from 'react-toastify';
 import { AuthProvider } from './context/AuthContext';
 import AdminRoutes from './routes/AdminRoutes';
+import 'react-toastify/dist/ReactToastify.css';
 // User components will be added later
 import UserHome from './user/pages/Home';
 import UserSearch from './user/pages/Search';
@@ -32,6 +34,17 @@ function App() {
           {/* Redirect unknown routes to home */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+
+        <ToastContainer
+          position="top-right"
+          autoClose={3000}
+          hideProgressBar={false}
+          newestOnTop
+          closeOnClick
+          pauseOnHover
+          draggable
+          theme="colored"
+        />
       </Router>
     </AuthProvider>
   );

@@ -3,6 +3,7 @@ import Papa from 'papaparse';
 import Modal from '../../components/Modal';
 import Button from '../../components/Button';
 import { areasAPI, citiesAPI, importsAPI, pincodesAPI } from '../../services/api';
+import { showError, showInfo, showSuccess, showWarning } from '../../utils/toastService';
 
 const TYPE_CONFIG = {
   city: {
@@ -129,7 +130,7 @@ const DataImportModal = ({ isOpen, onClose, onImported, type }) => {
     }
 
     if (!nextFile.name.toLowerCase().endsWith('.csv')) {
-      alert('Please upload a CSV file');
+      showWarning('Please upload a CSV file');
       return;
     }
 
@@ -264,11 +265,12 @@ const DataImportModal = ({ isOpen, onClose, onImported, type }) => {
   const handleImport = async () => {
     const validationError = validateSelections();
     if (validationError) {
-      alert(validationError);
+      showWarning(validationError);
       return;
     }
 
     try {
+      showInfo('Processing CSV upload...');
       setParsing(true);
       let rows = [];
 
@@ -287,7 +289,7 @@ const DataImportModal = ({ isOpen, onClose, onImported, type }) => {
       setParsing(false);
 
       if (!rows.length) {
-        alert('The selected CSV file has no data rows');
+        showError('CSV headers are missing or file is empty');
         return;
       }
 
@@ -300,7 +302,12 @@ const DataImportModal = ({ isOpen, onClose, onImported, type }) => {
       };
 
       const response = await importsAPI.import(type, payload);
-      alert(response?.data?.message || 'CSV imported successfully');
+      const inserted = response?.data?.data?.inserted ?? rows.length;
+      const successLabel =
+        type === 'city'
+          ? 'City Imported Successfully!'
+          : `${type.charAt(0).toUpperCase()}${type.slice(1)} Imported Successfully!`;
+      showSuccess(`${successLabel} Total: ${inserted}`);
 
       if (onImported) {
         await onImported();
@@ -309,7 +316,7 @@ const DataImportModal = ({ isOpen, onClose, onImported, type }) => {
       onClose();
     } catch (error) {
       console.error('CSV import failed:', error);
-      alert(error?.response?.data?.message || error.message || 'Failed to import CSV');
+      showError(error?.response?.data?.message || error.message || 'CSV upload failed');
     } finally {
       setParsing(false);
       setSubmitting(false);
