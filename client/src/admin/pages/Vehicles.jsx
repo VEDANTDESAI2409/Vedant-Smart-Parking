@@ -106,12 +106,24 @@ const Vehicles = () => {
     { 
       header: 'LICENSE PLATE', 
       render: (row) => (
-        <div className="flex items-center border-2 border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 overflow-hidden shadow-sm w-32">
-          <div className="bg-blue-700 w-3 h-7 flex flex-col items-center justify-center text-[5px] text-white font-bold leading-none">
-            <span>I</span><span>N</span><span>D</span>
+        <div className="flex min-w-[220px] max-w-[240px] items-center overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-r from-white to-slate-50 shadow-[0_10px_30px_rgba(15,23,42,0.08)] dark:border-slate-700 dark:from-slate-800 dark:to-slate-800/80 dark:shadow-none">
+          <div className="flex h-14 w-9 flex-col items-center justify-center bg-blue-700 text-[7px] font-black leading-none tracking-[0.24em] text-white">
+            <span>I</span>
+            <span>N</span>
+            <span>D</span>
           </div>
-          <div className="flex-1 text-center font-mono font-black text-slate-900 dark:text-white text-[11px]">
-            {formatIndianPlate(row.licensePlate)}
+          <div className="flex flex-1 items-center justify-between px-4">
+            <div className="min-w-0">
+              <p className="text-[9px] font-black uppercase tracking-[0.28em] text-slate-400 dark:text-slate-500">
+                License Plate
+              </p>
+              <p className="mt-1 truncate font-mono text-[15px] font-black tracking-[0.18em] text-slate-900 dark:text-white">
+                {formatIndianPlate(row.licensePlate)}
+              </p>
+            </div>
+            <div className="ml-3 rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-slate-500 dark:bg-slate-700/70 dark:text-slate-300">
+              {row.category || 'car'}
+            </div>
           </div>
         </div>
       )
