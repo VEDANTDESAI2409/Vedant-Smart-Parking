@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { FaEdit, FaFileImport, FaPlus, FaTrash } from 'react-icons/fa';
+import Swal from 'sweetalert2';
 
 import Button from '../../components/Button';
 import Modal from '../../components/Modal';
@@ -7,6 +8,7 @@ import Table from '../../components/Table';
 import Card from '../../components/Card';
 import DataImportModal from '../components/DataImportModal';
 import { citiesAPI } from '../../services/api';
+import { showError, showSuccess, showWarning } from '../../utils/toastService';
 
 const initialFormData = { name: '', state: '', status: true };
 
@@ -62,7 +64,7 @@ const CityPage = () => {
     event.preventDefault();
 
     if (!formData.name.trim() || !formData.state.trim()) {
-      alert('City name and state are required');
+      showWarning('City name and state are required');
       return;
     }
 
@@ -84,27 +86,39 @@ const CityPage = () => {
       await fetchCities();
       setModalOpen(false);
       resetForm();
-      alert(editingCity ? 'City updated successfully' : 'City created successfully');
+      showSuccess(editingCity ? 'City updated successfully' : 'City created successfully');
     } catch (error) {
       console.error('Error saving city:', error);
-      alert(error?.response?.data?.message || 'Failed to save city');
+      showError(error?.response?.data?.message || 'Failed to save city');
     } finally {
       setSubmitting(false);
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this city?')) {
-      return;
-    }
+  const handleDelete = async (city) => {
+    const result = await Swal.fire({
+      title: 'Delete City?',
+      text: city ? `Delete ${city.name}, ${city.state}? This action cannot be undone.` : 'This action cannot be undone.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, Delete',
+      cancelButtonText: 'Cancel',
+      confirmButtonColor: '#dc2626',
+      cancelButtonColor: '#64748b',
+      background: '#ffffff',
+      color: '#0f172a',
+      borderRadius: '12px',
+    });
+
+    if (!result.isConfirmed) return;
 
     try {
-      await citiesAPI.delete(id);
+      await citiesAPI.delete(city._id);
       await fetchCities();
-      alert('City deleted successfully');
+      showSuccess('City deleted successfully');
     } catch (error) {
       console.error('Delete error:', error);
-      alert(error?.response?.data?.message || 'Failed to delete city');
+      showError(error?.response?.data?.message || 'Failed to delete city');
     }
   };
 
@@ -134,7 +148,7 @@ const CityPage = () => {
           <button onClick={() => handleEdit(row)} className="p-2 text-blue-600 hover:bg-blue-100 rounded-md" title="Edit">
             <FaEdit />
           </button>
-          <button onClick={() => handleDelete(row._id)} className="p-2 text-red-600 hover:bg-red-100 rounded-md" title="Delete">
+          <button onClick={() => handleDelete(row)} className="p-2 text-red-600 hover:bg-red-100 rounded-md" title="Delete">
             <FaTrash />
           </button>
         </div>

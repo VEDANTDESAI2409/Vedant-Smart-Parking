@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { FaEdit, FaFileImport, FaPlus, FaTrash } from 'react-icons/fa';
+import Swal from 'sweetalert2';
 
 import Button from '../../components/Button';
 import Modal from '../../components/Modal';
@@ -7,6 +8,7 @@ import Table from '../../components/Table';
 import Card from '../../components/Card';
 import DataImportModal from '../components/DataImportModal';
 import { areasAPI, citiesAPI, pincodesAPI } from '../../services/api';
+import { showError, showSuccess, showWarning } from '../../utils/toastService';
 
 const initialFormData = { cityId: '', pincodeId: '', name: '', status: true };
 
@@ -99,7 +101,7 @@ const AreaPage = () => {
     event.preventDefault();
 
     if (!formData.cityId || !formData.pincodeId || !formData.name.trim()) {
-      alert('City, pincode, and area name are required');
+      showWarning('City, pincode, and area name are required');
       return;
     }
 
@@ -122,27 +124,41 @@ const AreaPage = () => {
       await fetchAreas();
       setModalOpen(false);
       resetForm();
-      alert(editingArea ? 'Area updated successfully' : 'Area created successfully');
+      showSuccess(editingArea ? 'Area updated successfully' : 'Area created successfully');
     } catch (error) {
       console.error('Error saving area:', error);
-      alert(error?.response?.data?.message || 'Failed to save area');
+      showError(error?.response?.data?.message || 'Failed to save area');
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Delete this area?')) {
+    const result = await Swal.fire({
+      title: 'Delete Area?',
+      text: 'This area will be removed from the system.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, Delete',
+      cancelButtonText: 'Cancel',
+      confirmButtonColor: '#dc2626',
+      cancelButtonColor: '#64748b',
+      background: '#ffffff',
+      color: '#0f172a',
+      borderRadius: '12px',
+    });
+
+    if (!result.isConfirmed) {
       return;
     }
 
     try {
       await areasAPI.delete(id);
       await fetchAreas();
-      alert('Area deleted successfully');
+      showSuccess('Area deleted successfully');
     } catch (error) {
       console.error('Delete error:', error);
-      alert(error?.response?.data?.message || 'Failed to delete area');
+      showError(error?.response?.data?.message || 'Failed to delete area');
     }
   };
 
@@ -157,7 +173,7 @@ const AreaPage = () => {
       await fetchAreas();
     } catch (error) {
       console.error('Error updating area status:', error);
-      alert(error?.response?.data?.message || 'Failed to update area status');
+      showError(error?.response?.data?.message || 'Failed to update area status');
     }
   };
 
