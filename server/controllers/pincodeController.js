@@ -1,12 +1,24 @@
 const asyncHandler = require('express-async-handler');
 const { validationResult } = require('express-validator');
 const Pincode = require('../models/Pincode');
+const City = require('../models/City');
+
+const buildPincodePopulate = () => ({
+  path: 'cityId',
+  select: 'name state',
+});
 
 // @desc    Get all pincodes
 // @route   GET /api/pincodes
 // @access  Private/Admin
 const getPincodes = asyncHandler(async (req, res) => {
-  const pincodes = await Pincode.find({}).sort({ createdAt: -1 });
+  const query = {};
+
+  if (req.query.cityId) {
+    query.cityId = req.query.cityId;
+  }
+
+  const pincodes = await Pincode.find(query).populate(buildPincodePopulate()).sort({ createdAt: -1 });
 
   res.status(200).json({
     success: true,
@@ -20,7 +32,7 @@ const getPincodes = asyncHandler(async (req, res) => {
 // @route   GET /api/pincodes/:id
 // @access  Private/Admin
 const getPincode = asyncHandler(async (req, res) => {
-  const pincode = await Pincode.findById(req.params.id);
+  const pincode = await Pincode.findById(req.params.id).populate(buildPincodePopulate());
 
   if (!pincode) {
     res.status(404);
@@ -43,23 +55,38 @@ const createPincode = asyncHandler(async (req, res) => {
     throw new Error(errors.array().map((item) => item.msg).join(', '));
   }
 
-  const { city, name, status } = req.body;
+  const { cityId, pincode, status } = req.body;
 
-  if (!city || !name) {
+  if (!cityId || !pincode) {
     res.status(400);
-    throw new Error('Please provide city and pincode');
+    throw new Error('Please provide cityId and pincode');
   }
 
-  const pincode = await Pincode.create({
-    city: String(city).trim(),
-    name: String(name).trim(),
+  const city = await City.findById(cityId);
+
+  if (!city) {
+    res.status(404);
+    throw new Error('City not found');
+  }
+
+  const trimmedPincode = String(pincode).trim();
+  const existingPincode = await Pincode.findOne({ cityId, pincode: trimmedPincode });
+
+  if (existingPincode) {
+    res.status(400);
+    throw new Error('Pincode already exists for the selected city');
+  }
+
+  const createdPincode = await Pincode.create({
+    cityId,
+    pincode: trimmedPincode,
     status: status !== undefined ? Boolean(status) : true,
   });
 
   res.status(201).json({
     success: true,
     message: 'Pincode created successfully',
-    data: pincode,
+    data: await createdPincode.populate(buildPincodePopulate()),
   });
 });
 
@@ -80,10 +107,29 @@ const updatePincode = asyncHandler(async (req, res) => {
     throw new Error('Pincode not found');
   }
 
-  const { city, name, status } = req.body;
+  const { cityId, pincode: pincodeValue, status } = req.body;
+  const nextCityId = cityId !== undefined ? cityId : pincode.cityId;
+  const nextPincode = pincodeValue !== undefined ? String(pincodeValue).trim() : pincode.pincode;
 
-  pincode.city = city !== undefined ? String(city).trim() : pincode.city;
-  pincode.name = name !== undefined ? String(name).trim() : pincode.name;
+  const city = await City.findById(nextCityId);
+  if (!city) {
+    res.status(404);
+    throw new Error('City not found');
+  }
+
+  const duplicatePincode = await Pincode.findOne({
+    _id: { $ne: pincode._id },
+    cityId: nextCityId,
+    pincode: nextPincode,
+  });
+
+  if (duplicatePincode) {
+    res.status(400);
+    throw new Error('Another pincode already exists for the selected city');
+  }
+
+  pincode.cityId = nextCityId;
+  pincode.pincode = nextPincode;
   pincode.status = status !== undefined ? Boolean(status) : pincode.status;
 
   const updatedPincode = await pincode.save();
@@ -91,7 +137,7 @@ const updatePincode = asyncHandler(async (req, res) => {
   res.status(200).json({
     success: true,
     message: 'Pincode updated successfully',
-    data: updatedPincode,
+    data: await updatedPincode.populate(buildPincodePopulate()),
   });
 });
 

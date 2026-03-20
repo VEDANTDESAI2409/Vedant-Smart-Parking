@@ -1,51 +1,31 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { FaPlus, FaEdit, FaTrash } from 'react-icons/fa';
+import { FaEdit, FaFileImport, FaPlus, FaTrash } from 'react-icons/fa';
 
 import Button from '../../components/Button';
 import Modal from '../../components/Modal';
 import Table from '../../components/Table';
 import Card from '../../components/Card';
+import DataImportModal from '../components/DataImportModal';
 import { areasAPI, citiesAPI, locationsAPI, pincodesAPI } from '../../services/api';
 
 const initialFormData = {
-  city: '',
-  pincode: '',
-  area: '',
+  cityId: '',
+  pincodeId: '',
+  areaId: '',
   name: '',
+  lat: '',
+  lng: '',
   status: true,
 };
 
-const getLocationsFromResponse = (response) =>
-  response?.data?.data?.locations ||
-  response?.data?.locations ||
-  response?.data?.data ||
-  response?.data ||
-  [];
-
-const getCitiesFromResponse = (response) =>
-  response?.data?.data?.cities ||
-  response?.data?.cities ||
-  response?.data?.data ||
-  response?.data ||
-  [];
-
-const getPincodesFromResponse = (response) =>
-  response?.data?.data?.pincodes ||
-  response?.data?.pincodes ||
-  response?.data?.data ||
-  response?.data ||
-  [];
-
-const getAreasFromResponse = (response) =>
-  response?.data?.data?.areas ||
-  response?.data?.areas ||
-  response?.data?.data ||
-  response?.data ||
-  [];
-
-const getCityName = (item) => item?.city || item?.cityId || '';
-const getPincodeValue = (item) => item?.pincode || item?.pincodeId || '';
-const getAreaValue = (item) => item?.area || item?.areaId || '';
+const getLocationsFromResponse = (response) => response?.data?.data?.locations || [];
+const getCitiesFromResponse = (response) => response?.data?.data?.cities || [];
+const getPincodesFromResponse = (response) => response?.data?.data?.pincodes || [];
+const getAreasFromResponse = (response) => response?.data?.data?.areas || [];
+const getId = (value) => value?._id || value || '';
+const getCityName = (item) => item?.cityId?.name || 'N/A';
+const getPincodeValue = (item) => item?.pincodeId?.pincode || 'N/A';
+const getAreaValue = (item) => item?.areaId?.name || 'N/A';
 
 const LocationPage = () => {
   const [locations, setLocations] = useState([]);
@@ -54,43 +34,22 @@ const LocationPage = () => {
   const [areas, setAreas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
+  const [importModalOpen, setImportModalOpen] = useState(false);
   const [editingLocation, setEditingLocation] = useState(null);
   const [formData, setFormData] = useState(initialFormData);
   const [submitting, setSubmitting] = useState(false);
 
-  const handleInputChange = (field, value) => {
-    setFormData((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
-  };
-
   useEffect(() => {
-    fetchLocations();
     fetchCities();
     fetchPincodes();
     fetchAreas();
+    fetchLocations();
   }, []);
-
-  const fetchLocations = async () => {
-    try {
-      setLoading(true);
-      const response = await locationsAPI.getAll();
-      const list = getLocationsFromResponse(response);
-      setLocations(Array.isArray(list) ? list : []);
-    } catch (error) {
-      console.error('Error fetching locations:', error);
-      setLocations([]);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const fetchCities = async () => {
     try {
       const response = await citiesAPI.getAll();
-      const list = getCitiesFromResponse(response);
-      setCities(Array.isArray(list) ? list : []);
+      setCities(getCitiesFromResponse(response));
     } catch (error) {
       console.error('Error fetching cities:', error);
       setCities([]);
@@ -100,8 +59,7 @@ const LocationPage = () => {
   const fetchPincodes = async () => {
     try {
       const response = await pincodesAPI.getAll();
-      const list = getPincodesFromResponse(response);
-      setPincodes(Array.isArray(list) ? list : []);
+      setPincodes(getPincodesFromResponse(response));
     } catch (error) {
       console.error('Error fetching pincodes:', error);
       setPincodes([]);
@@ -111,68 +69,85 @@ const LocationPage = () => {
   const fetchAreas = async () => {
     try {
       const response = await areasAPI.getAll();
-      const list = getAreasFromResponse(response);
-      setAreas(Array.isArray(list) ? list : []);
+      setAreas(getAreasFromResponse(response));
     } catch (error) {
       console.error('Error fetching areas:', error);
       setAreas([]);
     }
   };
 
+  const fetchLocations = async () => {
+    try {
+      setLoading(true);
+      const response = await locationsAPI.getAll();
+      setLocations(getLocationsFromResponse(response));
+    } catch (error) {
+      console.error('Error fetching locations:', error);
+      setLocations([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredPincodes = useMemo(
+    () => pincodes.filter((item) => getId(item.cityId) === formData.cityId),
+    [formData.cityId, pincodes]
+  );
+
+  const filteredAreas = useMemo(
+    () =>
+      areas.filter(
+        (item) => getId(item.cityId) === formData.cityId && getId(item.pincodeId) === formData.pincodeId
+      ),
+    [areas, formData.cityId, formData.pincodeId]
+  );
+
   const resetForm = () => {
     setEditingLocation(null);
     setFormData(initialFormData);
   };
 
-  const openCreateModal = () => {
-    resetForm();
-    setModalOpen(true);
+  const handleInputChange = (field, value) => {
+    setFormData((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
   };
 
-  const handleEdit = (location) => {
-    setEditingLocation(location);
+  const handleEdit = (item) => {
+    setEditingLocation(item);
     setFormData({
-      city: getCityName(location),
-      pincode: getPincodeValue(location),
-      area: getAreaValue(location),
-      name: location.name || '',
-      status: location.status ?? true,
+      cityId: getId(item.cityId),
+      pincodeId: getId(item.pincodeId),
+      areaId: getId(item.areaId),
+      name: item.name || '',
+      lat: item.lat ?? '',
+      lng: item.lng ?? '',
+      status: item.status ?? true,
     });
     setModalOpen(true);
   };
 
-  const validateForm = () => {
-    if (!formData.city) return 'City is required';
-    if (!formData.pincode) return 'Pincode is required';
-    if (!formData.area) return 'Area is required';
-    if (!formData.name.trim()) return 'Location name is required';
-    return null;
-  };
+  const handleSubmit = async (event) => {
+    event.preventDefault();
 
-  const filteredPincodes = useMemo(
-    () => pincodes.filter((item) => getCityName(item) === formData.city),
-    [formData.city, pincodes]
-  );
+    if (!formData.cityId || !formData.pincodeId || !formData.areaId || !formData.name.trim()) {
+      alert('City, pincode, area, and location name are required');
+      return;
+    }
 
-  const filteredAreas = useMemo(
-    () => areas.filter((item) => getPincodeValue(item) === formData.pincode),
-    [areas, formData.pincode]
-  );
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    const validationError = validateForm();
-    if (validationError) {
-      alert(validationError);
+    if (formData.lat === '' || formData.lng === '') {
+      alert('Latitude and longitude are required');
       return;
     }
 
     const payload = {
-      city: formData.city,
-      pincode: formData.pincode,
-      area: formData.area,
+      cityId: formData.cityId,
+      pincodeId: formData.pincodeId,
+      areaId: formData.areaId,
       name: formData.name.trim(),
+      lat: Number(formData.lat),
+      lng: Number(formData.lng),
       status: formData.status,
     };
 
@@ -198,7 +173,9 @@ const LocationPage = () => {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Delete this location?')) return;
+    if (!window.confirm('Delete this location?')) {
+      return;
+    }
 
     try {
       await locationsAPI.delete(id);
@@ -210,14 +187,16 @@ const LocationPage = () => {
     }
   };
 
-  const handleStatusToggle = async (location) => {
+  const handleStatusToggle = async (item) => {
     try {
-      await locationsAPI.update(location._id, {
-        city: getCityName(location),
-        pincode: getPincodeValue(location),
-        area: getAreaValue(location),
-        name: location.name,
-        status: !location.status,
+      await locationsAPI.update(item._id, {
+        cityId: getId(item.cityId),
+        pincodeId: getId(item.pincodeId),
+        areaId: getId(item.areaId),
+        name: item.name,
+        lat: item.lat,
+        lng: item.lng,
+        status: !item.status,
       });
       await fetchLocations();
     } catch (error) {
@@ -227,12 +206,14 @@ const LocationPage = () => {
   };
 
   const columns = [
-    { header: 'City', key: 'city', render: (row) => <span className="capitalize">{getCityName(row) || 'N/A'}</span> },
-    { header: 'Pincode', key: 'pincode', render: (row) => getPincodeValue(row) || 'N/A' },
-    { header: 'Area', key: 'area', render: (row) => getAreaValue(row) || 'N/A' },
-    { header: 'Location Name', key: 'name' },
+    { header: 'CITY', key: 'cityId', render: (row) => <span className="capitalize">{getCityName(row)}</span> },
+    { header: 'PINCODE', key: 'pincodeId', render: (row) => getPincodeValue(row) },
+    { header: 'AREA', key: 'areaId', render: (row) => getAreaValue(row) },
+    { header: 'LOCATION', key: 'name' },
+    { header: 'LAT', key: 'lat', render: (row) => row.lat ?? 'N/A' },
+    { header: 'LNG', key: 'lng', render: (row) => row.lng ?? 'N/A' },
     {
-      header: 'Status',
+      header: 'STATUS',
       key: 'status',
       render: (row) => (
         <button
@@ -240,7 +221,7 @@ const LocationPage = () => {
           role="switch"
           aria-checked={row.status}
           onClick={() => handleStatusToggle(row)}
-          className={`inline-flex items-center gap-3 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
+          className={`inline-flex items-center gap-3 rounded-full px-3 py-1.5 text-xs font-semibold ${
             row.status
               ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
               : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
@@ -262,22 +243,14 @@ const LocationPage = () => {
       ),
     },
     {
-      header: 'Actions',
+      header: 'ACTIONS',
       key: 'actions',
       render: (row) => (
         <div className="flex space-x-2">
-          <button
-            onClick={() => handleEdit(row)}
-            className="p-2 text-blue-600 hover:bg-blue-100 rounded-md"
-            title="Edit"
-          >
+          <button onClick={() => handleEdit(row)} className="p-2 text-blue-600 hover:bg-blue-100 rounded-md" title="Edit">
             <FaEdit />
           </button>
-          <button
-            onClick={() => handleDelete(row._id)}
-            className="p-2 text-red-600 hover:bg-red-100 rounded-md"
-            title="Delete"
-          >
+          <button onClick={() => handleDelete(row._id)} className="p-2 text-red-600 hover:bg-red-100 rounded-md" title="Delete">
             <FaTrash />
           </button>
         </div>
@@ -287,16 +260,27 @@ const LocationPage = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold">Location Management</h1>
-          <p className="text-sm text-gray-500 mt-1">Create, update, and delete locations.</p>
+          <p className="text-sm text-gray-500 mt-1">Manage location points inside an area, including coordinates.</p>
         </div>
 
-        <Button onClick={openCreateModal}>
-          <FaPlus className="mr-2" />
-          Add Location
-        </Button>
+        <div className="flex gap-3">
+          <Button variant="outline" onClick={() => setImportModalOpen(true)}>
+            <FaFileImport className="mr-2" />
+            Import CSV
+          </Button>
+          <Button
+            onClick={() => {
+              resetForm();
+              setModalOpen(true);
+            }}
+          >
+            <FaPlus className="mr-2" />
+            Add Location
+          </Button>
+        </div>
       </div>
 
       <Card>
@@ -315,96 +299,112 @@ const LocationPage = () => {
       >
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-              City
-            </label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">City</label>
             <select
-              value={formData.city}
+              value={formData.cityId}
               onChange={(e) =>
                 setFormData((prev) => ({
                   ...prev,
-                  city: e.target.value,
-                  pincode: '',
-                  area: '',
+                  cityId: e.target.value,
+                  pincodeId: '',
+                  areaId: '',
                 }))
               }
-              className="mt-1 w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+              className="mt-1 w-full rounded-lg border px-3 py-2 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
               required
             >
               <option value="">Select a city</option>
               {cities.map((city) => (
-                <option key={city._id || city.name} value={city.name}>
-                  {city.name}
+                <option key={city._id} value={city._id}>
+                  {city.name} ({city.state})
                 </option>
               ))}
             </select>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Pincode
-            </label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Pincode</label>
             <select
-              value={formData.pincode}
+              value={formData.pincodeId}
               onChange={(e) =>
                 setFormData((prev) => ({
                   ...prev,
-                  pincode: e.target.value,
-                  area: '',
+                  pincodeId: e.target.value,
+                  areaId: '',
                 }))
               }
-              disabled={!formData.city}
-              className="mt-1 w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white disabled:bg-gray-900/40 disabled:cursor-not-allowed"
+              disabled={!formData.cityId}
+              className="mt-1 w-full rounded-lg border px-3 py-2 disabled:cursor-not-allowed disabled:bg-gray-100 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:disabled:bg-gray-800"
               required
             >
-              <option value="">{!formData.city ? 'Select a city first' : 'Select a pincode'}</option>
-              {filteredPincodes.map((pincode) => (
-                <option key={pincode._id || pincode.name} value={pincode.name}>
-                  {pincode.name}
+              <option value="">{formData.cityId ? 'Select a pincode' : 'Select a city first'}</option>
+              {filteredPincodes.map((item) => (
+                <option key={item._id} value={item._id}>
+                  {item.pincode}
                 </option>
               ))}
             </select>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Area
-            </label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Area</label>
             <select
-              value={formData.area}
-              onChange={(e) => handleInputChange('area', e.target.value)}
-              disabled={!formData.pincode}
-              className="mt-1 w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white disabled:bg-gray-900/40 disabled:cursor-not-allowed"
+              value={formData.areaId}
+              onChange={(e) => handleInputChange('areaId', e.target.value)}
+              disabled={!formData.pincodeId}
+              className="mt-1 w-full rounded-lg border px-3 py-2 disabled:cursor-not-allowed disabled:bg-gray-100 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:disabled:bg-gray-800"
               required
             >
-              <option value="">{!formData.pincode ? 'Select a pincode first' : 'Select an area'}</option>
-              {filteredAreas.map((area) => (
-                <option key={area._id || area.name} value={area.name}>
-                  {area.name}
+              <option value="">{formData.pincodeId ? 'Select an area' : 'Select a pincode first'}</option>
+              {filteredAreas.map((item) => (
+                <option key={item._id} value={item._id}>
+                  {item.name}
                 </option>
               ))}
             </select>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Location Name
-            </label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Location Name</label>
             <input
               type="text"
               value={formData.name}
               onChange={(e) => handleInputChange('name', e.target.value)}
-              className="mt-1 w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+              className="mt-1 w-full rounded-lg border px-3 py-2 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
               required
             />
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Latitude</label>
+              <input
+                type="number"
+                step="any"
+                value={formData.lat}
+                onChange={(e) => handleInputChange('lat', e.target.value)}
+                className="mt-1 w-full rounded-lg border px-3 py-2 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Longitude</label>
+              <input
+                type="number"
+                step="any"
+                value={formData.lng}
+                onChange={(e) => handleInputChange('lng', e.target.value)}
+                className="mt-1 w-full rounded-lg border px-3 py-2 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                required
+              />
+            </div>
           </div>
 
           <div className="flex items-center justify-between rounded-lg border border-gray-200 dark:border-gray-600 px-4 py-3">
             <div>
               <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Status</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                {formData.status ? 'Active' : 'Inactive'}
-              </p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">{formData.status ? 'Active' : 'Inactive'}</p>
             </div>
             <button
               type="button"
@@ -421,7 +421,6 @@ const LocationPage = () => {
                 }`}
               />
             </button>
-            <span className="sr-only">Status</span>
           </div>
 
           <div className="flex justify-end space-x-3">
@@ -442,6 +441,13 @@ const LocationPage = () => {
           </div>
         </form>
       </Modal>
+
+      <DataImportModal
+        isOpen={importModalOpen}
+        onClose={() => setImportModalOpen(false)}
+        onImported={fetchLocations}
+        type="location"
+      />
     </div>
   );
 };
