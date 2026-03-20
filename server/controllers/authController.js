@@ -17,39 +17,16 @@ const generateToken = (id, role = 'user') => {
 // @access  Public
 exports.register = async (req, res) => {
   try {
-    // Check for validation errors
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({
-        success: false,
-        message: 'Validation failed',
-        errors: errors.array()
-      });
+      return res.status(400).json({ success: false, message: 'Validation failed', errors: errors.array() });
     }
-
     const { name, email, password, phone } = req.body;
-
-    // Check if user already exists
-    const existingUser = await User.findOne({
-      $or: [{ email: email.toLowerCase() }, { phone }]
-    });
-
+    const existingUser = await User.findOne({ $or: [{ email: email.toLowerCase() }, { phone }] });
     if (existingUser) {
-      return res.status(400).json({
-        success: false,
-        message: 'User already exists with this email or phone number'
-      });
+      return res.status(400).json({ success: false, message: 'User already exists with this email or phone number' });
     }
-
-    // Create user
-    const user = await User.create({
-      name,
-      email: email.toLowerCase(),
-      password,
-      phone
-    });
-
-    // Log activity
+    const user = await User.create({ name, email: email.toLowerCase(), password, phone });
     await ActivityLog.logActivity({
       user: user._id,
       action: 'user_registered',
@@ -59,30 +36,15 @@ exports.register = async (req, res) => {
       ipAddress: req.ip,
       userAgent: req.get('User-Agent')
     });
-
-    // Generate token
     const token = generateToken(user._id);
-
     res.status(201).json({
       success: true,
       message: 'User registered successfully',
-      data: {
-        user: {
-          id: user._id,
-          name: user.name,
-          email: user.email,
-          phone: user.phone,
-          role: user.role
-        },
-        token
-      }
+      data: { user: { id: user._id, name: user.name, email: user.email, phone: user.phone, role: user.role }, token }
     });
   } catch (error) {
     console.error('Register error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error during registration'
-    });
+    res.status(500).json({ success: false, message: 'Server error during registration' });
   }
 };
 
@@ -93,37 +55,17 @@ exports.login = async (req, res) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({
-        success: false,
-        message: 'Validation failed',
-        errors: errors.array()
-      });
+      return res.status(400).json({ success: false, message: 'Validation failed', errors: errors.array() });
     }
-
     const { email, password } = req.body;
-
-    // Check if user exists and get password
     const user = await User.findOne({ email: email.toLowerCase() }).select('+password');
-
     if (!user || !(await user.comparePassword(password))) {
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid email or password'
-      });
+      return res.status(401).json({ success: false, message: 'Invalid email or password' });
     }
-
-    // Check if user is active
     if (!user.isActive) {
-      return res.status(401).json({
-        success: false,
-        message: 'Account is deactivated. Please contact support.'
-      });
+      return res.status(401).json({ success: false, message: 'Account is deactivated. Please contact support.' });
     }
-
-    // Update last login
     await user.updateLastLogin();
-
-    // Log activity
     await ActivityLog.logActivity({
       user: user._id,
       action: 'user_login',
@@ -133,29 +75,16 @@ exports.login = async (req, res) => {
       ipAddress: req.ip,
       userAgent: req.get('User-Agent')
     });
-
-    // Generate token
     const token = generateToken(user._id);
-
     res.json({
       success: true,
       message: 'Login successful',
       token,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        phone: user.phone,
-        role: user.role,
-        lastLogin: user.lastLogin
-      }
+      user: { id: user._id, name: user.name, email: user.email, phone: user.phone, role: user.role, lastLogin: user.lastLogin }
     });
   } catch (error) {
     console.error('Login error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error during login'
-    });
+    res.status(500).json({ success: false, message: 'Server error during login' });
   }
 };
 
@@ -166,37 +95,17 @@ exports.adminLogin = async (req, res) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({
-        success: false,
-        message: 'Validation failed',
-        errors: errors.array()
-      });
+      return res.status(400).json({ success: false, message: 'Validation failed', errors: errors.array() });
     }
-
     const { email, password } = req.body;
-
-    // Check if admin exists and get password
     const admin = await Admin.findOne({ email: email.toLowerCase() }).select('+password');
-
     if (!admin || !(await admin.comparePassword(password))) {
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid email or password'
-      });
+      return res.status(401).json({ success: false, message: 'Invalid email or password' });
     }
-
-    // Check if admin is active
     if (!admin.isActive) {
-      return res.status(401).json({
-        success: false,
-        message: 'Account is deactivated.'
-      });
+      return res.status(401).json({ success: false, message: 'Account is deactivated.' });
     }
-
-    // Update last login
     await admin.updateLastLogin();
-
-    // Log activity
     await ActivityLog.logActivity({
       admin: admin._id,
       action: 'admin_login',
@@ -207,29 +116,16 @@ exports.adminLogin = async (req, res) => {
       userAgent: req.get('User-Agent'),
       severity: 'medium'
     });
-
-    // Generate token
     const token = generateToken(admin._id, 'admin');
-
     res.json({
       success: true,
       message: 'Admin login successful',
       token,
-      user: {
-        id: admin._id,
-        name: admin.name,
-        email: admin.email,
-        role: admin.role,
-        permissions: admin.permissions,
-        lastLogin: admin.lastLogin
-      }
+      user: { id: admin._id, name: admin.name, email: admin.email, role: admin.role, permissions: admin.permissions, lastLogin: admin.lastLogin }
     });
   } catch (error) {
     console.error('Admin login error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error during admin login'
-    });
+    res.status(500).json({ success: false, message: 'Server error during admin login' });
   }
 };
 
@@ -241,39 +137,22 @@ exports.getProfile = async (req, res) => {
     const user = await User.findById(req.user.id)
       .populate('vehicles', 'licensePlate make model isDefault')
       .populate('bookings', 'bookingReference status startTime endTime', null, { sort: { createdAt: -1 }, limit: 5 });
-
     if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'User not found'
-      });
+      return res.status(404).json({ success: false, message: 'User not found' });
     }
-
     res.json({
       success: true,
       data: {
         user: {
-          id: user._id,
-          name: user.name,
-          email: user.email,
-          phone: user.phone,
-          role: user.role,
-          isActive: user.isActive,
-          profileImage: user.profileImage,
-          lastLogin: user.lastLogin,
-          preferences: user.preferences,
-          vehicles: user.vehicles,
-          recentBookings: user.bookings,
-          createdAt: user.createdAt
+          id: user._id, name: user.name, email: user.email, phone: user.phone, role: user.role, isActive: user.isActive,
+          profileImage: user.profileImage, lastLogin: user.lastLogin, preferences: user.preferences, vehicles: user.vehicles,
+          recentBookings: user.bookings, createdAt: user.createdAt
         }
       }
     });
   } catch (error) {
     console.error('Get profile error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error retrieving profile'
-    });
+    res.status(500).json({ success: false, message: 'Server error retrieving profile' });
   }
 };
 
@@ -284,34 +163,17 @@ exports.updateProfile = async (req, res) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({
-        success: false,
-        message: 'Validation failed',
-        errors: errors.array()
-      });
+      return res.status(400).json({ success: false, message: 'Validation failed', errors: errors.array() });
     }
-
     const { name, phone, preferences } = req.body;
-
     const updateData = {};
     if (name) updateData.name = name;
     if (phone) updateData.phone = phone;
     if (preferences) updateData.preferences = preferences;
-
-    const user = await User.findByIdAndUpdate(
-      req.user.id,
-      updateData,
-      { new: true, runValidators: true }
-    );
-
+    const user = await User.findByIdAndUpdate(req.user.id, updateData, { new: true, runValidators: true });
     if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'User not found'
-      });
+      return res.status(404).json({ success: false, message: 'User not found' });
     }
-
-    // Log activity
     await ActivityLog.logActivity({
       user: user._id,
       action: 'user_profile_updated',
@@ -322,26 +184,14 @@ exports.updateProfile = async (req, res) => {
       ipAddress: req.ip,
       userAgent: req.get('User-Agent')
     });
-
     res.json({
       success: true,
       message: 'Profile updated successfully',
-      data: {
-        user: {
-          id: user._id,
-          name: user.name,
-          email: user.email,
-          phone: user.phone,
-          preferences: user.preferences
-        }
-      }
+      data: { user: { id: user._id, name: user.name, email: user.email, phone: user.phone, preferences: user.preferences } }
     });
   } catch (error) {
     console.error('Update profile error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error updating profile'
-    });
+    res.status(500).json({ success: false, message: 'Server error updating profile' });
   }
 };
 
@@ -352,38 +202,18 @@ exports.changePassword = async (req, res) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({
-        success: false,
-        message: 'Validation failed',
-        errors: errors.array()
-      });
+      return res.status(400).json({ success: false, message: 'Validation failed', errors: errors.array() });
     }
-
     const { currentPassword, newPassword } = req.body;
-
-    // Get user with password
     const user = await User.findById(req.user.id).select('+password');
-
     if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'User not found'
-      });
+      return res.status(404).json({ success: false, message: 'User not found' });
     }
-
-    // Check current password
     if (!(await user.comparePassword(currentPassword))) {
-      return res.status(400).json({
-        success: false,
-        message: 'Current password is incorrect'
-      });
+      return res.status(400).json({ success: false, message: 'Current password is incorrect' });
     }
-
-    // Update password
     user.password = newPassword;
     await user.save();
-
-    // Log activity
     await ActivityLog.logActivity({
       user: user._id,
       action: 'user_password_changed',
@@ -394,17 +224,10 @@ exports.changePassword = async (req, res) => {
       ipAddress: req.ip,
       userAgent: req.get('User-Agent')
     });
-
-    res.json({
-      success: true,
-      message: 'Password changed successfully'
-    });
+    res.json({ success: true, message: 'Password changed successfully' });
   } catch (error) {
     console.error('Change password error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error changing password'
-    });
+    res.status(500).json({ success: false, message: 'Server error changing password' });
   }
 };
 
@@ -413,7 +236,6 @@ exports.changePassword = async (req, res) => {
 // @access  Private
 exports.logout = async (req, res) => {
   try {
-    // Log activity
     await ActivityLog.logActivity({
       user: req.user.id,
       action: 'user_logout',
@@ -423,17 +245,10 @@ exports.logout = async (req, res) => {
       ipAddress: req.ip,
       userAgent: req.get('User-Agent')
     });
-
-    res.json({
-      success: true,
-      message: 'Logout successful'
-    });
+    res.json({ success: true, message: 'Logout successful' });
   } catch (error) {
     console.error('Logout error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error during logout'
-    });
+    res.status(500).json({ success: false, message: 'Server error during logout' });
   }
 };
 
@@ -443,18 +258,63 @@ exports.logout = async (req, res) => {
 exports.refreshToken = async (req, res) => {
   try {
     const token = generateToken(req.user.id, req.user.role);
+    res.json({ success: true, data: { token } });
+  } catch (error) {
+    console.error('Refresh token error:', error);
+    res.status(500).json({ success: false, message: 'Server error refreshing token' });
+  }
+};
+
+// --- NEW FUNCTION ADDED FOR ADMIN PROFILE UPDATE ---
+
+// @desc    Update admin profile & password
+// @route   PUT /api/auth/admin/profile
+// @access  Private (Admin)
+exports.updateAdminProfile = async (req, res) => {
+  try {
+    const { name, email, phone, avatar, currentPassword, newPassword } = req.body;
+    const admin = await Admin.findById(req.user.id).select('+password');
+
+    if (!admin) {
+      return res.status(404).json({ success: false, message: 'Admin not found' });
+    }
+
+    if (newPassword) {
+      if (!currentPassword) {
+        return res.status(400).json({ success: false, message: 'Please provide current password to set a new one' });
+      }
+      const isMatch = await admin.comparePassword(currentPassword);
+      if (!isMatch) {
+        return res.status(400).json({ success: false, message: 'Current password is incorrect' });
+      }
+      admin.password = newPassword;
+    }
+
+    if (name) admin.name = name;
+    if (email) admin.email = email.toLowerCase();
+    if (phone) admin.phone = phone;
+    if (avatar) admin.profileImage = avatar;
+
+    await admin.save();
+
+    await ActivityLog.logActivity({
+      admin: admin._id,
+      action: 'admin_profile_updated',
+      resource: 'admin',
+      resourceId: admin._id,
+      description: `Admin updated their profile: ${admin.name}`,
+      ipAddress: req.ip,
+      userAgent: req.get('User-Agent'),
+      severity: 'medium'
+    });
 
     res.json({
       success: true,
-      data: {
-        token
-      }
+      message: 'Profile updated successfully',
+      user: { id: admin._id, name: admin.name, email: admin.email, phone: admin.phone, role: admin.role, avatar: admin.profileImage }
     });
   } catch (error) {
-    console.error('Refresh token error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error refreshing token'
-    });
+    console.error('Update admin error:', error);
+    res.status(500).json({ success: false, message: 'Server error updating admin profile' });
   }
 };

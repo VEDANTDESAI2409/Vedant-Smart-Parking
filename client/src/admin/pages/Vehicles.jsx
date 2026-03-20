@@ -23,8 +23,8 @@ const Vehicles = () => {
     setLoading(true);
     try {
       const response = await vehiclesAPI.getAll();
-      // Handling standard API response structure
-      setVehicles(response.data?.data?.vehicles || response.data?.data || response.data || []);
+      const data = response.data?.data?.vehicles || response.data?.vehicles || response.data || [];
+      setVehicles(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Error fetching:', error);
     } finally { setLoading(false); }
@@ -34,55 +34,54 @@ const Vehicles = () => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  // --- FIXED CREATE OR UPDATE LOGIC ---
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
       const payload = { 
-        ...formData, 
-        licensePlate: formData.licensePlate.toUpperCase().replace(/\s/g, '') 
+        licensePlate: formData.licensePlate.toUpperCase().replace(/\s/g, ''),
+        model: formData.model,
+        category: formData.category,
+        fuelType: formData.fuelType,
+        registrationExpiry: formData.registrationExpiry
       };
       
       let response;
       if (editingId) {
         response = await vehiclesAPI.update(editingId, payload);
-        if (response.data) {
-          // Update local state for immediate feedback
-          setVehicles(prev => prev.map(v => v._id === editingId ? (response.data.data || response.data) : v));
-        }
       } else {
         response = await vehiclesAPI.create(payload);
       }
 
-      // Refresh list and reset modal if successful
-      await fetchVehicles();
-      closeModal();
+      if (response.status === 200 || response.status === 201 || response.data.success) {
+        await fetchVehicles();
+        closeModal();
+      }
     } catch (error) {
-      const msg = error.response?.data?.message || "Operation failed. Please check plate format.";
-      alert(msg);
+      console.error('Submit error details:', error.response?.data);
+      const msg = error.response?.data?.message || "Check console for validation errors.";
+      alert(`Error: ${msg}`);
     }
   };
 
-  // --- FIXED DELETE LOGIC ---
   const handleDelete = async (id) => {
     if (window.confirm("Are you sure you want to remove this vehicle?")) {
       try {
         await vehiclesAPI.delete(id);
-        // Remove from local state immediately
-        setVehicles(prev => prev.filter(v => v._id !== id));
+        setVehicles(prev => prev.filter(v => (v._id || v.id) !== id));
       } catch (error) {
+        console.error('Delete error details:', error.response?.data);
         alert(error.response?.data?.message || "Failed to delete vehicle");
       }
     }
   };
 
   const openEditModal = (vehicle) => {
-    setEditingId(vehicle._id);
+    setEditingId(vehicle._id || vehicle.id);
     setFormData({
-      licensePlate: vehicle.licensePlate,
-      model: vehicle.model,
-      category: vehicle.category,
-      fuelType: vehicle.fuelType,
+      licensePlate: vehicle.licensePlate || '',
+      model: vehicle.model || '',
+      category: vehicle.category || 'car',
+      fuelType: vehicle.fuelType || 'petrol',
       registrationExpiry: vehicle.registrationExpiry ? vehicle.registrationExpiry.split('T')[0] : ''
     });
     setIsModalOpen(true);
@@ -146,7 +145,7 @@ const Vehicles = () => {
           <button onClick={() => openEditModal(row)} className="p-2 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-xl hover:scale-110 transition-transform">
             <FaEdit size={14}/>
           </button>
-          <button onClick={() => handleDelete(row._id)} className="p-2 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-xl hover:scale-110 transition-transform">
+          <button onClick={() => handleDelete(row._id || row.id)} className="p-2 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-xl hover:scale-110 transition-transform">
             <FaTrash size={14}/>
           </button>
         </div>
@@ -156,7 +155,6 @@ const Vehicles = () => {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#0F172A] p-6 lg:p-10 font-sans transition-colors duration-300">
-      
       <div className="flex flex-col md:flex-row justify-between items-end mb-8 gap-6">
         <div>
           <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tight">Fleet Management</h1>
@@ -198,12 +196,15 @@ const Vehicles = () => {
               vehicles
                 .filter(v => (v.licensePlate?.toLowerCase().includes(searchTerm.toLowerCase()) || v.model?.toLowerCase().includes(searchTerm.toLowerCase())))
                 .map((row, i) => (
-                  <tr key={row._id || i} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+                  <tr key={row._id || row.id || i} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
                     {columns.map((col, j) => (
                       <td key={j} className="px-6 py-4">{col.render(row)}</td>
                     ))}
                   </tr>
                 ))
+            )}
+            {!loading && vehicles.length === 0 && (
+              <tr><td colSpan={5} className="p-10 text-center text-slate-400 font-medium">No vehicles found. Click "Add Vehicle" to start.</td></tr>
             )}
           </tbody>
         </table>

@@ -14,6 +14,14 @@ const router = express.Router();
 
 // Validation rules
 const createAreaValidation = [
+  body('city')
+    .trim()
+    .isLength({ min: 1, max: 50 })
+    .withMessage('City is required'),
+  body('pincode')
+    .trim()
+    .matches(/^\d{6}$/)
+    .withMessage('Pincode must be exactly 6 digits'),
   body('name')
     .trim()
     .isLength({ min: 1, max: 100 })
@@ -25,6 +33,16 @@ const createAreaValidation = [
 ];
 
 const updateAreaValidation = [
+  body('city')
+    .optional()
+    .trim()
+    .isLength({ min: 1, max: 50 })
+    .withMessage('City is required'),
+  body('pincode')
+    .optional()
+    .trim()
+    .matches(/^\d{6}$/)
+    .withMessage('Pincode must be exactly 6 digits'),
   body('name')
     .optional()
     .trim()

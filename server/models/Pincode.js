@@ -1,6 +1,11 @@
 const mongoose = require('mongoose');
 
 const pincodeSchema = new mongoose.Schema({
+  city: {
+    type: String,
+    trim: true,
+    maxlength: [50, 'City name cannot exceed 50 characters']
+  },
   name: {
     type: String,
     required: [true, 'Pincode is required'],
