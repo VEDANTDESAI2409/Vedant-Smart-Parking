@@ -34,7 +34,12 @@ const CityPage = () => {
     try {
       setLoading(true);
       const response = await citiesAPI.getAll();
-      const list = response?.data?.data?.cities || [];
+      const list =
+        response?.data?.data?.cities ||
+        response?.data?.cities ||
+        response?.data?.data ||
+        response?.data ||
+        [];
       setCities(list);
     } catch (error) {
       console.error('Error fetching cities:', error);
@@ -159,7 +164,7 @@ const CityPage = () => {
         <div className="flex items-center gap-2">
             <button onClick={() => {
                 setEditingCity(row);
-                setFormData({ name: row.name, status: row.status });
+                setFormData({ name: row.name, state: row.state || '', status: row.status });
                 setModalOpen(true);
             }} className="text-blue-500 hover:text-blue-700 transition-colors p-2 bg-blue-50 dark:bg-blue-900/10 rounded-lg group">
                 <FaEdit size={14} className="group-active:scale-90 transition-transform"/>
