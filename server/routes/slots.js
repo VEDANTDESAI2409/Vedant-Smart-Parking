@@ -28,8 +28,8 @@ const createSlotValidation = [
     .isIn(['car', 'bike'])
     .withMessage('Vehicle type must be car or bike'),
   body('slotType')
-    .isIn(['normal', 'vip', 'reserved'])
-    .withMessage('Slot type must be normal, vip, or reserved'),
+    .isIn(['normal', 'ev', 'disabled'])
+    .withMessage('Slot type must be normal, ev, or disabled'),
   body('slotLocation').notEmpty().withMessage('Slot location is required'),
   body('price')
     .isFloat({ min: 0 })
@@ -51,8 +51,8 @@ const updateSlotValidation = [
     .withMessage('Vehicle type must be car or bike'),
   body('slotType')
     .optional()
-    .isIn(['normal', 'vip', 'reserved'])
-    .withMessage('Slot type must be normal, vip, or reserved'),
+    .isIn(['normal', 'ev', 'disabled'])
+    .withMessage('Slot type must be normal, ev, or disabled'),
   body('slotLocation')
     .optional()
     .notEmpty()
