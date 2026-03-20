@@ -1,17 +1,21 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { FaPlus, FaEdit, FaTrash, FaSearch, FaMapMarkerAlt } from 'react-icons/fa';
+import { FaPlus, FaEdit, FaTrash, FaSearch, FaMapMarkerAlt, FaFileImport } from 'react-icons/fa';
 
 import Button from '../../components/Button';
 import Modal from '../../components/Modal';
 import Table from '../../components/Table';
+import DataImportModal from '../components/DataImportModal';
 import { citiesAPI } from '../../services/api';
+
+const initialFormData = { name: '', state: '', status: true };
 
 const CityPage = () => {
   const [cities, setCities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
+  const [importModalOpen, setImportModalOpen] = useState(false);
   const [editingCity, setEditingCity] = useState(null);
-  const [formData, setFormData] = useState({ name: '', status: true });
+  const [formData, setFormData] = useState(initialFormData);
   const [submitting, setSubmitting] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -43,7 +47,10 @@ const CityPage = () => {
   const filteredCities = useMemo(() => {
     const lowerSearch = searchTerm.toLowerCase().trim();
     if (!lowerSearch) return cities;
-    return cities.filter(c => c.name?.toLowerCase().includes(lowerSearch));
+    return cities.filter((city) =>
+      city.name?.toLowerCase().includes(lowerSearch) ||
+      city.state?.toLowerCase().includes(lowerSearch)
+    );
   }, [cities, searchTerm]);
 
   // Updated toggle to match AreaPage logic
@@ -60,10 +67,11 @@ const CityPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.name.trim()) return alert('City name is required');
+    if (!formData.name.trim() || !formData.state.trim()) return alert('City name and state are required');
 
     const payload = {
       name: formData.name.trim(),
+      state: formData.state.trim(),
       status: formData.status,
     };
 
@@ -77,7 +85,7 @@ const CityPage = () => {
       await fetchCities();
       setModalOpen(false);
       setEditingCity(null);
-      setFormData({ name: '', status: true });
+      setFormData(initialFormData);
     } catch (error) {
       alert(error?.response?.data?.message || 'Failed to save city');
     } finally {
@@ -105,6 +113,14 @@ const CityPage = () => {
             </div>
             <span className="font-bold text-gray-800 dark:text-gray-100 capitalize text-sm">{row.name}</span> 
         </div>
+      )
+    },
+    {
+      header: 'STATE',
+      render: (row) => (
+        <span className="text-sm font-semibold text-slate-600 dark:text-slate-300 capitalize">
+          {row.state || 'N/A'}
+        </span>
       )
     },
     { 
@@ -176,8 +192,15 @@ const CityPage = () => {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
+          <button
+            onClick={() => setImportModalOpen(true)}
+            className="flex items-center gap-2 px-5 py-3.5 bg-white dark:bg-[#1E293B] text-slate-700 dark:text-slate-200 rounded-2xl shadow-sm ring-1 ring-slate-200 dark:ring-slate-700 transition-all active:scale-95 font-bold text-sm"
+          >
+            <FaFileImport size={14} />
+            <span>Import CSV</span>
+          </button>
           <button 
-            onClick={() => { setEditingCity(null); setFormData({name: '', status: true}); setModalOpen(true); }}
+            onClick={() => { setEditingCity(null); setFormData(initialFormData); setModalOpen(true); }}
             className="flex items-center gap-2 px-6 py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl shadow-lg shadow-blue-500/20 transition-all active:scale-95 font-bold text-sm"
           >
             <FaPlus size={14} />
@@ -206,6 +229,20 @@ const CityPage = () => {
               onChange={(e) => handleInputChange('name', e.target.value)}
               className="w-full px-4 py-4 bg-slate-50 dark:bg-slate-900/50 border-none ring-1 ring-slate-200 dark:ring-slate-700 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none text-sm dark:text-white transition-all font-bold"
               placeholder="Enter city name..."
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-2 ml-1">
+              State
+            </label>
+            <input
+              type="text"
+              value={formData.state}
+              onChange={(e) => handleInputChange('state', e.target.value)}
+              className="w-full px-4 py-4 bg-slate-50 dark:bg-slate-900/50 border-none ring-1 ring-slate-200 dark:ring-slate-700 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none text-sm dark:text-white transition-all font-bold"
+              placeholder="Enter state name..."
               required
             />
           </div>
@@ -246,6 +283,13 @@ const CityPage = () => {
           </div>
         </form>
       </Modal>
+
+      <DataImportModal
+        isOpen={importModalOpen}
+        onClose={() => setImportModalOpen(false)}
+        onImported={fetchCities}
+        type="city"
+      />
     </div>
   );
 };

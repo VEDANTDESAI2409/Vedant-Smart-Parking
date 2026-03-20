@@ -12,37 +12,34 @@ const { protect, authorize } = require('../middleware/auth');
 
 const router = express.Router();
 
-// Validation rules
 const createCityValidation = [
   body('name')
     .trim()
-    .isLength({ min: 1, max: 50 })
-    .withMessage('City name must be between 1 and 50 characters'),
-  body('status')
-    .optional()
-    .isBoolean()
-    .withMessage('Status must be a boolean')
+    .isLength({ min: 1, max: 100 })
+    .withMessage('City name must be between 1 and 100 characters'),
+  body('state')
+    .trim()
+    .isLength({ min: 1, max: 100 })
+    .withMessage('State must be between 1 and 100 characters'),
+  body('status').optional().isBoolean().withMessage('Status must be a boolean'),
 ];
 
 const updateCityValidation = [
   body('name')
     .optional()
     .trim()
-    .isLength({ min: 1, max: 50 })
-    .withMessage('City name must be between 1 and 50 characters'),
-  body('status')
+    .isLength({ min: 1, max: 100 })
+    .withMessage('City name must be between 1 and 100 characters'),
+  body('state')
     .optional()
-    .isBoolean()
-    .withMessage('Status must be a boolean')
+    .trim()
+    .isLength({ min: 1, max: 100 })
+    .withMessage('State must be between 1 and 100 characters'),
+  body('status').optional().isBoolean().withMessage('Status must be a boolean'),
 ];
 
-const cityIdValidation = [
-  param('id')
-    .isMongoId()
-    .withMessage('Invalid city ID')
-];
+const cityIdValidation = [param('id').isMongoId().withMessage('Invalid city ID')];
 
-// All routes require authentication and admin access
 router.use(protect);
 router.use(authorize('admin', 'superadmin'));
 

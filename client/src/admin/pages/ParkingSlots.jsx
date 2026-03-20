@@ -20,10 +20,11 @@ const getCollection = (response, key) =>
   response?.data ||
   [];
 
-const getCityName = (item) => item?.city || item?.cityId || '';
-const getPincodeValue = (item) => item?.pincode || item?.pincodeId || '';
-const getAreaValue = (item) => item?.area || item?.areaId || '';
-const getLocationValue = (item) => item?.location || item?.locationId || item?.name || '';
+const getId = (value) => value?._id || value || '';
+const getCityName = (item) => item?.cityId?.name || item?.city || item?.name || '';
+const getPincodeValue = (item) => item?.pincodeId?.pincode || item?.pincode || '';
+const getAreaValue = (item) => item?.areaId?.name || item?.area || item?.name || '';
+const getLocationValue = (item) => item?.locationId?.name || item?.location || item?.name || '';
 
 const ParkingSlots = () => {
   const [slots, setSlots] = useState([]);
@@ -37,10 +38,10 @@ const ParkingSlots = () => {
   const [areas, setAreas] = useState([]);
   const [locations, setLocations] = useState([]);
 
-  const [city, setCity] = useState('');
-  const [pincode, setPincode] = useState('');
-  const [area, setArea] = useState('');
-  const [location, setLocation] = useState('');
+  const [cityId, setCityId] = useState('');
+  const [pincodeId, setPincodeId] = useState('');
+  const [areaId, setAreaId] = useState('');
+  const [locationId, setLocationId] = useState('');
   const [landmark, setLandmark] = useState('');
   const [vehicleType, setVehicleType] = useState('car');
   const [slotType, setSlotType] = useState('normal');
@@ -58,28 +59,31 @@ const ParkingSlots = () => {
   }, [modalOpen]);
 
   useEffect(() => {
-    if (!city) {
+    if (!cityId) {
       setPincodes([]);
       return;
     }
-    fetchPincodes(city);
-  }, [city]);
+
+    fetchPincodes(cityId);
+  }, [cityId]);
 
   useEffect(() => {
-    if (!pincode) {
+    if (!cityId || !pincodeId) {
       setAreas([]);
       return;
     }
-    fetchAreas(pincode);
-  }, [pincode]);
+
+    fetchAreas(cityId, pincodeId);
+  }, [cityId, pincodeId]);
 
   useEffect(() => {
-    if (!area) {
+    if (!cityId || !pincodeId || !areaId) {
       setLocations([]);
       return;
     }
-    fetchLocations(area);
-  }, [area]);
+
+    fetchLocations(cityId, pincodeId, areaId);
+  }, [cityId, pincodeId, areaId]);
 
   const fetchSlots = async () => {
     try {
@@ -106,11 +110,10 @@ const ParkingSlots = () => {
     }
   };
 
-  const fetchPincodes = async (selectedCity) => {
+  const fetchPincodes = async (selectedCityId) => {
     try {
-      const response = await pincodesAPI.getAll();
-      let list = getCollection(response, 'pincodes');
-      list = list.filter((item) => getCityName(item) === selectedCity);
+      const response = await pincodesAPI.getAll({ cityId: selectedCityId });
+      const list = getCollection(response, 'pincodes');
       setPincodes(Array.isArray(list) ? list : []);
     } catch (error) {
       console.error('Error fetching pincodes:', error);
@@ -118,11 +121,13 @@ const ParkingSlots = () => {
     }
   };
 
-  const fetchAreas = async (selectedPincode) => {
+  const fetchAreas = async (selectedCityId, selectedPincodeId) => {
     try {
-      const response = await areasAPI.getAll();
-      let list = getCollection(response, 'areas');
-      list = list.filter((item) => getPincodeValue(item) === selectedPincode);
+      const response = await areasAPI.getAll({
+        cityId: selectedCityId,
+        pincodeId: selectedPincodeId,
+      });
+      const list = getCollection(response, 'areas');
       setAreas(Array.isArray(list) ? list : []);
     } catch (error) {
       console.error('Error fetching areas:', error);
@@ -130,11 +135,14 @@ const ParkingSlots = () => {
     }
   };
 
-  const fetchLocations = async (selectedArea) => {
+  const fetchLocations = async (selectedCityId, selectedPincodeId, selectedAreaId) => {
     try {
-      const response = await locationsAPI.getAll();
-      let list = getCollection(response, 'locations');
-      list = list.filter((item) => getAreaValue(item) === selectedArea);
+      const response = await locationsAPI.getAll({
+        cityId: selectedCityId,
+        pincodeId: selectedPincodeId,
+        areaId: selectedAreaId,
+      });
+      const list = getCollection(response, 'locations');
       setLocations(Array.isArray(list) ? list : []);
     } catch (error) {
       console.error('Error fetching locations:', error);
@@ -144,10 +152,10 @@ const ParkingSlots = () => {
 
   const resetForm = () => {
     setEditingSlot(null);
-    setCity('');
-    setPincode('');
-    setArea('');
-    setLocation('');
+    setCityId('');
+    setPincodeId('');
+    setAreaId('');
+    setLocationId('');
     setLandmark('');
     setVehicleType('car');
     setSlotType('normal');
@@ -164,39 +172,31 @@ const ParkingSlots = () => {
   };
 
   const handleCityChange = (value) => {
-    setCity(value);
-    setPincode('');
-    setArea('');
-    setLocation('');
+    setCityId(value);
+    setPincodeId('');
+    setAreaId('');
+    setLocationId('');
     setPincodes([]);
     setAreas([]);
     setLocations([]);
   };
 
   const handlePincodeChange = (value) => {
-    setPincode(value);
-    setArea('');
-    setLocation('');
+    setPincodeId(value);
+    setAreaId('');
+    setLocationId('');
     setAreas([]);
     setLocations([]);
   };
 
   const handleAreaChange = (value) => {
-    setArea(value);
-    setLocation('');
+    setAreaId(value);
+    setLocationId('');
     setLocations([]);
   };
 
   const handleEdit = async (slot) => {
-    const slotCity = getCityName(slot);
-    const slotPincode = getPincodeValue(slot);
-    const slotArea = getAreaValue(slot);
-
     setEditingSlot(slot);
-    setCity(slotCity);
-    setPincode(slotPincode);
-    setArea(slotArea);
-    setLocation(getLocationValue(slot));
     setLandmark(slot.landmark || '');
     setVehicleType(slot.vehicleType || 'car');
     setSlotType(slot.slotType || 'normal');
@@ -204,22 +204,66 @@ const ParkingSlots = () => {
     setPrice(slot.price ?? '');
     setModalOpen(true);
 
-    if (slotCity) {
-      await fetchPincodes(slotCity);
-    }
-    if (slotPincode) {
-      await fetchAreas(slotPincode);
-    }
-    if (slotArea) {
-      await fetchLocations(slotArea);
+    try {
+      const citiesResponse = await citiesAPI.getAll();
+      const cityList = getCollection(citiesResponse, 'cities');
+      setCities(Array.isArray(cityList) ? cityList : []);
+
+      const matchedCity = cityList.find((item) => item.name === slot.city);
+      const matchedCityId = matchedCity?._id || '';
+      setCityId(matchedCityId);
+
+      if (!matchedCityId) {
+        return;
+      }
+
+      const pincodesResponse = await pincodesAPI.getAll({ cityId: matchedCityId });
+      const pincodeList = getCollection(pincodesResponse, 'pincodes');
+      setPincodes(Array.isArray(pincodeList) ? pincodeList : []);
+
+      const matchedPincode = pincodeList.find((item) => item.pincode === slot.pincode);
+      const matchedPincodeId = matchedPincode?._id || '';
+      setPincodeId(matchedPincodeId);
+
+      if (!matchedPincodeId) {
+        return;
+      }
+
+      const areasResponse = await areasAPI.getAll({
+        cityId: matchedCityId,
+        pincodeId: matchedPincodeId,
+      });
+      const areaList = getCollection(areasResponse, 'areas');
+      setAreas(Array.isArray(areaList) ? areaList : []);
+
+      const matchedArea = areaList.find((item) => item.name === slot.area);
+      const matchedAreaId = matchedArea?._id || '';
+      setAreaId(matchedAreaId);
+
+      if (!matchedAreaId) {
+        return;
+      }
+
+      const locationsResponse = await locationsAPI.getAll({
+        cityId: matchedCityId,
+        pincodeId: matchedPincodeId,
+        areaId: matchedAreaId,
+      });
+      const locationList = getCollection(locationsResponse, 'locations');
+      setLocations(Array.isArray(locationList) ? locationList : []);
+
+      const matchedLocation = locationList.find((item) => item.name === slot.location);
+      setLocationId(matchedLocation?._id || '');
+    } catch (error) {
+      console.error('Error loading dependent slot values for edit:', error);
     }
   };
 
   const validateForm = () => {
-    if (!city) return 'City is required';
-    if (!pincode) return 'Pincode is required';
-    if (!area) return 'Area is required';
-    if (!location) return 'Location is required';
+    if (!cityId) return 'City is required';
+    if (!pincodeId) return 'Pincode is required';
+    if (!areaId) return 'Area is required';
+    if (!locationId) return 'Location is required';
     if (!landmark.trim()) return 'Landmark is required';
     if (!slotLocation.trim()) return 'Slot location is required';
     if (price === '' || Number.isNaN(Number(price)) || Number(price) < 0) {
@@ -237,11 +281,21 @@ const ParkingSlots = () => {
       return;
     }
 
+    const selectedCity = cities.find((item) => item._id === cityId);
+    const selectedPincode = pincodes.find((item) => item._id === pincodeId);
+    const selectedArea = areas.find((item) => item._id === areaId);
+    const selectedLocation = locations.find((item) => item._id === locationId);
+
+    if (!selectedCity || !selectedPincode || !selectedArea || !selectedLocation) {
+      alert('Please reselect city, pincode, area, and location');
+      return;
+    }
+
     const payload = {
-      city,
-      pincode,
-      area,
-      location,
+      city: selectedCity.name,
+      pincode: selectedPincode.pincode,
+      area: selectedArea.name,
+      location: selectedLocation.name,
       landmark: landmark.trim(),
       vehicleType,
       slotType,
@@ -308,7 +362,7 @@ const ParkingSlots = () => {
     {
       header: 'Price',
       key: 'price',
-      render: (row) => `₹${row.price ?? 0}`,
+      render: (row) => `Rs ${row.price ?? 0}`,
     },
     {
       header: 'Actions',
@@ -370,18 +424,16 @@ const ParkingSlots = () => {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                City
-              </label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">City</label>
               <select
-                value={city}
+                value={cityId}
                 onChange={(e) => handleCityChange(e.target.value)}
                 className="mt-1 w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                 required
               >
                 <option value="">Select a city</option>
                 {cities.map((item) => (
-                  <option key={item._id || item.name} value={item.name}>
+                  <option key={item._id} value={item._id}>
                     {item.name}
                   </option>
                 ))}
@@ -389,39 +441,35 @@ const ParkingSlots = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Pincode
-              </label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Pincode</label>
               <select
-                value={pincode}
+                value={pincodeId}
                 onChange={(e) => handlePincodeChange(e.target.value)}
-                disabled={!city}
+                disabled={!cityId}
                 className="mt-1 w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white disabled:bg-gray-900/40 disabled:cursor-not-allowed"
                 required
               >
-                <option value="">{!city ? 'Select a city first' : 'Select a pincode'}</option>
+                <option value="">{!cityId ? 'Select a city first' : 'Select a pincode'}</option>
                 {pincodes.map((item) => (
-                  <option key={item._id || item.name} value={item.name}>
-                    {item.name}
+                  <option key={item._id} value={item._id}>
+                    {item.pincode}
                   </option>
                 ))}
               </select>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Area
-              </label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Area</label>
               <select
-                value={area}
+                value={areaId}
                 onChange={(e) => handleAreaChange(e.target.value)}
-                disabled={!pincode}
+                disabled={!pincodeId}
                 className="mt-1 w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white disabled:bg-gray-900/40 disabled:cursor-not-allowed"
                 required
               >
-                <option value="">{!pincode ? 'Select a pincode first' : 'Select an area'}</option>
+                <option value="">{!pincodeId ? 'Select a pincode first' : 'Select an area'}</option>
                 {areas.map((item) => (
-                  <option key={item._id || item.name} value={item.name}>
+                  <option key={item._id} value={item._id}>
                     {item.name}
                   </option>
                 ))}
@@ -429,19 +477,17 @@ const ParkingSlots = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Location
-              </label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Location</label>
               <select
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-                disabled={!area}
+                value={locationId}
+                onChange={(e) => setLocationId(e.target.value)}
+                disabled={!areaId}
                 className="mt-1 w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white disabled:bg-gray-900/40 disabled:cursor-not-allowed"
                 required
               >
-                <option value="">{!area ? 'Select an area first' : 'Select a location'}</option>
+                <option value="">{!areaId ? 'Select an area first' : 'Select a location'}</option>
                 {locations.map((item) => (
-                  <option key={item._id || item.name} value={item.name}>
+                  <option key={item._id} value={item._id}>
                     {item.name}
                   </option>
                 ))}
@@ -449,9 +495,7 @@ const ParkingSlots = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Landmark
-              </label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Landmark</label>
               <input
                 type="text"
                 value={landmark}
@@ -462,9 +506,7 @@ const ParkingSlots = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Vehicle Type
-              </label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Vehicle Type</label>
               <select
                 value={vehicleType}
                 onChange={(e) => setVehicleType(e.target.value)}
@@ -476,9 +518,7 @@ const ParkingSlots = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Slot Type
-              </label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Slot Type</label>
               <select
                 value={slotType}
                 onChange={(e) => setSlotType(e.target.value)}
@@ -491,9 +531,7 @@ const ParkingSlots = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Slot Location
-              </label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Slot Location</label>
               <input
                 type="text"
                 value={slotLocation}
@@ -505,9 +543,7 @@ const ParkingSlots = () => {
             </div>
 
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Price
-              </label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Price</label>
               <input
                 type="number"
                 min="0"
