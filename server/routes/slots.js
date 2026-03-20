@@ -12,7 +12,6 @@ const {
 } = require('../controllers/slotController');
 
 const { protect, authorize } = require('../middleware/auth');
-
 const router = express.Router();
 
 const createSlotValidation = [
