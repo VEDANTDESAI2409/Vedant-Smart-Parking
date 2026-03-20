@@ -4,6 +4,7 @@ import { ToastContainer } from 'react-toastify';
 import { AuthProvider } from './context/AuthContext';
 import AdminRoutes from './routes/AdminRoutes';
 import 'react-toastify/dist/ReactToastify.css';
+import { getAdminPreferences, subscribeToAdminPreferences } from './utils/adminPreferences';
 // User components will be added later
 import UserHome from './user/pages/Home';
 import UserSearch from './user/pages/Search';
@@ -12,6 +13,10 @@ import UserHistory from './user/pages/History';
 import UserProfile from './user/pages/Profile';
 
 function App() {
+  const [adminPreferences, setAdminPreferences] = React.useState(getAdminPreferences());
+
+  React.useEffect(() => subscribeToAdminPreferences(setAdminPreferences), []);
+
   return (
     <AuthProvider>
       <Router
@@ -37,8 +42,8 @@ function App() {
 
         <ToastContainer
           position="top-right"
-          autoClose={3000}
-          hideProgressBar={false}
+          autoClose={adminPreferences.toastDuration}
+          hideProgressBar={adminPreferences.hideToastProgress}
           newestOnTop
           closeOnClick
           pauseOnHover
