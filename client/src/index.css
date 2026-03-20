@@ -53,3 +53,40 @@ code {
 ::-webkit-scrollbar-thumb:hover {
   background: #555;
 }
+
+.Toastify__toast-container {
+  width: 360px;
+  z-index: 9999;
+}
+
+.Toastify__toast {
+  border-radius: 8px;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-size: 15px;
+  font-weight: 500;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+}
+
+.Toastify__toast-theme--colored.Toastify__toast--success {
+  background: #51a351;
+  color: #fff;
+}
+
+.Toastify__toast-theme--colored.Toastify__toast--error {
+  background: #bd362f;
+  color: #fff;
+}
+
+.Toastify__toast-theme--colored.Toastify__toast--warning {
+  background: #f89406;
+  color: #fff;
+}
+
+.Toastify__toast-theme--colored.Toastify__toast--info {
+  background: #2f96b4;
+  color: #fff;
+}
+
+.Toastify__progress-bar {
+  height: 4px;
+}
