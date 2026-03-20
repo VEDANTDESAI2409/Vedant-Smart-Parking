@@ -12,6 +12,11 @@ const parkingSlotSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+    location: {
+      type: String,
+      required: true,
+      trim: true,
+    },
     pincode: {
       type: String,
       required: true,
@@ -31,7 +36,7 @@ const parkingSlotSchema = new mongoose.Schema(
     slotType: {
       type: String,
       required: true,
-      enum: ['normal', 'ev', 'disabled'],
+      enum: ['normal', 'vip', 'reserved'],
     },
     slotLocation: {
       type: String,

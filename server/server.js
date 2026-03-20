@@ -51,6 +51,11 @@ app.use('/api/bookings', require('./routes/bookings'));
 app.use('/api/vehicles', require('./routes/vehicles'));
 app.use('/api/payments', require('./routes/payments'));
 app.use('/api/reports', require('./routes/reports'));
+app.use('/api/cities', require('./routes/cities'));
+app.use('/api/pincodes', require('./routes/pincodes'));
+app.use('/api/areas', require('./routes/areas'));
+app.use('/api/locations', require('./routes/locations'));
+app.use('/api/imports', require('./routes/imports'));
 // Welcome route
 app.get('/', (req, res) => {
   res.json({
@@ -65,6 +70,11 @@ app.get('/', (req, res) => {
       vehicles: '/api/vehicles',
       payments: '/api/payments',
       reports: '/api/reports',
+      cities: '/api/cities',
+      pincodes: '/api/pincodes',
+      areas: '/api/areas',
+      locations: '/api/locations',
+      imports: '/api/imports/:type',
       health: '/health'
     }
   });
