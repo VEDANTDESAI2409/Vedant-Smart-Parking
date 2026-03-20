@@ -4,6 +4,20 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import Card from '../../components/Card';
 import { reportsAPI } from '../../services/api';
 
+const fallbackStats = {
+  totalSlots: 0,
+  occupiedSlots: 0,
+  pendingSlots: 0,
+  mostUsedSlotType: 'N/A',
+  mostBookedVehicleType: 'N/A',
+  activeBookings: 0,
+  totalUsers: 0,
+  totalRevenue: 0,
+  monthlyRevenue: [],
+  occupancyData: [],
+  bookingStatusData: [],
+};
+
 const Dashboard = () => {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -24,17 +38,19 @@ const Dashboard = () => {
     }
   };
 
+  const safeStats = stats || fallbackStats;
+
   // --- NEW FEATURE: CSV EXPORT ---
   const downloadCSVReport = () => {
     if (!stats) return;
     const reportData = [
       ['Metric', 'Value'],
-      ['Total Slots', stats.totalSlots],
-      ['Occupied Slots', stats.occupiedSlots],
-      ['Pending Slots', stats.pendingSlots],
-      ['Most Used Slot Type', stats.mostUsedSlotType],
-      ['Top Vehicle Type', stats.mostBookedVehicleType],
-      ['Total Revenue', stats.totalRevenue],
+      ['Total Slots', safeStats.totalSlots],
+      ['Occupied Slots', safeStats.occupiedSlots],
+      ['Pending Slots', safeStats.pendingSlots],
+      ['Most Used Slot Type', safeStats.mostUsedSlotType],
+      ['Top Vehicle Type', safeStats.mostBookedVehicleType],
+      ['Total Revenue', safeStats.totalRevenue],
     ];
     const csvContent = "data:text/csv;charset=utf-8," + reportData.map(e => e.join(",")).join("\n");
     const link = document.createElement("a");
@@ -47,14 +63,14 @@ const Dashboard = () => {
   const statCards = [
     {
       title: 'Total Parking Slots',
-      value: stats?.totalSlots ?? 'No data',
+      value: safeStats.totalSlots,
       icon: FaParking,
       color: 'text-blue-600',
       bgColor: 'bg-blue-100',
     },
     {
       title: 'Occupied Slots',
-      value: stats ? `${stats.occupiedSlots}/${stats.totalSlots}` : 'No data',
+      value: `${safeStats.occupiedSlots}/${safeStats.totalSlots}`,
       icon: FaParking,
       color: 'text-green-600',
       bgColor: 'bg-green-100',
@@ -62,21 +78,21 @@ const Dashboard = () => {
     // --- NEW STATS CARDS ---
     {
       title: 'Pending Slots',
-      value: stats?.pendingSlots ?? 'No data',
+      value: safeStats.pendingSlots ?? 0,
       icon: FaClock,
       color: 'text-yellow-600',
       bgColor: 'bg-yellow-100',
     },
     {
       title: 'Popular Slot Type',
-      value: stats?.mostUsedSlotType ?? 'No data',
+      value: safeStats.mostUsedSlotType,
       icon: FaStar,
       color: 'text-pink-600',
       bgColor: 'bg-pink-100',
     },
     {
       title: 'Top Vehicle Type',
-      value: stats?.mostBookedVehicleType ?? 'No data',
+      value: safeStats.mostBookedVehicleType,
       icon: FaCar,
       color: 'text-orange-600',
       bgColor: 'bg-orange-100',
@@ -84,21 +100,21 @@ const Dashboard = () => {
     // ----------------------
     {
       title: 'Active Bookings',
-      value: stats?.activeBookings ?? 'No data',
+      value: safeStats.activeBookings,
       icon: FaCalendarAlt,
       color: 'text-purple-600',
       bgColor: 'bg-purple-100',
     },
     {
       title: 'Total Users',
-      value: stats?.totalUsers ?? 'No data',
+      value: safeStats.totalUsers,
       icon: FaUsers,
       color: 'text-indigo-600',
       bgColor: 'bg-indigo-100',
     },
     {
       title: 'Total Revenue',
-      value: stats ? `$${stats.totalRevenue.toLocaleString()}` : 'No data',
+      value: `$${Number(safeStats.totalRevenue || 0).toLocaleString()}`,
       icon: FaCreditCard,
       color: 'text-red-600',
       bgColor: 'bg-red-100',
@@ -153,7 +169,7 @@ const Dashboard = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card title="Monthly Revenue" className="p-6">
           <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={stats.monthlyRevenue}>
+            <LineChart data={safeStats.monthlyRevenue}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="month" />
               <YAxis />
@@ -165,7 +181,7 @@ const Dashboard = () => {
 
         <Card title="Daily Occupancy Trend" className="p-6">
           <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={stats.occupancyData}>
+            <BarChart data={safeStats.occupancyData}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="time" />
               <YAxis />
@@ -181,7 +197,7 @@ const Dashboard = () => {
           <ResponsiveContainer width="100%" height={300}>
             <PieChart>
               <Pie
-                data={stats.bookingStatusData}
+                data={safeStats.bookingStatusData}
                 cx="50%"
                 cy="50%"
                 labelLine={false}
@@ -190,7 +206,7 @@ const Dashboard = () => {
                 fill="#8884d8"
                 dataKey="value"
               >
-                {stats.bookingStatusData.map((entry, index) => (
+                {safeStats.bookingStatusData.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={entry.color} />
                 ))}
               </Pie>
