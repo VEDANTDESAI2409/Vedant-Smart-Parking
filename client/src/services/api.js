@@ -30,17 +30,18 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
-      window.location.href = '/admin/login';
+      if (typeof window !== 'undefined') {
+        window.location.href = '/admin/login';
+      }
     }
     return Promise.reject(error);
   }
 );
 
 export const authAPI = {
-  login: (credentials) => api.post('/auth/login', credentials),
+  login: (credentials) => api.post('/auth/admin/login', credentials),
   logout: () => api.post('/auth/logout'),
   getProfile: () => api.get('/auth/profile'),
-  // --- ADDED THIS LINE ---
   updateAdminProfile: (data) => api.put('/auth/admin/profile', data),
 };
 
@@ -50,6 +51,9 @@ export const slotsAPI = {
   create: (data) => api.post('/slots', data),
   update: (id, data) => api.put(`/slots/${id}`, data),
   delete: (id) => api.delete(`/slots/${id}`),
+  getStats: (id) => api.get(`/slots/${id}/stats`),
+  scheduleMaintenance: (id, data) => api.post(`/slots/${id}/maintenance`, data),
+  getAvailable: (params) => api.get('/slots/available', { params }),
 };
 
 export const bookingsAPI = {
@@ -79,7 +83,9 @@ export const vehiclesAPI = {
 export const paymentsAPI = {
   getAll: (params) => api.get('/payments', { params }),
   getById: (id) => api.get(`/payments/${id}`),
-  process: (data) => api.post('/payments/process', data),
+  create: (data) => api.post('/payments', data),
+  update: (id, data) => api.put(`/payments/${id}`, data),
+  delete: (id) => api.delete(`/payments/${id}`),
 };
 
 export const reportsAPI = {
@@ -88,6 +94,7 @@ export const reportsAPI = {
   getOccupancyReport: (params) => api.get('/reports/occupancy', { params }),
 };
 
+// Location APIs
 export const citiesAPI = {
   getAll: (params) => api.get('/cities', { params }),
   getById: (id) => api.get(`/cities/${id}`),
