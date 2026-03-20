@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { FaPlus, FaEdit, FaTrash, FaSearch, FaMapMarkerAlt, FaCity, FaMailBulk } from 'react-icons/fa';
+import { FaPlus, FaEdit, FaTrash, FaSearch, FaMapMarkerAlt, FaCity, FaMailBulk, FaFileImport } from 'react-icons/fa';
 
 import Button from '../../components/Button';
 import Modal from '../../components/Modal';
 import Table from '../../components/Table';
+import DataImportModal from '../components/DataImportModal';
 import { areasAPI, citiesAPI, pincodesAPI } from '../../services/api';
 
 const initialFormData = {
@@ -22,8 +23,16 @@ const getCitiesFromResponse = (response) =>
 const getPincodesFromResponse = (response) =>
   response?.data?.data?.pincodes || response?.data?.pincodes || response?.data?.data || response?.data || [];
 
-const getCityName = (item) => item?.city || item?.cityId || '';
-const getPincodeValue = (item) => item?.pincode || item?.pincodeId || '';
+const getDisplayValue = (value) => {
+  if (typeof value === 'string' || typeof value === 'number') return String(value);
+  if (value && typeof value === 'object') {
+    return value.name || value.title || value.code || value._id || '';
+  }
+  return '';
+};
+
+const getCityName = (item) => getDisplayValue(item?.city || item?.cityId);
+const getPincodeValue = (item) => getDisplayValue(item?.pincode || item?.pincodeId);
 
 const AreaPage = () => {
   const [areas, setAreas] = useState([]);
@@ -31,6 +40,7 @@ const AreaPage = () => {
   const [pincodes, setPincodes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
+  const [importModalOpen, setImportModalOpen] = useState(false);
   const [editingArea, setEditingArea] = useState(null);
   const [formData, setFormData] = useState(initialFormData);
   const [submitting, setSubmitting] = useState(false);
@@ -235,6 +245,13 @@ const AreaPage = () => {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
+          <button
+            onClick={() => setImportModalOpen(true)}
+            className="flex items-center gap-2 px-5 py-3.5 bg-white dark:bg-[#1E293B] text-slate-700 dark:text-slate-200 rounded-2xl shadow-sm ring-1 ring-slate-200 dark:ring-slate-700 transition-all active:scale-95 font-bold text-sm"
+          >
+            <FaFileImport size={14} />
+            <span>Import CSV</span>
+          </button>
           <button 
             onClick={() => { setEditingArea(null); setFormData(initialFormData); setModalOpen(true); }}
             className="flex items-center gap-2 px-6 py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl shadow-lg shadow-blue-500/20 transition-all active:scale-95 font-bold text-sm"
@@ -327,6 +344,13 @@ const AreaPage = () => {
           </button>
         </form>
       </Modal>
+
+      <DataImportModal
+        isOpen={importModalOpen}
+        onClose={() => setImportModalOpen(false)}
+        onImported={fetchAreas}
+        type="area"
+      />
     </div>
   );
 };
