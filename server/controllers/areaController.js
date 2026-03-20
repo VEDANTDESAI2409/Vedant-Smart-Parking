@@ -1,4 +1,5 @@
 const asyncHandler = require('express-async-handler');
+const { validationResult } = require('express-validator');
 const Area = require('../models/Area');
 
 // @desc    Get all areas
@@ -36,14 +37,22 @@ const getArea = asyncHandler(async (req, res) => {
 // @route   POST /api/areas
 // @access  Private/Admin
 const createArea = asyncHandler(async (req, res) => {
-  const { name, status } = req.body;
-
-  if (!name) {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
     res.status(400);
-    throw new Error('Please provide area name');
+    throw new Error(errors.array().map((item) => item.msg).join(', '));
+  }
+
+  const { city, pincode, name, status } = req.body;
+
+  if (!city || !pincode || !name) {
+    res.status(400);
+    throw new Error('Please provide city, pincode, and area name');
   }
 
   const area = await Area.create({
+    city: String(city).trim(),
+    pincode: String(pincode).trim(),
     name: String(name).trim(),
     status: status !== undefined ? Boolean(status) : true,
   });
@@ -59,6 +68,12 @@ const createArea = asyncHandler(async (req, res) => {
 // @route   PUT /api/areas/:id
 // @access  Private/Admin
 const updateArea = asyncHandler(async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    res.status(400);
+    throw new Error(errors.array().map((item) => item.msg).join(', '));
+  }
+
   const area = await Area.findById(req.params.id);
 
   if (!area) {
@@ -66,8 +81,10 @@ const updateArea = asyncHandler(async (req, res) => {
     throw new Error('Area not found');
   }
 
-  const { name, status } = req.body;
+  const { city, pincode, name, status } = req.body;
 
+  area.city = city !== undefined ? String(city).trim() : area.city;
+  area.pincode = pincode !== undefined ? String(pincode).trim() : area.pincode;
   area.name = name !== undefined ? String(name).trim() : area.name;
   area.status = status !== undefined ? Boolean(status) : area.status;
 

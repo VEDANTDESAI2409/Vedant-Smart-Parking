@@ -54,7 +54,7 @@ const Bookings = () => {
 
     // Define Headers
     const headers = [
-      "User ID", "Date", "Customer Name", "Mobile", "Email", 
+      "Booking ID", "Date", "Customer Name", "Mobile", "Email", 
       "Vehicle Type", "Slot Type", "Slot Number", "Location", 
       "City", "Area", "Pincode", "Landmark", "Status", "Amount", "Payment"
     ];
@@ -95,7 +95,7 @@ const Bookings = () => {
 
   const columns = [
     { 
-      header: 'USER ID', 
+      header: 'BOOKING ID', 
       render: (row) => (
         <span className="bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 px-3 py-1 rounded-lg font-bold text-xs border border-blue-100 dark:border-blue-800">
           {row.customId}
