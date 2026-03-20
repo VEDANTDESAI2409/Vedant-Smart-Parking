@@ -12,64 +12,35 @@ const { protect, authorize } = require('../middleware/auth');
 
 const router = express.Router();
 
-// Validation rules
 const createLocationValidation = [
-  body('city')
-    .trim()
-    .isLength({ min: 1, max: 50 })
-    .withMessage('City is required'),
-  body('pincode')
-    .trim()
-    .matches(/^\d{6}$/)
-    .withMessage('Pincode must be exactly 6 digits'),
-  body('area')
-    .trim()
-    .isLength({ min: 1, max: 100 })
-    .withMessage('Area is required'),
+  body('cityId').isMongoId().withMessage('Valid cityId is required'),
+  body('pincodeId').isMongoId().withMessage('Valid pincodeId is required'),
+  body('areaId').isMongoId().withMessage('Valid areaId is required'),
   body('name')
     .trim()
     .isLength({ min: 1, max: 100 })
     .withMessage('Location name must be between 1 and 100 characters'),
-  body('status')
-    .optional()
-    .isBoolean()
-    .withMessage('Status must be a boolean')
+  body('lat').isFloat().withMessage('Latitude must be a valid number'),
+  body('lng').isFloat().withMessage('Longitude must be a valid number'),
+  body('status').optional().isBoolean().withMessage('Status must be a boolean'),
 ];
 
 const updateLocationValidation = [
-  body('city')
-    .optional()
-    .trim()
-    .isLength({ min: 1, max: 50 })
-    .withMessage('City is required'),
-  body('pincode')
-    .optional()
-    .trim()
-    .matches(/^\d{6}$/)
-    .withMessage('Pincode must be exactly 6 digits'),
-  body('area')
-    .optional()
-    .trim()
-    .isLength({ min: 1, max: 100 })
-    .withMessage('Area is required'),
+  body('cityId').optional().isMongoId().withMessage('Valid cityId is required'),
+  body('pincodeId').optional().isMongoId().withMessage('Valid pincodeId is required'),
+  body('areaId').optional().isMongoId().withMessage('Valid areaId is required'),
   body('name')
     .optional()
     .trim()
     .isLength({ min: 1, max: 100 })
     .withMessage('Location name must be between 1 and 100 characters'),
-  body('status')
-    .optional()
-    .isBoolean()
-    .withMessage('Status must be a boolean')
+  body('lat').optional().isFloat().withMessage('Latitude must be a valid number'),
+  body('lng').optional().isFloat().withMessage('Longitude must be a valid number'),
+  body('status').optional().isBoolean().withMessage('Status must be a boolean'),
 ];
 
-const locationIdValidation = [
-  param('id')
-    .isMongoId()
-    .withMessage('Invalid location ID')
-];
+const locationIdValidation = [param('id').isMongoId().withMessage('Invalid location ID')];
 
-// All routes require authentication and admin access
 router.use(protect);
 router.use(authorize('admin', 'superadmin'));
 

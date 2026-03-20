@@ -1,26 +1,23 @@
-import React, { useState, useEffect } from 'react';
-import { FaPlus, FaEdit, FaTrash } from 'react-icons/fa';
+import React, { useEffect, useState } from 'react';
+import { FaEdit, FaFileImport, FaPlus, FaTrash } from 'react-icons/fa';
 
 import Button from '../../components/Button';
 import Modal from '../../components/Modal';
 import Table from '../../components/Table';
 import Card from '../../components/Card';
+import DataImportModal from '../components/DataImportModal';
 import { citiesAPI } from '../../services/api';
+
+const initialFormData = { name: '', state: '', status: true };
 
 const CityPage = () => {
   const [cities, setCities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
+  const [importModalOpen, setImportModalOpen] = useState(false);
   const [editingCity, setEditingCity] = useState(null);
-  const [formData, setFormData] = useState({ name: '', status: true });
+  const [formData, setFormData] = useState(initialFormData);
   const [submitting, setSubmitting] = useState(false);
-
-  const handleInputChange = (field, value) => {
-    setFormData((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
-  };
 
   useEffect(() => {
     fetchCities();
@@ -30,9 +27,7 @@ const CityPage = () => {
     try {
       setLoading(true);
       const response = await citiesAPI.getAll();
-      // Ensure we are grabbing the array correctly from your API structure
-      const list = response?.data?.data?.cities || [];
-      setCities(list);
+      setCities(response?.data?.data?.cities || []);
     } catch (error) {
       console.error('Error fetching cities:', error);
       setCities([]);
@@ -43,39 +38,37 @@ const CityPage = () => {
 
   const resetForm = () => {
     setEditingCity(null);
-    setFormData({ name: '', status: true });
+    setFormData(initialFormData);
   };
 
-  const openCreateModal = () => {
-    resetForm();
-    setModalOpen(true);
+  const handleInputChange = (field, value) => {
+    setFormData((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
   };
 
   const handleEdit = (city) => {
     setEditingCity(city);
     setFormData({
       name: city.name || '',
+      state: city.state || '',
       status: city.status ?? true,
     });
     setModalOpen(true);
   };
 
-  const validateForm = () => {
-    if (!formData.name.trim()) return 'City name is required';
-    return null;
-  };
+  const handleSubmit = async (event) => {
+    event.preventDefault();
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    const validationError = validateForm();
-    if (validationError) {
-      alert(validationError);
+    if (!formData.name.trim() || !formData.state.trim()) {
+      alert('City name and state are required');
       return;
     }
 
     const payload = {
       name: formData.name.trim(),
+      state: formData.state.trim(),
       status: formData.status,
     };
 
@@ -83,7 +76,6 @@ const CityPage = () => {
       setSubmitting(true);
 
       if (editingCity) {
-        // Use the internal MongoDB _id for the API request
         await citiesAPI.update(editingCity._id, payload);
       } else {
         await citiesAPI.create(payload);
@@ -95,7 +87,6 @@ const CityPage = () => {
       alert(editingCity ? 'City updated successfully' : 'City created successfully');
     } catch (error) {
       console.error('Error saving city:', error);
-      // If you still see the "null" error, you MUST delete the duplicate record in your Database
       alert(error?.response?.data?.message || 'Failed to save city');
     } finally {
       setSubmitting(false);
@@ -103,7 +94,9 @@ const CityPage = () => {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this city?')) return;
+    if (!window.confirm('Are you sure you want to delete this city?')) {
+      return;
+    }
 
     try {
       await citiesAPI.delete(id);
@@ -115,15 +108,15 @@ const CityPage = () => {
     }
   };
 
-  // --- UPDATED COLUMNS SECTION ---
   const columns = [
     { header: 'NAME', key: 'name', render: (row) => <span className="capitalize">{row.name}</span> },
+    { header: 'STATE', key: 'state', render: (row) => <span className="capitalize">{row.state}</span> },
     {
       header: 'STATUS',
       key: 'status',
       render: (row) => (
         <span
-          className={`px-3 py-1 text-xs rounded-full font-semibold capitalize ${
+          className={`px-3 py-1 text-xs rounded-full font-semibold ${
             row.status
               ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
               : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
@@ -138,18 +131,10 @@ const CityPage = () => {
       key: 'actions',
       render: (row) => (
         <div className="flex space-x-2">
-          <button
-            onClick={() => handleEdit(row)}
-            className="p-2 text-blue-600 hover:bg-blue-100 rounded-md transition-all"
-            title="Edit"
-          >
+          <button onClick={() => handleEdit(row)} className="p-2 text-blue-600 hover:bg-blue-100 rounded-md" title="Edit">
             <FaEdit />
           </button>
-          <button
-            onClick={() => handleDelete(row._id)} // Always use _id for the database query
-            className="p-2 text-red-600 hover:bg-red-100 rounded-md transition-all"
-            title="Delete"
-          >
+          <button onClick={() => handleDelete(row._id)} className="p-2 text-red-600 hover:bg-red-100 rounded-md" title="Delete">
             <FaTrash />
           </button>
         </div>
@@ -159,16 +144,27 @@ const CityPage = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold">City Management</h1>
-          <p className="text-sm text-gray-500 mt-1">Create, update, and delete cities.</p>
+          <p className="text-sm text-gray-500 mt-1">Create cities one by one or import them from CSV.</p>
         </div>
 
-        <Button onClick={openCreateModal}>
-          <FaPlus className="mr-2" />
-          Add City
-        </Button>
+        <div className="flex gap-3">
+          <Button variant="outline" onClick={() => setImportModalOpen(true)}>
+            <FaFileImport className="mr-2" />
+            Import CSV
+          </Button>
+          <Button
+            onClick={() => {
+              resetForm();
+              setModalOpen(true);
+            }}
+          >
+            <FaPlus className="mr-2" />
+            Add City
+          </Button>
+        </div>
       </div>
 
       <Card>
@@ -187,15 +183,25 @@ const CityPage = () => {
       >
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-              City Name
-            </label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">City Name</label>
             <input
               type="text"
               value={formData.name}
               onChange={(e) => handleInputChange('name', e.target.value)}
-              className="mt-1 w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="mt-1 w-full rounded-lg border px-3 py-2 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
               placeholder="e.g. Surat"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">State</label>
+            <input
+              type="text"
+              value={formData.state}
+              onChange={(e) => handleInputChange('state', e.target.value)}
+              className="mt-1 w-full rounded-lg border px-3 py-2 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+              placeholder="e.g. Gujarat"
               required
             />
           </div>
@@ -203,17 +209,17 @@ const CityPage = () => {
           <div className="flex items-center space-x-2">
             <input
               type="checkbox"
-              id="status"
+              id="city-status"
               checked={formData.status}
               onChange={(e) => handleInputChange('status', e.target.checked)}
-              className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600 cursor-pointer"
+              className="h-4 w-4 rounded border-gray-300"
             />
-            <label htmlFor="status" className="text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer">
+            <label htmlFor="city-status" className="text-sm font-medium text-gray-700 dark:text-gray-300">
               Active
             </label>
           </div>
 
-          <div className="flex justify-end space-x-3 mt-6">
+          <div className="flex justify-end space-x-3">
             <Button
               type="button"
               variant="secondary"
@@ -231,6 +237,13 @@ const CityPage = () => {
           </div>
         </form>
       </Modal>
+
+      <DataImportModal
+        isOpen={importModalOpen}
+        onClose={() => setImportModalOpen(false)}
+        onImported={fetchCities}
+        type="city"
+      />
     </div>
   );
 };
