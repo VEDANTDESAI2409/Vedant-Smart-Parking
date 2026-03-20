@@ -88,4 +88,40 @@ export const reportsAPI = {
   getOccupancyReport: (params) => api.get('/reports/occupancy', { params }),
 };
 
+export const citiesAPI = {
+  getAll: (params) => api.get('/cities', { params }),
+  getById: (id) => api.get(`/cities/${id}`),
+  create: (data) => api.post('/cities', data),
+  update: (id, data) => api.put(`/cities/${id}`, data),
+  delete: (id) => api.delete(`/cities/${id}`),
+};
+
+export const pincodesAPI = {
+  getAll: (params) => api.get('/pincodes', { params }),
+  getById: (id) => api.get(`/pincodes/${id}`),
+  create: (data) => api.post('/pincodes', data),
+  update: (id, data) => api.put(`/pincodes/${id}`, data),
+  delete: (id) => api.delete(`/pincodes/${id}`),
+};
+
+export const areasAPI = {
+  getAll: (params) => api.get('/areas', { params }),
+  getById: (id) => api.get(`/areas/${id}`),
+  create: (data) => api.post('/areas', data),
+  update: (id, data) => api.put(`/areas/${id}`, data),
+  delete: (id) => api.delete(`/areas/${id}`),
+};
+
+export const locationsAPI = {
+  getAll: (params) => api.get('/locations', { params }),
+  getById: (id) => api.get(`/locations/${id}`),
+  create: (data) => api.post('/locations', data),
+  update: (id, data) => api.put(`/locations/${id}`, data),
+  delete: (id) => api.delete(`/locations/${id}`),
+};
+
+export const importsAPI = {
+  import: (type, data) => api.post(`/imports/${type}`, data),
+};
+
 export default api;
