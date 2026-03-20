@@ -22,8 +22,9 @@ const getCitiesFromResponse = (response) =>
 const getPincodesFromResponse = (response) =>
   response?.data?.data?.pincodes || response?.data?.pincodes || response?.data?.data || response?.data || [];
 
-const getCityName = (item) => item?.city || item?.cityId || '';
-const getPincodeValue = (item) => item?.pincode || item?.pincodeId || '';
+const getCityName = (item) => item?.cityId?.name || item?.city?.name || item?.city || item?.name || '';
+const getPincodeValue = (item) =>
+  item?.pincodeId?.pincode || item?.pincode?.pincode || item?.pincode || item?.name || '';
 
 const AreaPage = () => {
   const [areas, setAreas] = useState([]);
@@ -88,7 +89,7 @@ const AreaPage = () => {
     if (!lowerSearch) return areas;
     return areas.filter(a => 
       a.name?.toLowerCase().includes(lowerSearch) || 
-      getCityName(a)?.toLowerCase().includes(lowerSearch) ||
+      String(getCityName(a) || '').toLowerCase().includes(lowerSearch) ||
       getPincodeValue(a)?.toString().includes(lowerSearch)
     );
   }, [areas, searchTerm]);
@@ -285,7 +286,11 @@ const AreaPage = () => {
                 required
               >
                 <option value="">Pincode</option>
-                {filteredPincodes.map((p) => <option key={p._id} value={p.name}>{p.name}</option>)}
+                {filteredPincodes.map((p) => (
+                  <option key={p._id} value={getPincodeValue(p)}>
+                    {getPincodeValue(p)}
+                  </option>
+                ))}
               </select>
             </div>
           </div>

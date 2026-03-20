@@ -20,9 +20,10 @@ const getCitiesFromResponse = (response) => response?.data?.data?.cities || resp
 const getPincodesFromResponse = (response) => response?.data?.data?.pincodes || response?.data?.pincodes || response?.data?.data || response?.data || [];
 const getAreasFromResponse = (response) => response?.data?.data?.areas || response?.data?.areas || response?.data?.data || response?.data || [];
 
-const getCityName = (item) => item?.city || item?.cityId || '';
-const getPincodeValue = (item) => item?.pincode || item?.pincodeId || '';
-const getAreaValue = (item) => item?.area || item?.areaId || '';
+const getCityName = (item) => item?.cityId?.name || item?.city?.name || item?.city || item?.name || '';
+const getPincodeValue = (item) =>
+  item?.pincodeId?.pincode || item?.pincode?.pincode || item?.pincode || item?.name || '';
+const getAreaValue = (item) => item?.areaId?.name || item?.area?.name || item?.area || item?.name || '';
 
 const LocationPage = () => {
   const [locations, setLocations] = useState([]);
@@ -82,8 +83,8 @@ const LocationPage = () => {
     if (!lowerSearch) return locations;
     return locations.filter(l => 
       l.name?.toLowerCase().includes(lowerSearch) || 
-      getCityName(l)?.toLowerCase().includes(lowerSearch) ||
-      getAreaValue(l)?.toLowerCase().includes(lowerSearch)
+      String(getCityName(l) || '').toLowerCase().includes(lowerSearch) ||
+      String(getAreaValue(l) || '').toLowerCase().includes(lowerSearch)
     );
   }, [locations, searchTerm]);
 
@@ -266,7 +267,11 @@ const LocationPage = () => {
                 required
               >
                 <option value="">Pincode</option>
-                {filteredPincodes.map((p) => <option key={p._id} value={p.name}>{p.name}</option>)}
+                {filteredPincodes.map((p) => (
+                  <option key={p._id} value={getPincodeValue(p)}>
+                    {getPincodeValue(p)}
+                  </option>
+                ))}
               </select>
             </div>
           </div>
@@ -281,7 +286,11 @@ const LocationPage = () => {
               required
             >
               <option value="">Select Area</option>
-              {filteredAreas.map((a) => <option key={a._id} value={a.name}>{a.name}</option>)}
+              {filteredAreas.map((a) => (
+                <option key={a._id} value={getAreaValue(a)}>
+                  {getAreaValue(a)}
+                </option>
+              ))}
             </select>
           </div>
 
