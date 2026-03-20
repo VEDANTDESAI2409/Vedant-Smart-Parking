@@ -36,7 +36,7 @@ const parkingSlotSchema = new mongoose.Schema(
     slotType: {
       type: String,
       required: true,
-      enum: ['normal', 'vip', 'reserved'],
+      enum: ['normal', 'ev', 'disabled'],
     },
     slotLocation: {
       type: String,
