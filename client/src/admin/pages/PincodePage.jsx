@@ -1,37 +1,21 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { FaPlus, FaEdit, FaTrash, FaSearch, FaMapMarkerAlt, FaCity, FaFileImport } from 'react-icons/fa';
+import React, { useEffect, useState } from 'react';
+import { FaEdit, FaFileImport, FaPlus, FaTrash } from 'react-icons/fa';
+import Swal from 'sweetalert2';
 
 import Button from '../../components/Button';
 import Modal from '../../components/Modal';
 import Table from '../../components/Table';
+import Card from '../../components/Card';
 import DataImportModal from '../components/DataImportModal';
 import { citiesAPI, pincodesAPI } from '../../services/api';
+import { showError, showSuccess, showWarning } from '../../utils/toastService';
 
-const initialFormData = { city: '', name: '', status: true };
+const initialFormData = { cityId: '', pincode: '', status: true };
 
-const getPincodesFromResponse = (response) =>
-  response?.data?.data?.pincodes ||
-  response?.data?.pincodes ||
-  response?.data?.data ||
-  response?.data ||
-  [];
-
-const getCitiesFromResponse = (response) =>
-  response?.data?.data?.cities ||
-  response?.data?.cities ||
-  response?.data?.data ||
-  response?.data ||
-  [];
-
-const getDisplayValue = (value) => {
-  if (typeof value === 'string' || typeof value === 'number') return String(value);
-  if (value && typeof value === 'object') {
-    return value.name || value.title || value.code || value._id || '';
-  }
-  return '';
-};
-
-const getCityName = (item) => getDisplayValue(item?.city || item?.cityId);
+const getCitiesFromResponse = (response) => response?.data?.data?.cities || [];
+const getPincodesFromResponse = (response) => response?.data?.data?.pincodes || [];
+const getCityId = (item) => item?.cityId?._id || item?.cityId || '';
+const getCityName = (item) => item?.cityId?.name || 'N/A';
 
 const PincodePage = () => {
   const [pincodes, setPincodes] = useState([]);
@@ -42,26 +26,27 @@ const PincodePage = () => {
   const [editingPincode, setEditingPincode] = useState(null);
   const [formData, setFormData] = useState(initialFormData);
   const [submitting, setSubmitting] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
-
-  const handleInputChange = (field, value) => {
-    setFormData((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
-  };
 
   useEffect(() => {
-    fetchPincodes();
     fetchCities();
+    fetchPincodes();
   }, []);
+
+  const fetchCities = async () => {
+    try {
+      const response = await citiesAPI.getAll();
+      setCities(getCitiesFromResponse(response));
+    } catch (error) {
+      console.error('Error fetching cities:', error);
+      setCities([]);
+    }
+  };
 
   const fetchPincodes = async () => {
     try {
       setLoading(true);
       const response = await pincodesAPI.getAll();
-      const list = getPincodesFromResponse(response);
-      setPincodes(Array.isArray(list) ? list : []);
+      setPincodes(getPincodesFromResponse(response));
     } catch (error) {
       console.error('Error fetching pincodes:', error);
       setPincodes([]);
@@ -70,245 +55,238 @@ const PincodePage = () => {
     }
   };
 
-  const fetchCities = async () => {
-    try {
-      const response = await citiesAPI.getAll();
-      const list = getCitiesFromResponse(response);
-      setCities(Array.isArray(list) ? list : []);
-    } catch (error) {
-      console.error('Error fetching cities:', error);
-      setCities([]);
-    }
+  const resetForm = () => {
+    setEditingPincode(null);
+    setFormData(initialFormData);
   };
 
-  const filteredPincodes = useMemo(() => {
-    const lowerSearch = searchTerm.toLowerCase().trim();
-    if (!lowerSearch) return pincodes;
-    return pincodes.filter(p => 
-      p.name?.toLowerCase().includes(lowerSearch) || 
-      getCityName(p)?.toLowerCase().includes(lowerSearch)
-    );
-  }, [pincodes, searchTerm]);
-
-  const togglePincodeStatus = async (pincode) => {
-    try {
-      const newStatus = !pincode.status;
-      await pincodesAPI.update(pincode._id, { ...pincode, status: newStatus });
-      setPincodes(prev => prev.map(p => p._id === pincode._id ? { ...p, status: newStatus } : p));
-    } catch (error) {
-      alert("Failed to update status");
-    }
+  const handleInputChange = (field, value) => {
+    setFormData((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!formData.city) return alert('City is required');
-    if (!/^\d{6}$/.test(formData.name.trim())) return alert('Pincode must be 6 digits');
+  const handleEdit = (item) => {
+    setEditingPincode(item);
+    setFormData({
+      cityId: getCityId(item),
+      pincode: item.pincode || '',
+      status: item.status ?? true,
+    });
+    setModalOpen(true);
+  };
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+
+    if (!formData.cityId) {
+      showWarning('City is required');
+      return;
+    }
+
+    if (!/^\d{6}$/.test(formData.pincode.trim())) {
+      showWarning('Pincode must be exactly 6 digits');
+      return;
+    }
 
     const payload = {
-      city: formData.city,
-      name: formData.name.trim(),
+      cityId: formData.cityId,
+      pincode: formData.pincode.trim(),
       status: formData.status,
     };
 
     try {
       setSubmitting(true);
+
       if (editingPincode) {
         await pincodesAPI.update(editingPincode._id, payload);
       } else {
         await pincodesAPI.create(payload);
       }
+
       await fetchPincodes();
       setModalOpen(false);
-      setEditingPincode(null);
-      setFormData(initialFormData);
+      resetForm();
+      showSuccess(editingPincode ? 'Pincode updated successfully' : 'Pincode created successfully');
     } catch (error) {
-      alert(error?.response?.data?.message || 'Failed to save pincode');
+      console.error('Error saving pincode:', error);
+      showError(error?.response?.data?.message || 'Failed to save pincode');
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Delete this pincode?')) return;
+    const result = await Swal.fire({
+      title: 'Delete Pincode?',
+      text: 'This pincode will be removed from the system.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, Delete',
+      cancelButtonText: 'Cancel',
+      confirmButtonColor: '#dc2626',
+      cancelButtonColor: '#64748b',
+      background: '#ffffff',
+      color: '#0f172a',
+      borderRadius: '12px',
+    });
+
+    if (!result.isConfirmed) {
+      return;
+    }
+
     try {
       await pincodesAPI.delete(id);
       await fetchPincodes();
+      showSuccess('Pincode deleted successfully');
     } catch (error) {
-      alert('Failed to delete pincode');
+      console.error('Delete error:', error);
+      showError(error?.response?.data?.message || 'Failed to delete pincode');
     }
   };
 
   const columns = [
-    { 
-      header: 'PINCODE', 
+    { header: 'CITY', key: 'cityId', render: (row) => <span className="capitalize">{getCityName(row)}</span> },
+    { header: 'PINCODE', key: 'pincode' },
+    {
+      header: 'STATUS',
+      key: 'status',
       render: (row) => (
-        <div className="flex items-center gap-3">
-            <div className="p-2 bg-slate-100 dark:bg-slate-800 rounded-lg text-slate-500">
-                <FaMapMarkerAlt size={14} />
-            </div>
-            <span className="font-bold text-gray-800 dark:text-gray-100 text-sm tracking-widest font-mono">{row.name}</span> 
-        </div>
-      )
-    },
-    { 
-      header: 'CITY', 
-      render: (row) => (
-        <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 font-medium capitalize text-sm">
-            <FaCity size={12} className="opacity-70 text-blue-500" />
-            {getCityName(row) || 'N/A'}
-        </div>
-      )
-    },
-    { 
-      header: 'STATUS', 
-      render: (row) => (
-        <button
-          type="button"
-          onClick={() => togglePincodeStatus(row)}
-          className={`inline-flex items-center gap-3 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
+        <span
+          className={`px-3 py-1 text-xs rounded-full font-semibold ${
             row.status
               ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
               : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
           }`}
         >
-          <span className={`relative inline-flex h-5 w-9 items-center rounded-full ${row.status ? 'bg-green-600' : 'bg-gray-400 dark:bg-gray-600'}`}>
-            <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${row.status ? 'translate-x-5' : 'translate-x-0.5'}`} />
-          </span>
           {row.status ? 'Active' : 'Inactive'}
-        </button>
-      ) 
+        </span>
+      ),
     },
-    { 
-      header: 'ACTION', 
+    {
+      header: 'ACTIONS',
+      key: 'actions',
       render: (row) => (
-        <div className="flex items-center gap-2">
-            <button onClick={() => {
-                setEditingPincode(row);
-                setFormData({ city: getCityName(row), name: row.name, status: row.status });
-                setModalOpen(true);
-            }} className="text-blue-500 hover:text-blue-700 transition-colors p-2 bg-blue-50 dark:bg-blue-900/10 rounded-lg group">
-                <FaEdit size={14} className="group-active:scale-90 transition-transform" />
-            </button>
-            <button onClick={() => handleDelete(row._id)} className="text-red-500 hover:text-red-700 transition-colors p-2 bg-red-50 dark:bg-red-900/10 rounded-lg group">
-                <FaTrash size={14} className="group-active:scale-90 transition-transform" />
-            </button>
+        <div className="flex space-x-2">
+          <button onClick={() => handleEdit(row)} className="p-2 text-blue-600 hover:bg-blue-100 rounded-md" title="Edit">
+            <FaEdit />
+          </button>
+          <button onClick={() => handleDelete(row._id)} className="p-2 text-red-600 hover:bg-red-100 rounded-md" title="Delete">
+            <FaTrash />
+          </button>
         </div>
-      ) 
+      ),
     },
   ];
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#0F172A] p-6 lg:p-10 font-sans transition-colors duration-300">
-      
-      {/* Header with Search and Add Button */}
-      <div className="flex flex-col md:flex-row justify-between items-end mb-8 gap-6">
+    <div className="space-y-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tight">Pincode Management</h1>
-          <p className="text-slate-500 dark:text-slate-400 font-medium mt-2">Manage postal codes and service regions</p>
+          <h1 className="text-2xl font-bold">Pincode Management</h1>
+          <p className="text-sm text-gray-500 mt-1">Create pincodes manually or bulk import them for a city.</p>
         </div>
-        
-        <div className="flex items-center gap-4 w-full md:w-auto">
-          <div className="relative flex-grow md:w-80 group">
-            <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
-            <input 
-              type="text" 
-              value={searchTerm}
-              placeholder="Search pincode or city..." 
-              className="w-full pl-12 pr-4 py-3 bg-white dark:bg-[#1E293B] border-none shadow-sm ring-1 ring-slate-200 dark:ring-slate-700 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none text-sm dark:text-white transition-all font-medium"
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-          <button
-            onClick={() => setImportModalOpen(true)}
-            className="flex items-center gap-2 px-5 py-3.5 bg-white dark:bg-[#1E293B] text-slate-700 dark:text-slate-200 rounded-2xl shadow-sm ring-1 ring-slate-200 dark:ring-slate-700 transition-all active:scale-95 font-bold text-sm"
+
+        <div className="flex gap-3">
+          <Button variant="outline" onClick={() => setImportModalOpen(true)}>
+            <FaFileImport className="mr-2" />
+            Import CSV
+          </Button>
+          <Button
+            onClick={() => {
+              resetForm();
+              setModalOpen(true);
+            }}
           >
-            <FaFileImport size={14} />
-            <span>Import CSV</span>
-          </button>
-          <button 
-            onClick={() => { setEditingPincode(null); setFormData(initialFormData); setModalOpen(true); }}
-            className="flex items-center gap-2 px-6 py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl shadow-lg shadow-blue-500/20 transition-all active:scale-95 font-bold text-sm"
-          >
-            <FaPlus size={14} />
-            <span>Add Pincode</span>
-          </button>
+            <FaPlus className="mr-2" />
+            Add Pincode
+          </Button>
         </div>
       </div>
 
-      {/* Table Section */}
-      <div className="bg-white dark:bg-[#1E293B] rounded-[2.5rem] shadow-xl dark:shadow-none overflow-hidden border border-slate-100 dark:border-slate-800">
-        <Table columns={columns} data={filteredPincodes} loading={loading} />
-        
-        {!loading && filteredPincodes.length === 0 && (
-          <div className="py-20 text-center">
-            <p className="text-slate-400 dark:text-slate-500 font-medium">No results found for your search.</p>
-          </div>
-        )}
-      </div>
+      <Card>
+        <Table columns={columns} data={pincodes} loading={loading} emptyMessage="No pincodes found" />
+      </Card>
 
-      {/* Modal Form */}
       <Modal
         isOpen={modalOpen}
-        onClose={() => !submitting && setModalOpen(false)}
-        title={editingPincode ? 'Update Pincode' : 'Create New Pincode'}
+        onClose={() => {
+          if (!submitting) {
+            setModalOpen(false);
+            resetForm();
+          }
+        }}
+        title={editingPincode ? 'Edit Pincode' : 'Add Pincode'}
       >
-        <form onSubmit={handleSubmit} className="space-y-6 pt-2">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-2 ml-1">
-              Select City
-            </label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">City</label>
             <select
-              value={formData.city}
-              onChange={(e) => handleInputChange('city', e.target.value)}
-              className="w-full px-4 py-4 bg-slate-50 dark:bg-slate-900/50 border-none ring-1 ring-slate-200 dark:ring-slate-700 rounded-2xl outline-none text-sm dark:text-white transition-all font-bold cursor-pointer"
+              value={formData.cityId}
+              onChange={(e) => handleInputChange('cityId', e.target.value)}
+              className="mt-1 w-full rounded-lg border px-3 py-2 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
               required
             >
-              <option value="">Choose a city</option>
+              <option value="">Select a city</option>
               {cities.map((city) => (
-                <option key={city._id || city.name} value={city.name}>{city.name}</option>
+                <option key={city._id} value={city._id}>
+                  {city.name} ({city.state})
+                </option>
               ))}
             </select>
           </div>
 
           <div>
-            <label className="block text-xs font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-2 ml-1">
-              Pincode (6-Digits)
-            </label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Pincode</label>
             <input
               type="text"
-              maxLength="6"
-              value={formData.name}
-              onChange={(e) => handleInputChange('name', e.target.value.replace(/\D/g, ''))}
-              className="w-full px-4 py-4 bg-slate-50 dark:bg-slate-900/50 border-none ring-1 ring-slate-200 dark:ring-slate-700 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none text-sm dark:text-white transition-all font-bold"
-              placeholder="e.g. 395001"
+              value={formData.pincode}
+              onChange={(e) => handleInputChange('pincode', e.target.value)}
+              className="mt-1 w-full rounded-lg border px-3 py-2 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+              placeholder="e.g. 395007"
               required
             />
           </div>
 
-          <div className="flex items-center justify-between p-5 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-800">
+          <div className="flex items-center justify-between rounded-lg border border-gray-200 dark:border-gray-600 px-4 py-3">
             <div>
-              <span className="block text-sm font-bold text-slate-700 dark:text-slate-200">Active Status</span>
-              <span className="block text-xs text-slate-500">Should this be visible to users?</span>
+              <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Status</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">{formData.status ? 'Active' : 'Inactive'}</p>
             </div>
-            <button 
-                type="button"
-                onClick={() => handleInputChange('status', !formData.status)}
-                className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors focus:outline-none ${
-                    formData.status ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-700'
-                }`}
+            <button
+              type="button"
+              role="switch"
+              aria-checked={formData.status}
+              onClick={() => handleInputChange('status', !formData.status)}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                formData.status ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-600'
+              }`}
             >
-                <span className={`${formData.status ? 'translate-x-6' : 'translate-x-1'} inline-block h-5 w-5 transform rounded-full bg-white transition-transform shadow-md`} />
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                  formData.status ? 'translate-x-6' : 'translate-x-1'
+                }`}
+              />
             </button>
           </div>
 
-          <button 
-              type="submit" 
+          <div className="flex justify-end space-x-3">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => {
+                setModalOpen(false);
+                resetForm();
+              }}
               disabled={submitting}
-              className="w-full py-4 bg-slate-900 dark:bg-blue-600 text-white rounded-2xl font-bold text-sm shadow-lg hover:opacity-90 transition-all active:scale-95 disabled:opacity-50"
-          >
-            {submitting ? 'Processing...' : editingPincode ? 'Save Changes' : 'Add Pincode'}
-          </button>
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={submitting}>
+              {submitting ? 'Saving...' : editingPincode ? 'Update' : 'Create'}
+            </Button>
+          </div>
         </form>
       </Modal>
 
