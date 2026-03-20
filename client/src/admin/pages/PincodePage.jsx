@@ -22,7 +22,7 @@ const getCitiesFromResponse = (response) =>
   response?.data ||
   [];
 
-const getCityName = (item) => item?.city || item?.cityId || '';
+const getCityName = (item) => item?.cityId?.name || item?.city?.name || item?.city || item?.name || '';
 
 const PincodePage = () => {
   const [pincodes, setPincodes] = useState([]);
@@ -76,7 +76,7 @@ const PincodePage = () => {
     if (!lowerSearch) return pincodes;
     return pincodes.filter(p => 
       p.name?.toLowerCase().includes(lowerSearch) || 
-      getCityName(p)?.toLowerCase().includes(lowerSearch)
+      String(getCityName(p) || '').toLowerCase().includes(lowerSearch)
     );
   }, [pincodes, searchTerm]);
 
