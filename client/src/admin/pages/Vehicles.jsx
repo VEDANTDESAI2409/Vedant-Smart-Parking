@@ -45,8 +45,6 @@ const Vehicles = () => {
         registrationExpiry: formData.registrationExpiry
       };
       
-      console.log("Sending Payload:", payload); // Debugging line
-
       let response;
       if (editingId) {
         response = await vehiclesAPI.update(editingId, payload);
