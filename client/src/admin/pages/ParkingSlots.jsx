@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { FaEdit, FaPlus, FaTrash } from 'react-icons/fa';
+import Swal from 'sweetalert2';
 
 import Button from '../../components/Button';
 import Card from '../../components/Card';
@@ -12,6 +13,7 @@ import {
   pincodesAPI,
   slotsAPI,
 } from '../../services/api';
+import { showError, showSuccess, showWarning } from '../../utils/toastService';
 
 const getCollection = (response, key) =>
   response?.data?.data?.[key] ||
@@ -277,7 +279,7 @@ const ParkingSlots = () => {
 
     const validationError = validateForm();
     if (validationError) {
-      alert(validationError);
+      showWarning(validationError);
       return;
     }
 
@@ -287,7 +289,7 @@ const ParkingSlots = () => {
     const selectedLocation = locations.find((item) => item._id === locationId);
 
     if (!selectedCity || !selectedPincode || !selectedArea || !selectedLocation) {
-      alert('Please reselect city, pincode, area, and location');
+      showWarning('Please reselect city, pincode, area, and location');
       return;
     }
 
@@ -315,30 +317,44 @@ const ParkingSlots = () => {
       await fetchSlots();
       setModalOpen(false);
       resetForm();
-      alert(editingSlot ? 'Slot updated successfully' : 'Slot created successfully');
+      showSuccess(editingSlot ? 'Slot updated successfully' : 'Slot created successfully');
     } catch (error) {
       console.error('Error saving slot:', error);
       const serverErrors = error?.response?.data?.errors;
       if (Array.isArray(serverErrors) && serverErrors.length > 0) {
-        alert(serverErrors.map((item) => item.msg).join('\n'));
+        showError(serverErrors.map((item) => item.msg).join(', '));
         return;
       }
-      alert(error?.response?.data?.message || 'Failed to save slot');
+      showError(error?.response?.data?.message || 'Failed to save slot');
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Delete this slot?')) return;
+    const result = await Swal.fire({
+      title: 'Delete Slot?',
+      text: 'This parking slot will be removed from the system.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, Delete',
+      cancelButtonText: 'Cancel',
+      confirmButtonColor: '#dc2626',
+      cancelButtonColor: '#64748b',
+      background: '#ffffff',
+      color: '#0f172a',
+      borderRadius: '12px',
+    });
+
+    if (!result.isConfirmed) return;
 
     try {
       await slotsAPI.delete(id);
       await fetchSlots();
-      alert('Slot deleted successfully');
+      showSuccess('Slot deleted successfully');
     } catch (error) {
       console.error('Delete error:', error);
-      alert(error?.response?.data?.message || 'Failed to delete slot');
+      showError(error?.response?.data?.message || 'Failed to delete slot');
     }
   };
 
