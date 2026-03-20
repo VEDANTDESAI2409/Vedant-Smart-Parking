@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { FaPlus, FaEdit, FaTrash, FaCar, FaMotorcycle, FaTruck, FaTimes, FaSearch } from 'react-icons/fa';
+import Swal from 'sweetalert2';
 import { vehiclesAPI } from '../../services/api';
+import { showError, showSuccess } from '../../utils/toastService';
 
 const Vehicles = () => {
   const [vehicles, setVehicles] = useState([]);
@@ -57,23 +59,41 @@ const Vehicles = () => {
       if (response.status === 200 || response.status === 201 || response.data.success) {
         await fetchVehicles();
         closeModal();
+        showSuccess(editingId ? 'Vehicle updated successfully' : 'Vehicle created successfully');
       }
     } catch (error) {
       console.error('Submit error details:', error.response?.data);
       const msg = error.response?.data?.message || "Check console for validation errors.";
-      alert(`Error: ${msg}`);
+      showError(msg);
     }
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm("Are you sure you want to remove this vehicle?")) {
-      try {
-        await vehiclesAPI.delete(id);
-        setVehicles(prev => prev.filter(v => (v._id || v.id) !== id));
-      } catch (error) {
-        console.error('Delete error details:', error.response?.data);
-        alert(error.response?.data?.message || "Failed to delete vehicle");
-      }
+    const result = await Swal.fire({
+      title: 'Delete Vehicle?',
+      text: 'This vehicle will be removed from the fleet list.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, Delete',
+      cancelButtonText: 'Cancel',
+      confirmButtonColor: '#dc2626',
+      cancelButtonColor: '#64748b',
+      background: '#ffffff',
+      color: '#0f172a',
+      borderRadius: '12px',
+    });
+
+    if (!result.isConfirmed) {
+      return;
+    }
+
+    try {
+      await vehiclesAPI.delete(id);
+      setVehicles(prev => prev.filter(v => (v._id || v.id) !== id));
+      showSuccess('Vehicle deleted successfully');
+    } catch (error) {
+      console.error('Delete error details:', error.response?.data);
+      showError(error.response?.data?.message || "Failed to delete vehicle");
     }
   };
 
