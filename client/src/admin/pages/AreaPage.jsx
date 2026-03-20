@@ -6,8 +6,10 @@ import Button from '../../components/Button';
 import Modal from '../../components/Modal';
 import Table from '../../components/Table';
 import Card from '../../components/Card';
+import SearchableSelect from '../../components/SearchableSelect';
 import DataImportModal from '../components/DataImportModal';
 import { areasAPI, citiesAPI, pincodesAPI } from '../../services/api';
+import { shouldConfirmBulkDelete } from '../../utils/adminPreferences';
 import { showError, showSuccess, showWarning } from '../../utils/toastService';
 
 const initialFormData = { cityId: '', pincodeId: '', name: '', status: true };
@@ -21,6 +23,7 @@ const getPincodeValue = (item) => item?.pincodeId?.pincode || 'N/A';
 
 const AreaPage = () => {
   const [areas, setAreas] = useState([]);
+  const [selectedAreaIds, setSelectedAreaIds] = useState([]);
   const [cities, setCities] = useState([]);
   const [pincodes, setPincodes] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -35,6 +38,10 @@ const AreaPage = () => {
     fetchPincodes();
     fetchAreas();
   }, []);
+
+  useEffect(() => {
+    setSelectedAreaIds((prev) => prev.filter((id) => areas.some((item) => item._id === id)));
+  }, [areas]);
 
   const fetchCities = async () => {
     try {
@@ -72,6 +79,24 @@ const AreaPage = () => {
   const filteredPincodes = useMemo(
     () => pincodes.filter((item) => getId(item.cityId) === formData.cityId),
     [formData.cityId, pincodes]
+  );
+
+  const cityOptions = useMemo(
+    () =>
+      cities.map((city) => ({
+        value: city._id,
+        label: `${city.name} (${city.state})`,
+      })),
+    [cities]
+  );
+
+  const pincodeOptions = useMemo(
+    () =>
+      filteredPincodes.map((item) => ({
+        value: item._id,
+        label: item.pincode,
+      })),
+    [filteredPincodes]
   );
 
   const resetForm = () => {
@@ -162,6 +187,63 @@ const AreaPage = () => {
     }
   };
 
+  const handleAreaSelect = (id, checked) => {
+    setSelectedAreaIds((prev) =>
+      checked ? [...new Set([...prev, id])] : prev.filter((selectedId) => selectedId !== id)
+    );
+  };
+
+  const handleSelectAllAreas = (checked) => {
+    setSelectedAreaIds(checked ? areas.map((item) => item._id).filter(Boolean) : []);
+  };
+
+  const handleBulkDelete = async () => {
+    if (!selectedAreaIds.length) {
+      showWarning('Please select at least one area');
+      return;
+    }
+
+    if (shouldConfirmBulkDelete()) {
+      const result = await Swal.fire({
+        title: 'Delete Selected Areas?',
+        text: `Delete ${selectedAreaIds.length} selected areas? This action cannot be undone.`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, Delete All',
+        cancelButtonText: 'Cancel',
+        confirmButtonColor: '#dc2626',
+        cancelButtonColor: '#64748b',
+        background: '#ffffff',
+        color: '#0f172a',
+        borderRadius: '12px',
+      });
+
+      if (!result.isConfirmed) return;
+    }
+
+    try {
+      const results = await Promise.allSettled(selectedAreaIds.map((id) => areasAPI.delete(id)));
+      const successCount = results.filter((item) => item.status === 'fulfilled').length;
+      const failureCount = results.length - successCount;
+
+      await fetchAreas();
+      setSelectedAreaIds([]);
+
+      if (successCount) {
+        showSuccess(
+          failureCount
+            ? `${successCount} areas deleted, ${failureCount} failed`
+            : `${successCount} areas deleted successfully`
+        );
+      } else {
+        showError('Failed to delete selected areas');
+      }
+    } catch (error) {
+      console.error('Bulk area delete error:', error);
+      showError('Failed to delete selected areas');
+    }
+  };
+
   const handleStatusToggle = async (item) => {
     try {
       await areasAPI.update(item._id, {
@@ -236,6 +318,12 @@ const AreaPage = () => {
         </div>
 
         <div className="flex gap-3">
+          {selectedAreaIds.length > 0 && (
+            <Button variant="danger" onClick={handleBulkDelete}>
+              <FaTrash className="mr-2" />
+              Delete Selected ({selectedAreaIds.length})
+            </Button>
+          )}
           <Button variant="outline" onClick={() => setImportModalOpen(true)}>
             <FaFileImport className="mr-2" />
             Import CSV
@@ -253,7 +341,17 @@ const AreaPage = () => {
       </div>
 
       <Card>
-        <Table columns={columns} data={areas} loading={loading} emptyMessage="No areas found" />
+        <Table
+          columns={columns}
+          data={areas}
+          loading={loading}
+          emptyMessage="No areas found"
+          selectable
+          selectedRowIds={selectedAreaIds}
+          onRowSelect={handleAreaSelect}
+          onSelectAll={handleSelectAllAreas}
+          getRowId={(row) => row._id}
+        />
       </Card>
 
       <Modal
@@ -269,43 +367,29 @@ const AreaPage = () => {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">City</label>
-            <select
+            <SearchableSelect
               value={formData.cityId}
-              onChange={(e) =>
+              onChange={(value) =>
                 setFormData((prev) => ({
                   ...prev,
-                  cityId: e.target.value,
+                  cityId: value,
                   pincodeId: '',
                 }))
               }
-              className="mt-1 w-full rounded-lg border px-3 py-2 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-              required
-            >
-              <option value="">Select a city</option>
-              {cities.map((city) => (
-                <option key={city._id} value={city._id}>
-                  {city.name} ({city.state})
-                </option>
-              ))}
-            </select>
+              options={cityOptions}
+              placeholder="Select a city"
+            />
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Pincode</label>
-            <select
+            <SearchableSelect
               value={formData.pincodeId}
-              onChange={(e) => handleInputChange('pincodeId', e.target.value)}
+              onChange={(value) => handleInputChange('pincodeId', value)}
+              options={pincodeOptions}
+              placeholder={formData.cityId ? 'Select a pincode' : 'Select a city first'}
               disabled={!formData.cityId}
-              className="mt-1 w-full rounded-lg border px-3 py-2 disabled:cursor-not-allowed disabled:bg-gray-100 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:disabled:bg-gray-800"
-              required
-            >
-              <option value="">{formData.cityId ? 'Select a pincode' : 'Select a city first'}</option>
-              {filteredPincodes.map((item) => (
-                <option key={item._id} value={item._id}>
-                  {item.pincode}
-                </option>
-              ))}
-            </select>
+            />
           </div>
 
           <div>
