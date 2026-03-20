@@ -687,8 +687,8 @@ const ParkingSlots = () => {
                     onChange={(e) => setSlotType(e.target.value)}
                   >
                     <option value="normal">Normal</option>
-                    <option value="vip">VIP</option>
-                    <option value="reserved">Reserved</option>
+                    <option value="ev">EV</option>
+                    <option value="disabled">Disabled</option>
                   </SelectField>
 
                   <InputField
