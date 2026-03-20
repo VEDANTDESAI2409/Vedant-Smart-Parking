@@ -1,5 +1,9 @@
 const asyncHandler = require('express-async-handler');
+const { validationResult } = require('express-validator');
 const City = require('../models/City');
+
+const normalizeValue = (value) => String(value || '').trim();
+const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 // @desc    Get all cities
 // @route   GET /api/cities
@@ -36,15 +40,35 @@ const getCity = asyncHandler(async (req, res) => {
 // @route   POST /api/cities
 // @access  Private/Admin
 const createCity = asyncHandler(async (req, res) => {
-  const { name, status } = req.body;
-
-  if (!name) {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
     res.status(400);
-    throw new Error('Please provide city name');
+    throw new Error(errors.array().map((item) => item.msg).join(', '));
+  }
+
+  const { name, state, status } = req.body;
+
+  if (!name || !state) {
+    res.status(400);
+    throw new Error('Please provide city name and state');
+  }
+
+  const trimmedName = normalizeValue(name);
+  const trimmedState = normalizeValue(state);
+
+  const existingCity = await City.findOne({
+    name: new RegExp(`^${escapeRegExp(trimmedName)}$`, 'i'),
+    state: new RegExp(`^${escapeRegExp(trimmedState)}$`, 'i'),
+  });
+
+  if (existingCity) {
+    res.status(400);
+    throw new Error('City already exists for the selected state');
   }
 
   const city = await City.create({
-    name: String(name).trim(),
+    name: trimmedName,
+    state: trimmedState,
     status: status !== undefined ? Boolean(status) : true,
   });
 
@@ -59,6 +83,12 @@ const createCity = asyncHandler(async (req, res) => {
 // @route   PUT /api/cities/:id
 // @access  Private/Admin
 const updateCity = asyncHandler(async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    res.status(400);
+    throw new Error(errors.array().map((item) => item.msg).join(', '));
+  }
+
   const city = await City.findById(req.params.id);
 
   if (!city) {
@@ -66,9 +96,23 @@ const updateCity = asyncHandler(async (req, res) => {
     throw new Error('City not found');
   }
 
-  const { name, status } = req.body;
+  const { name, state, status } = req.body;
+  const nextName = name !== undefined ? normalizeValue(name) : city.name;
+  const nextState = state !== undefined ? normalizeValue(state) : city.state;
 
-  city.name = name !== undefined ? String(name).trim() : city.name;
+  const duplicateCity = await City.findOne({
+    _id: { $ne: city._id },
+    name: new RegExp(`^${escapeRegExp(nextName)}$`, 'i'),
+    state: new RegExp(`^${escapeRegExp(nextState)}$`, 'i'),
+  });
+
+  if (duplicateCity) {
+    res.status(400);
+    throw new Error('Another city already exists with the same name and state');
+  }
+
+  city.name = nextName;
+  city.state = nextState;
   city.status = status !== undefined ? Boolean(status) : city.status;
 
   const updatedCity = await city.save();
