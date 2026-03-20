@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 const baseControlClasses =
-  'mt-1 flex w-full items-center justify-between gap-3 rounded-lg border px-3 py-2 text-left transition focus-within:outline-none focus-within:ring-2 focus-within:ring-blue-500/40 dark:border-gray-600 dark:bg-gray-700 dark:text-white';
+  'mt-1 flex w-full items-center justify-between gap-3 rounded-2xl border border-slate-200/85 bg-white/96 px-4 py-3 text-left text-sm text-slate-800 shadow-[0_10px_24px_rgba(15,23,42,0.04)] transition focus-within:outline-none focus-within:ring-2 focus-within:ring-teal-500/35 dark:border-slate-700/80 dark:bg-slate-900/94 dark:text-white';
 
 const SearchableSelect = ({
   value,
@@ -95,15 +95,15 @@ const SearchableSelect = ({
         disabled={disabled}
         className={`${baseControlClasses} ${
           disabled
-            ? 'cursor-not-allowed bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-500'
-            : 'bg-white text-gray-900'
+            ? 'cursor-not-allowed bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500'
+            : 'hover:border-slate-300 hover:bg-white dark:hover:border-teal-700/60 dark:hover:bg-slate-900'
         }`}
       >
-        <span className={selectedOption ? '' : 'text-gray-400 dark:text-gray-400'}>
+        <span className={selectedOption ? '' : 'text-slate-400 dark:text-slate-400'}>
           {selectedOption?.label || placeholder}
         </span>
         <svg
-          className={`h-4 w-4 shrink-0 text-gray-500 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+          className={`h-4 w-4 shrink-0 text-slate-500 transition-transform ${isOpen ? 'rotate-180' : ''}`}
           viewBox="0 0 20 20"
           fill="currentColor"
           aria-hidden="true"
@@ -118,16 +118,16 @@ const SearchableSelect = ({
 
       {isOpen && (
         <div
-          className={`absolute z-50 mt-2 w-full overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl dark:border-gray-600 dark:bg-gray-800 ${menuClassName}`}
+          className={`absolute z-50 mt-2 w-full overflow-hidden rounded-[24px] border border-slate-200/90 bg-white/98 shadow-[0_28px_80px_rgba(15,23,42,0.16)] backdrop-blur-xl dark:border-slate-700/80 dark:bg-slate-950/96 ${menuClassName}`}
         >
-          <div className="border-b border-gray-100 p-2 dark:border-gray-700">
+          <div className="border-b border-slate-200/90 p-2 dark:border-slate-800/90">
             <input
               ref={searchInputRef}
               type="text"
               value={searchTerm}
               onChange={(event) => setSearchTerm(event.target.value)}
               placeholder={searchPlaceholder}
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+              className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-teal-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
             />
           </div>
 
@@ -143,8 +143,8 @@ const SearchableSelect = ({
                     onClick={() => handleSelect(option.value)}
                     className={`flex w-full items-center justify-between px-3 py-2 text-left text-sm transition ${
                       isSelected
-                        ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
-                        : 'text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-700/70'
+                        ? 'bg-teal-50 text-teal-700 dark:bg-teal-500/12 dark:text-teal-300'
+                        : 'text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-900/70'
                     }`}
                   >
                     <span>{option.label}</span>
@@ -161,7 +161,7 @@ const SearchableSelect = ({
                 );
               })
             ) : (
-              <div className="px-3 py-3 text-sm text-gray-500 dark:text-gray-400">{emptyMessage}</div>
+              <div className="px-3 py-3 text-sm text-slate-500 dark:text-slate-400">{emptyMessage}</div>
             )}
           </div>
         </div>

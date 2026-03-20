@@ -8,12 +8,14 @@ import Table from '../../components/Table';
 import Card from '../../components/Card';
 import DataImportModal from '../components/DataImportModal';
 import { citiesAPI } from '../../services/api';
+import { shouldConfirmBulkDelete } from '../../utils/adminPreferences';
 import { showError, showSuccess, showWarning } from '../../utils/toastService';
 
 const initialFormData = { name: '', state: '', status: true };
 
 const CityPage = () => {
   const [cities, setCities] = useState([]);
+  const [selectedCityIds, setSelectedCityIds] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [importModalOpen, setImportModalOpen] = useState(false);
@@ -24,6 +26,10 @@ const CityPage = () => {
   useEffect(() => {
     fetchCities();
   }, []);
+
+  useEffect(() => {
+    setSelectedCityIds((prev) => prev.filter((id) => cities.some((city) => city._id === id)));
+  }, [cities]);
 
   const fetchCities = async () => {
     try {
@@ -122,6 +128,63 @@ const CityPage = () => {
     }
   };
 
+  const handleCitySelect = (id, checked) => {
+    setSelectedCityIds((prev) =>
+      checked ? [...new Set([...prev, id])] : prev.filter((selectedId) => selectedId !== id)
+    );
+  };
+
+  const handleSelectAllCities = (checked) => {
+    setSelectedCityIds(checked ? cities.map((city) => city._id).filter(Boolean) : []);
+  };
+
+  const handleBulkDelete = async () => {
+    if (!selectedCityIds.length) {
+      showWarning('Please select at least one city');
+      return;
+    }
+
+    if (shouldConfirmBulkDelete()) {
+      const result = await Swal.fire({
+        title: 'Delete Selected Cities?',
+        text: `Delete ${selectedCityIds.length} selected cities? This action cannot be undone.`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, Delete All',
+        cancelButtonText: 'Cancel',
+        confirmButtonColor: '#dc2626',
+        cancelButtonColor: '#64748b',
+        background: '#ffffff',
+        color: '#0f172a',
+        borderRadius: '12px',
+      });
+
+      if (!result.isConfirmed) return;
+    }
+
+    try {
+      const results = await Promise.allSettled(selectedCityIds.map((id) => citiesAPI.delete(id)));
+      const successCount = results.filter((item) => item.status === 'fulfilled').length;
+      const failureCount = results.length - successCount;
+
+      await fetchCities();
+      setSelectedCityIds([]);
+
+      if (successCount) {
+        showSuccess(
+          failureCount
+            ? `${successCount} cities deleted, ${failureCount} failed`
+            : `${successCount} cities deleted successfully`
+        );
+      } else {
+        showError('Failed to delete selected cities');
+      }
+    } catch (error) {
+      console.error('Bulk city delete error:', error);
+      showError('Failed to delete selected cities');
+    }
+  };
+
   const columns = [
     { header: 'NAME', key: 'name', render: (row) => <span className="capitalize">{row.name}</span> },
     { header: 'STATE', key: 'state', render: (row) => <span className="capitalize">{row.state}</span> },
@@ -165,6 +228,12 @@ const CityPage = () => {
         </div>
 
         <div className="flex gap-3">
+          {selectedCityIds.length > 0 && (
+            <Button variant="danger" onClick={handleBulkDelete}>
+              <FaTrash className="mr-2" />
+              Delete Selected ({selectedCityIds.length})
+            </Button>
+          )}
           <Button variant="outline" onClick={() => setImportModalOpen(true)}>
             <FaFileImport className="mr-2" />
             Import CSV
@@ -182,7 +251,17 @@ const CityPage = () => {
       </div>
 
       <Card>
-        <Table columns={columns} data={cities} loading={loading} emptyMessage="No cities found" />
+        <Table
+          columns={columns}
+          data={cities}
+          loading={loading}
+          emptyMessage="No cities found"
+          selectable
+          selectedRowIds={selectedCityIds}
+          onRowSelect={handleCitySelect}
+          onSelectAll={handleSelectAllCities}
+          getRowId={(row) => row._id}
+        />
       </Card>
 
       <Modal

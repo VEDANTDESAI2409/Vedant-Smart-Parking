@@ -14,6 +14,7 @@ import {
   pincodesAPI,
   slotsAPI,
 } from '../../services/api';
+import { shouldConfirmBulkDelete } from '../../utils/adminPreferences';
 import { showError, showSuccess, showWarning } from '../../utils/toastService';
 
 const getCollection = (response, key) =>
@@ -36,6 +37,7 @@ const mapOptions = (items, getLabel) =>
 
 const ParkingSlots = () => {
   const [slots, setSlots] = useState([]);
+  const [selectedSlotIds, setSelectedSlotIds] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingSlot, setEditingSlot] = useState(null);
@@ -59,6 +61,10 @@ const ParkingSlots = () => {
   useEffect(() => {
     fetchSlots();
   }, []);
+
+  useEffect(() => {
+    setSelectedSlotIds((prev) => prev.filter((id) => slots.some((item) => item._id === id)));
+  }, [slots]);
 
   useEffect(() => {
     if (modalOpen) {
@@ -364,6 +370,63 @@ const ParkingSlots = () => {
     }
   };
 
+  const handleSlotSelect = (id, checked) => {
+    setSelectedSlotIds((prev) =>
+      checked ? [...new Set([...prev, id])] : prev.filter((selectedId) => selectedId !== id)
+    );
+  };
+
+  const handleSelectAllSlots = (checked) => {
+    setSelectedSlotIds(checked ? slots.map((item) => item._id).filter(Boolean) : []);
+  };
+
+  const handleBulkDelete = async () => {
+    if (!selectedSlotIds.length) {
+      showWarning('Please select at least one slot');
+      return;
+    }
+
+    if (shouldConfirmBulkDelete()) {
+      const result = await Swal.fire({
+        title: 'Delete Selected Slots?',
+        text: `Delete ${selectedSlotIds.length} selected parking slots? This action cannot be undone.`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, Delete All',
+        cancelButtonText: 'Cancel',
+        confirmButtonColor: '#dc2626',
+        cancelButtonColor: '#64748b',
+        background: '#ffffff',
+        color: '#0f172a',
+        borderRadius: '12px',
+      });
+
+      if (!result.isConfirmed) return;
+    }
+
+    try {
+      const results = await Promise.allSettled(selectedSlotIds.map((id) => slotsAPI.delete(id)));
+      const successCount = results.filter((item) => item.status === 'fulfilled').length;
+      const failureCount = results.length - successCount;
+
+      await fetchSlots();
+      setSelectedSlotIds([]);
+
+      if (successCount) {
+        showSuccess(
+          failureCount
+            ? `${successCount} slots deleted, ${failureCount} failed`
+            : `${successCount} slots deleted successfully`
+        );
+      } else {
+        showError('Failed to delete selected slots');
+      }
+    } catch (error) {
+      console.error('Bulk slot delete error:', error);
+      showError('Failed to delete selected slots');
+    }
+  };
+
   const columns = [
     { header: 'City', key: 'city' },
     { header: 'Pincode', key: 'pincode' },
@@ -432,10 +495,18 @@ const ParkingSlots = () => {
           <p className="text-sm text-gray-500 mt-1">Create slots with dependent location mapping.</p>
         </div>
 
-        <Button onClick={openCreateModal}>
-          <FaPlus className="mr-2" />
-          Add Slot
-        </Button>
+        <div className="flex gap-3">
+          {selectedSlotIds.length > 0 && (
+            <Button variant="danger" onClick={handleBulkDelete}>
+              <FaTrash className="mr-2" />
+              Delete Selected ({selectedSlotIds.length})
+            </Button>
+          )}
+          <Button onClick={openCreateModal}>
+            <FaPlus className="mr-2" />
+            Add Slot
+          </Button>
+        </div>
       </div>
 
       <Card>
@@ -444,6 +515,11 @@ const ParkingSlots = () => {
           data={slots}
           loading={loading}
           emptyMessage="No parking slots found"
+          selectable
+          selectedRowIds={selectedSlotIds}
+          onRowSelect={handleSlotSelect}
+          onSelectAll={handleSelectAllSlots}
+          getRowId={(row) => row._id}
         />
       </Card>
 

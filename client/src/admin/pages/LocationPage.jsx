@@ -9,6 +9,7 @@ import Card from '../../components/Card';
 import SearchableSelect from '../../components/SearchableSelect';
 import DataImportModal from '../components/DataImportModal';
 import { areasAPI, citiesAPI, locationsAPI, pincodesAPI } from '../../services/api';
+import { shouldConfirmBulkDelete } from '../../utils/adminPreferences';
 import { showError, showSuccess, showWarning } from '../../utils/toastService';
 
 const initialFormData = {
@@ -32,6 +33,7 @@ const getAreaValue = (item) => item?.areaId?.name || 'N/A';
 
 const LocationPage = () => {
   const [locations, setLocations] = useState([]);
+  const [selectedLocationIds, setSelectedLocationIds] = useState([]);
   const [cities, setCities] = useState([]);
   const [pincodes, setPincodes] = useState([]);
   const [areas, setAreas] = useState([]);
@@ -48,6 +50,10 @@ const LocationPage = () => {
     fetchAreas();
     fetchLocations();
   }, []);
+
+  useEffect(() => {
+    setSelectedLocationIds((prev) => prev.filter((id) => locations.some((item) => item._id === id)));
+  }, [locations]);
 
   const fetchCities = async () => {
     try {
@@ -231,6 +237,63 @@ const LocationPage = () => {
     }
   };
 
+  const handleLocationSelect = (id, checked) => {
+    setSelectedLocationIds((prev) =>
+      checked ? [...new Set([...prev, id])] : prev.filter((selectedId) => selectedId !== id)
+    );
+  };
+
+  const handleSelectAllLocations = (checked) => {
+    setSelectedLocationIds(checked ? locations.map((item) => item._id).filter(Boolean) : []);
+  };
+
+  const handleBulkDelete = async () => {
+    if (!selectedLocationIds.length) {
+      showWarning('Please select at least one location');
+      return;
+    }
+
+    if (shouldConfirmBulkDelete()) {
+      const result = await Swal.fire({
+        title: 'Delete Selected Locations?',
+        text: `Delete ${selectedLocationIds.length} selected locations? This action cannot be undone.`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, Delete All',
+        cancelButtonText: 'Cancel',
+        confirmButtonColor: '#dc2626',
+        cancelButtonColor: '#64748b',
+        background: '#ffffff',
+        color: '#0f172a',
+        borderRadius: '12px',
+      });
+
+      if (!result.isConfirmed) return;
+    }
+
+    try {
+      const results = await Promise.allSettled(selectedLocationIds.map((id) => locationsAPI.delete(id)));
+      const successCount = results.filter((item) => item.status === 'fulfilled').length;
+      const failureCount = results.length - successCount;
+
+      await fetchLocations();
+      setSelectedLocationIds([]);
+
+      if (successCount) {
+        showSuccess(
+          failureCount
+            ? `${successCount} locations deleted, ${failureCount} failed`
+            : `${successCount} locations deleted successfully`
+        );
+      } else {
+        showError('Failed to delete selected locations');
+      }
+    } catch (error) {
+      console.error('Bulk location delete error:', error);
+      showError('Failed to delete selected locations');
+    }
+  };
+
   const handleStatusToggle = async (item) => {
     try {
       await locationsAPI.update(item._id, {
@@ -311,6 +374,12 @@ const LocationPage = () => {
         </div>
 
         <div className="flex gap-3">
+          {selectedLocationIds.length > 0 && (
+            <Button variant="danger" onClick={handleBulkDelete}>
+              <FaTrash className="mr-2" />
+              Delete Selected ({selectedLocationIds.length})
+            </Button>
+          )}
           <Button variant="outline" onClick={() => setImportModalOpen(true)}>
             <FaFileImport className="mr-2" />
             Import CSV
@@ -328,7 +397,17 @@ const LocationPage = () => {
       </div>
 
       <Card>
-        <Table columns={columns} data={locations} loading={loading} emptyMessage="No locations found" />
+        <Table
+          columns={columns}
+          data={locations}
+          loading={loading}
+          emptyMessage="No locations found"
+          selectable
+          selectedRowIds={selectedLocationIds}
+          onRowSelect={handleLocationSelect}
+          onSelectAll={handleSelectAllLocations}
+          getRowId={(row) => row._id}
+        />
       </Card>
 
       <Modal
