@@ -6,8 +6,10 @@ import Button from '../../components/Button';
 import Modal from '../../components/Modal';
 import Table from '../../components/Table';
 import Card from '../../components/Card';
+import SearchableSelect from '../../components/SearchableSelect';
 import DataImportModal from '../components/DataImportModal';
 import { citiesAPI, pincodesAPI } from '../../services/api';
+import { shouldConfirmBulkDelete } from '../../utils/adminPreferences';
 import { showError, showSuccess, showWarning } from '../../utils/toastService';
 
 const initialFormData = { cityId: '', pincode: '', status: true };
@@ -19,6 +21,7 @@ const getCityName = (item) => item?.cityId?.name || 'N/A';
 
 const PincodePage = () => {
   const [pincodes, setPincodes] = useState([]);
+  const [selectedPincodeIds, setSelectedPincodeIds] = useState([]);
   const [cities, setCities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
@@ -31,6 +34,10 @@ const PincodePage = () => {
     fetchCities();
     fetchPincodes();
   }, []);
+
+  useEffect(() => {
+    setSelectedPincodeIds((prev) => prev.filter((id) => pincodes.some((item) => item._id === id)));
+  }, [pincodes]);
 
   const fetchCities = async () => {
     try {
@@ -59,6 +66,11 @@ const PincodePage = () => {
     setEditingPincode(null);
     setFormData(initialFormData);
   };
+
+  const cityOptions = cities.map((city) => ({
+    value: city._id,
+    label: `${city.name} (${city.state})`,
+  }));
 
   const handleInputChange = (field, value) => {
     setFormData((prev) => ({
@@ -146,6 +158,63 @@ const PincodePage = () => {
     }
   };
 
+  const handlePincodeSelect = (id, checked) => {
+    setSelectedPincodeIds((prev) =>
+      checked ? [...new Set([...prev, id])] : prev.filter((selectedId) => selectedId !== id)
+    );
+  };
+
+  const handleSelectAllPincodes = (checked) => {
+    setSelectedPincodeIds(checked ? pincodes.map((item) => item._id).filter(Boolean) : []);
+  };
+
+  const handleBulkDelete = async () => {
+    if (!selectedPincodeIds.length) {
+      showWarning('Please select at least one pincode');
+      return;
+    }
+
+    if (shouldConfirmBulkDelete()) {
+      const result = await Swal.fire({
+        title: 'Delete Selected Pincodes?',
+        text: `Delete ${selectedPincodeIds.length} selected pincodes? This action cannot be undone.`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, Delete All',
+        cancelButtonText: 'Cancel',
+        confirmButtonColor: '#dc2626',
+        cancelButtonColor: '#64748b',
+        background: '#ffffff',
+        color: '#0f172a',
+        borderRadius: '12px',
+      });
+
+      if (!result.isConfirmed) return;
+    }
+
+    try {
+      const results = await Promise.allSettled(selectedPincodeIds.map((id) => pincodesAPI.delete(id)));
+      const successCount = results.filter((item) => item.status === 'fulfilled').length;
+      const failureCount = results.length - successCount;
+
+      await fetchPincodes();
+      setSelectedPincodeIds([]);
+
+      if (successCount) {
+        showSuccess(
+          failureCount
+            ? `${successCount} pincodes deleted, ${failureCount} failed`
+            : `${successCount} pincodes deleted successfully`
+        );
+      } else {
+        showError('Failed to delete selected pincodes');
+      }
+    } catch (error) {
+      console.error('Bulk pincode delete error:', error);
+      showError('Failed to delete selected pincodes');
+    }
+  };
+
   const columns = [
     { header: 'CITY', key: 'cityId', render: (row) => <span className="capitalize">{getCityName(row)}</span> },
     { header: 'PINCODE', key: 'pincode' },
@@ -189,6 +258,12 @@ const PincodePage = () => {
         </div>
 
         <div className="flex gap-3">
+          {selectedPincodeIds.length > 0 && (
+            <Button variant="danger" onClick={handleBulkDelete}>
+              <FaTrash className="mr-2" />
+              Delete Selected ({selectedPincodeIds.length})
+            </Button>
+          )}
           <Button variant="outline" onClick={() => setImportModalOpen(true)}>
             <FaFileImport className="mr-2" />
             Import CSV
@@ -206,7 +281,17 @@ const PincodePage = () => {
       </div>
 
       <Card>
-        <Table columns={columns} data={pincodes} loading={loading} emptyMessage="No pincodes found" />
+        <Table
+          columns={columns}
+          data={pincodes}
+          loading={loading}
+          emptyMessage="No pincodes found"
+          selectable
+          selectedRowIds={selectedPincodeIds}
+          onRowSelect={handlePincodeSelect}
+          onSelectAll={handleSelectAllPincodes}
+          getRowId={(row) => row._id}
+        />
       </Card>
 
       <Modal
@@ -222,19 +307,12 @@ const PincodePage = () => {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">City</label>
-            <select
+            <SearchableSelect
               value={formData.cityId}
-              onChange={(e) => handleInputChange('cityId', e.target.value)}
-              className="mt-1 w-full rounded-lg border px-3 py-2 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-              required
-            >
-              <option value="">Select a city</option>
-              {cities.map((city) => (
-                <option key={city._id} value={city._id}>
-                  {city.name} ({city.state})
-                </option>
-              ))}
-            </select>
+              onChange={(value) => handleInputChange('cityId', value)}
+              options={cityOptions}
+              placeholder="Select a city"
+            />
           </div>
 
           <div>
