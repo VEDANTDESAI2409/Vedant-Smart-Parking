@@ -3,6 +3,7 @@ import { FaDownload } from 'react-icons/fa';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import Button from '../../components/Button';
 import Card from '../../components/Card';
+import SearchableSelect from '../../components/SearchableSelect';
 
 const Reports = () => {
   const [dateRange, setDateRange] = useState('month');
@@ -27,21 +28,25 @@ const Reports = () => {
     { day: 'Sun', occupied: 45 },
   ];
 
+  const dateRangeOptions = [
+    { value: 'week', label: 'This Week' },
+    { value: 'month', label: 'This Month' },
+    { value: 'quarter', label: 'This Quarter' },
+    { value: 'year', label: 'This Year' },
+  ];
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Reports</h1>
         <div className="flex space-x-4">
-          <select
+          <SearchableSelect
             value={dateRange}
-            onChange={(e) => setDateRange(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-          >
-            <option value="week">This Week</option>
-            <option value="month">This Month</option>
-            <option value="quarter">This Quarter</option>
-            <option value="year">This Year</option>
-          </select>
+            onChange={setDateRange}
+            options={dateRangeOptions}
+            placeholder="Select range"
+            className="min-w-[180px]"
+          />
           <Button>
             <FaDownload className="mr-2" />
             Export

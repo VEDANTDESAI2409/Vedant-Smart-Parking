@@ -11,19 +11,24 @@ const Button = ({
   className = '',
   ...props
 }) => {
-  const baseClasses = 'inline-flex items-center justify-center font-medium rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed';
+  const baseClasses =
+    'inline-flex items-center justify-center gap-2 rounded-2xl font-semibold tracking-[0.02em] transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50';
 
   const variants = {
-    primary: 'bg-primary-600 hover:bg-primary-700 text-white focus:ring-primary-500',
-    secondary: 'bg-secondary-600 hover:bg-secondary-700 text-white focus:ring-secondary-500',
-    outline: 'border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 focus:ring-primary-500 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700',
-    danger: 'bg-red-600 hover:bg-red-700 text-white focus:ring-red-500',
+    primary:
+      'border border-slate-900/15 bg-gradient-to-r from-slate-950 via-slate-900 to-teal-900 text-white shadow-[0_18px_36px_rgba(15,23,42,0.20)] hover:-translate-y-0.5 hover:shadow-[0_24px_44px_rgba(15,23,42,0.24)] hover:brightness-105 focus:ring-teal-500 dark:border-teal-300/20 dark:from-teal-500 dark:via-cyan-500 dark:to-blue-600 dark:text-slate-950 dark:shadow-[0_18px_42px_rgba(20,184,166,0.28)]',
+    secondary:
+      'border border-emerald-500/20 bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-[0_16px_30px_rgba(13,148,136,0.22)] hover:-translate-y-0.5 hover:shadow-[0_22px_38px_rgba(13,148,136,0.26)] hover:brightness-105 focus:ring-emerald-500',
+    outline:
+      'border border-slate-200/90 bg-white/92 text-slate-700 shadow-[0_10px_24px_rgba(15,23,42,0.04)] hover:-translate-y-0.5 hover:border-slate-300 hover:bg-white hover:shadow-[0_16px_32px_rgba(15,23,42,0.08)] focus:ring-slate-400 dark:border-slate-700/80 dark:bg-slate-900/88 dark:text-slate-200 dark:hover:border-slate-600 dark:hover:bg-slate-800',
+    danger:
+      'border border-rose-500/20 bg-gradient-to-r from-rose-500 to-red-600 text-white shadow-[0_16px_30px_rgba(225,29,72,0.22)] hover:-translate-y-0.5 hover:shadow-[0_22px_38px_rgba(225,29,72,0.26)] hover:brightness-105 focus:ring-rose-500',
   };
 
   const sizes = {
-    sm: 'px-3 py-1.5 text-sm',
-    md: 'px-4 py-2 text-sm',
-    lg: 'px-6 py-3 text-base',
+    sm: 'min-h-[40px] px-3.5 py-2 text-[13px]',
+    md: 'min-h-[46px] px-5 py-2.5 text-sm',
+    lg: 'min-h-[52px] px-6 py-3 text-[15px]',
   };
 
   const classes = `${baseClasses} ${variants[variant]} ${sizes[size]} ${className}`;
