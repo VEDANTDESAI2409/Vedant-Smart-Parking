@@ -1,7 +1,31 @@
-import React, { useState, useEffect } from 'react';
-import { FaParking, FaCalendarAlt, FaUsers, FaCar, FaCreditCard, FaChartLine, FaFileDownload, FaClock, FaStar } from 'react-icons/fa';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+  FaCalendarAlt,
+  FaCar,
+  FaChartLine,
+  FaClock,
+  FaCreditCard,
+  FaFileDownload,
+  FaParking,
+  FaStar,
+  FaUsers,
+} from 'react-icons/fa';
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Line,
+  LineChart,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
 import Card from '../../components/Card';
+import Button from '../../components/Button';
 import { reportsAPI } from '../../services/api';
 
 const fallbackStats = {
@@ -17,6 +41,8 @@ const fallbackStats = {
   occupancyData: [],
   bookingStatusData: [],
 };
+
+const chartPalette = ['#14b8a6', '#f59e0b', '#0f172a', '#38bdf8', '#ef4444'];
 
 const Dashboard = () => {
   const [stats, setStats] = useState(null);
@@ -39,10 +65,83 @@ const Dashboard = () => {
   };
 
   const safeStats = stats || fallbackStats;
+  const occupancyRate = safeStats.totalSlots
+    ? Math.round((safeStats.occupiedSlots / safeStats.totalSlots) * 100)
+    : 0;
 
-  // --- NEW FEATURE: CSV EXPORT ---
+  const summaryCards = useMemo(
+    () => [
+      {
+        title: 'Total Parking Slots',
+        value: safeStats.totalSlots,
+        note: `${safeStats.occupiedSlots || 0} occupied right now`,
+        icon: FaParking,
+        accent: 'from-sky-500/20 to-blue-600/10',
+        iconColor: 'text-sky-600 dark:text-sky-300',
+      },
+      {
+        title: 'Occupancy Rate',
+        value: `${occupancyRate}%`,
+        note: `${safeStats.occupiedSlots}/${safeStats.totalSlots || 0} active spaces`,
+        icon: FaChartLine,
+        accent: 'from-emerald-500/20 to-teal-600/10',
+        iconColor: 'text-emerald-600 dark:text-emerald-300',
+      },
+      {
+        title: 'Pending Slots',
+        value: safeStats.pendingSlots ?? 0,
+        note: 'Awaiting assignment or review',
+        icon: FaClock,
+        accent: 'from-amber-500/20 to-orange-500/10',
+        iconColor: 'text-amber-600 dark:text-amber-300',
+      },
+      {
+        title: 'Popular Slot Type',
+        value: safeStats.mostUsedSlotType,
+        note: 'Most booked parking category',
+        icon: FaStar,
+        accent: 'from-fuchsia-500/20 to-rose-500/10',
+        iconColor: 'text-fuchsia-600 dark:text-fuchsia-300',
+      },
+      {
+        title: 'Top Vehicle Type',
+        value: safeStats.mostBookedVehicleType,
+        note: 'Most frequent booking segment',
+        icon: FaCar,
+        accent: 'from-orange-500/20 to-amber-500/10',
+        iconColor: 'text-orange-600 dark:text-orange-300',
+      },
+      {
+        title: 'Active Bookings',
+        value: safeStats.activeBookings,
+        note: 'Live reservations in progress',
+        icon: FaCalendarAlt,
+        accent: 'from-violet-500/20 to-indigo-500/10',
+        iconColor: 'text-violet-600 dark:text-violet-300',
+      },
+      {
+        title: 'Total Users',
+        value: safeStats.totalUsers,
+        note: 'Registered platform users',
+        icon: FaUsers,
+        accent: 'from-cyan-500/20 to-sky-500/10',
+        iconColor: 'text-cyan-600 dark:text-cyan-300',
+      },
+      {
+        title: 'Total Revenue',
+        value: `$${Number(safeStats.totalRevenue || 0).toLocaleString()}`,
+        note: 'Lifetime processed revenue',
+        icon: FaCreditCard,
+        accent: 'from-rose-500/20 to-red-600/10',
+        iconColor: 'text-rose-600 dark:text-rose-300',
+      },
+    ],
+    [occupancyRate, safeStats]
+  );
+
   const downloadCSVReport = () => {
     if (!stats) return;
+
     const reportData = [
       ['Metric', 'Value'],
       ['Total Slots', safeStats.totalSlots],
@@ -52,169 +151,245 @@ const Dashboard = () => {
       ['Top Vehicle Type', safeStats.mostBookedVehicleType],
       ['Total Revenue', safeStats.totalRevenue],
     ];
-    const csvContent = "data:text/csv;charset=utf-8," + reportData.map(e => e.join(",")).join("\n");
-    const link = document.createElement("a");
-    link.setAttribute("href", encodeURI(csvContent));
-    link.setAttribute("download", "Dashboard_Report.csv");
+
+    const csvContent = `data:text/csv;charset=utf-8,${reportData.map((row) => row.join(',')).join('\n')}`;
+    const link = document.createElement('a');
+    link.setAttribute('href', encodeURI(csvContent));
+    link.setAttribute('download', 'Dashboard_Report.csv');
     document.body.appendChild(link);
     link.click();
   };
 
-  const statCards = [
-    {
-      title: 'Total Parking Slots',
-      value: safeStats.totalSlots,
-      icon: FaParking,
-      color: 'text-blue-600',
-      bgColor: 'bg-blue-100',
-    },
-    {
-      title: 'Occupied Slots',
-      value: `${safeStats.occupiedSlots}/${safeStats.totalSlots}`,
-      icon: FaParking,
-      color: 'text-green-600',
-      bgColor: 'bg-green-100',
-    },
-    // --- NEW STATS CARDS ---
-    {
-      title: 'Pending Slots',
-      value: safeStats.pendingSlots ?? 0,
-      icon: FaClock,
-      color: 'text-yellow-600',
-      bgColor: 'bg-yellow-100',
-    },
-    {
-      title: 'Popular Slot Type',
-      value: safeStats.mostUsedSlotType,
-      icon: FaStar,
-      color: 'text-pink-600',
-      bgColor: 'bg-pink-100',
-    },
-    {
-      title: 'Top Vehicle Type',
-      value: safeStats.mostBookedVehicleType,
-      icon: FaCar,
-      color: 'text-orange-600',
-      bgColor: 'bg-orange-100',
-    },
-    // ----------------------
-    {
-      title: 'Active Bookings',
-      value: safeStats.activeBookings,
-      icon: FaCalendarAlt,
-      color: 'text-purple-600',
-      bgColor: 'bg-purple-100',
-    },
-    {
-      title: 'Total Users',
-      value: safeStats.totalUsers,
-      icon: FaUsers,
-      color: 'text-indigo-600',
-      bgColor: 'bg-indigo-100',
-    },
-    {
-      title: 'Total Revenue',
-      value: `$${Number(safeStats.totalRevenue || 0).toLocaleString()}`,
-      icon: FaCreditCard,
-      color: 'text-red-600',
-      bgColor: 'bg-red-100',
-    },
-  ];
-
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+      <div className="flex h-[60vh] items-center justify-center">
+        <div className="h-14 w-14 animate-spin rounded-full border-2 border-slate-200 border-t-teal-500 dark:border-slate-700 dark:border-t-teal-300" />
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
-        
-        {/* --- NEW FEATURE: EXPORT BUTTON --- */}
-        <div className="flex items-center gap-4">
-          <button 
-            onClick={downloadCSVReport}
-            className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
-          >
-            <FaFileDownload /> Export CSV
-          </button>
-          <div className="text-sm text-gray-600 dark:text-gray-400">
-            Last updated: {new Date().toLocaleString()}
+      <section className="relative overflow-hidden rounded-[36px] border border-slate-200/80 bg-[linear-gradient(135deg,rgba(15,23,42,0.98)_0%,rgba(14,37,62,0.95)_35%,rgba(13,87,98,0.88)_100%)] px-6 py-7 text-white shadow-[0_28px_90px_rgba(15,23,42,0.18)] sm:px-8 lg:px-10">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(245,158,11,0.35),_transparent_28%),radial-gradient(circle_at_bottom_left,_rgba(45,212,191,0.26),_transparent_30%)]" />
+        <div className="absolute right-6 top-6 hidden h-48 w-48 rounded-full border border-white/10 bg-white/5 blur-3xl lg:block" />
+
+        <div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+          <div className="max-w-3xl">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.34em] text-teal-200/85">Control Center</p>
+            <h1 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">
+              Run the platform from a sharper, more executive dashboard.
+            </h1>
+            <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-200/85 sm:text-base">
+              Monitor occupancy, revenue, booking flow, and service performance from a more polished command layer
+              without changing any of your existing logic.
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="rounded-2xl border border-white/10 bg-white/8 px-4 py-3 text-sm text-slate-100/90 backdrop-blur-xl">
+              Last updated: {new Date().toLocaleString()}
+            </div>
+            <Button
+              onClick={downloadCSVReport}
+              className="bg-white text-slate-900 shadow-[0_18px_40px_rgba(255,255,255,0.12)] hover:bg-slate-100 dark:bg-white dark:text-slate-900"
+            >
+              <FaFileDownload className="h-4 w-4" />
+              Export CSV
+            </Button>
           </div>
         </div>
-      </div>
 
-      {/* Stats Cards - Now includes your 3 new cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {statCards.map((card, index) => (
-          <Card key={index} className="p-6">
-            <div className="flex items-center">
-              <div className={`p-3 rounded-full ${card.bgColor}`}>
-                <card.icon className={`w-6 h-6 ${card.color}`} />
+        <div className="relative mt-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <div className="rounded-3xl border border-white/10 bg-white/8 px-5 py-4 backdrop-blur-xl">
+            <p className="text-xs uppercase tracking-[0.24em] text-slate-300/70">Revenue</p>
+            <p className="mt-3 text-3xl font-black">${Number(safeStats.totalRevenue || 0).toLocaleString()}</p>
+          </div>
+          <div className="rounded-3xl border border-white/10 bg-white/8 px-5 py-4 backdrop-blur-xl">
+            <p className="text-xs uppercase tracking-[0.24em] text-slate-300/70">Occupancy</p>
+            <p className="mt-3 text-3xl font-black">{occupancyRate}%</p>
+          </div>
+          <div className="rounded-3xl border border-white/10 bg-white/8 px-5 py-4 backdrop-blur-xl">
+            <p className="text-xs uppercase tracking-[0.24em] text-slate-300/70">Active Bookings</p>
+            <p className="mt-3 text-3xl font-black">{safeStats.activeBookings}</p>
+          </div>
+        </div>
+      </section>
+
+      <section className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
+        {summaryCards.map((card) => (
+          <Card
+            key={card.title}
+            className="overflow-hidden"
+            bodyClassName={`bg-gradient-to-br ${card.accent}`}
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-500 dark:text-slate-400">
+                  {card.title}
+                </p>
+                <p className="mt-4 text-3xl font-black tracking-tight text-slate-900 dark:text-white">
+                  {card.value}
+                </p>
+                <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">{card.note}</p>
               </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">{card.title}</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">{card.value}</p>
-              </div>
+              <span className="flex h-14 w-14 items-center justify-center rounded-3xl bg-white/80 shadow-sm dark:bg-slate-950/40">
+                <card.icon className={`h-5 w-5 ${card.iconColor}`} />
+              </span>
             </div>
           </Card>
         ))}
-      </div>
+      </section>
 
-      {/* --- ALL YOUR ORIGINAL CHARTS STAY HERE --- */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card title="Monthly Revenue" className="p-6">
-          <ResponsiveContainer width="100%" height={300}>
+      <section className="grid grid-cols-1 gap-6 xl:grid-cols-[1.4fr_0.9fr]">
+        <Card
+          title="Monthly Revenue"
+          subtitle="Track how revenue is moving across reporting periods."
+        >
+          <ResponsiveContainer width="100%" height={320}>
             <LineChart data={safeStats.monthlyRevenue}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="month" />
-              <YAxis />
-              <Tooltip formatter={(value) => [`$${value}`, 'Revenue']} />
-              <Line type="monotone" dataKey="revenue" stroke="#3b82f6" strokeWidth={2} />
+              <defs>
+                <linearGradient id="dashboardRevenue" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#14b8a6" stopOpacity={0.45} />
+                  <stop offset="95%" stopColor="#14b8a6" stopOpacity={0.03} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.22)" />
+              <XAxis dataKey="month" stroke="#64748b" tickLine={false} axisLine={false} />
+              <YAxis stroke="#64748b" tickLine={false} axisLine={false} />
+              <Tooltip
+                contentStyle={{
+                  borderRadius: 18,
+                  border: '1px solid rgba(148,163,184,0.24)',
+                  background: 'rgba(15,23,42,0.96)',
+                  color: '#fff',
+                }}
+                formatter={(value) => [`$${value}`, 'Revenue']}
+              />
+              <Line
+                type="monotone"
+                dataKey="revenue"
+                stroke="#14b8a6"
+                strokeWidth={3}
+                dot={{ r: 4, strokeWidth: 0, fill: '#14b8a6' }}
+                activeDot={{ r: 6 }}
+                fill="url(#dashboardRevenue)"
+              />
             </LineChart>
           </ResponsiveContainer>
         </Card>
 
-        <Card title="Daily Occupancy Trend" className="p-6">
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={safeStats.occupancyData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="time" />
-              <YAxis />
-              <Tooltip />
-              <Bar dataKey="occupied" fill="#22c55e" />
-            </BarChart>
-          </ResponsiveContainer>
-        </Card>
-      </div>
-
-      <Card title="Booking Status Distribution" className="p-6">
-        <div className="flex items-center justify-center">
-          <ResponsiveContainer width="100%" height={300}>
+        <Card
+          title="Booking Status Distribution"
+          subtitle="See how booking outcomes are split across the platform."
+        >
+          <ResponsiveContainer width="100%" height={320}>
             <PieChart>
               <Pie
                 data={safeStats.bookingStatusData}
                 cx="50%"
                 cy="50%"
-                labelLine={false}
-                label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                outerRadius={80}
-                fill="#8884d8"
+                innerRadius={64}
+                outerRadius={108}
+                paddingAngle={4}
                 dataKey="value"
               >
                 {safeStats.bookingStatusData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.color} />
+                  <Cell key={`cell-${entry.name || index}`} fill={entry.color || chartPalette[index % chartPalette.length]} />
                 ))}
               </Pie>
-              <Tooltip />
+              <Tooltip
+                contentStyle={{
+                  borderRadius: 18,
+                  border: '1px solid rgba(148,163,184,0.24)',
+                  background: 'rgba(15,23,42,0.96)',
+                  color: '#fff',
+                }}
+              />
             </PieChart>
           </ResponsiveContainer>
-        </div>
-      </Card>
+
+          <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
+            {safeStats.bookingStatusData.map((item, index) => (
+              <div
+                key={`${item.name || 'status'}-${index}`}
+                className="flex items-center justify-between rounded-2xl border border-slate-200/70 bg-slate-50/80 px-4 py-3 dark:border-slate-800 dark:bg-slate-950/40"
+              >
+                <div className="flex items-center gap-3">
+                  <span
+                    className="h-3 w-3 rounded-full"
+                    style={{ backgroundColor: item.color || chartPalette[index % chartPalette.length] }}
+                  />
+                  <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{item.name}</span>
+                </div>
+                <span className="text-sm font-bold text-slate-900 dark:text-white">{item.value}</span>
+              </div>
+            ))}
+          </div>
+        </Card>
+      </section>
+
+      <section className="grid grid-cols-1 gap-6 xl:grid-cols-[1.25fr_0.75fr]">
+        <Card
+          title="Daily Occupancy Trend"
+          subtitle="Watch how space usage changes throughout the day."
+        >
+          <ResponsiveContainer width="100%" height={320}>
+            <BarChart data={safeStats.occupancyData} barGap={10}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.22)" vertical={false} />
+              <XAxis dataKey="time" stroke="#64748b" tickLine={false} axisLine={false} />
+              <YAxis stroke="#64748b" tickLine={false} axisLine={false} />
+              <Tooltip
+                contentStyle={{
+                  borderRadius: 18,
+                  border: '1px solid rgba(148,163,184,0.24)',
+                  background: 'rgba(15,23,42,0.96)',
+                  color: '#fff',
+                }}
+              />
+              <Bar dataKey="occupied" fill="#0f766e" radius={[14, 14, 6, 6]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </Card>
+
+        <Card title="Operational Notes" subtitle="A quick executive read on current platform posture.">
+          <div className="space-y-4">
+            <div className="rounded-3xl border border-slate-200/70 bg-slate-50/85 p-4 dark:border-slate-800 dark:bg-slate-950/40">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-500 dark:text-slate-400">
+                Capacity signal
+              </p>
+              <p className="mt-2 text-lg font-bold text-slate-900 dark:text-white">
+                {occupancyRate >= 75 ? 'High utilization' : occupancyRate >= 40 ? 'Healthy utilization' : 'Capacity available'}
+              </p>
+              <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
+                Occupancy is currently at {occupancyRate}% across the monitored parking inventory.
+              </p>
+            </div>
+
+            <div className="rounded-3xl border border-slate-200/70 bg-slate-50/85 p-4 dark:border-slate-800 dark:bg-slate-950/40">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-500 dark:text-slate-400">
+                Demand signal
+              </p>
+              <p className="mt-2 text-lg font-bold text-slate-900 dark:text-white">{safeStats.mostBookedVehicleType || 'N/A'}</p>
+              <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
+                This vehicle segment is driving the most booking activity right now.
+              </p>
+            </div>
+
+            <div className="rounded-3xl border border-slate-200/70 bg-slate-50/85 p-4 dark:border-slate-800 dark:bg-slate-950/40">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-500 dark:text-slate-400">
+                Revenue signal
+              </p>
+              <p className="mt-2 text-lg font-bold text-slate-900 dark:text-white">
+                ${Number(safeStats.totalRevenue || 0).toLocaleString()}
+              </p>
+              <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
+                Total revenue remains visible at a glance so operators can make faster pricing decisions.
+              </p>
+            </div>
+          </div>
+        </Card>
+      </section>
     </div>
   );
 };
