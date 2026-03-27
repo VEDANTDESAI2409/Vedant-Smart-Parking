@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 const baseControlClasses =
-  'mt-1 flex w-full items-center justify-between gap-3 rounded-2xl border border-slate-200/85 bg-white/96 px-4 py-3 text-left text-sm text-slate-800 shadow-[0_10px_24px_rgba(15,23,42,0.04)] transition focus-within:outline-none focus-within:ring-2 focus-within:ring-teal-500/35 dark:border-slate-700/80 dark:bg-slate-900/94 dark:text-white';
+  'mt-1 flex w-full items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left text-sm text-slate-800 shadow-[0_8px_20px_rgba(15,23,42,0.05)] transition focus-within:outline-none focus-within:ring-2 focus-within:ring-sky-500/20';
 
 const SearchableSelect = ({
   value,
@@ -95,11 +95,11 @@ const SearchableSelect = ({
         disabled={disabled}
         className={`${baseControlClasses} ${
           disabled
-            ? 'cursor-not-allowed bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500'
-            : 'hover:border-slate-300 hover:bg-white dark:hover:border-teal-700/60 dark:hover:bg-slate-900'
+            ? 'cursor-not-allowed bg-slate-100 text-slate-400'
+            : 'hover:border-slate-300 hover:bg-white'
         }`}
       >
-        <span className={selectedOption ? '' : 'text-slate-400 dark:text-slate-400'}>
+        <span className={selectedOption ? '' : 'text-slate-400'}>
           {selectedOption?.label || placeholder}
         </span>
         <svg
@@ -118,16 +118,16 @@ const SearchableSelect = ({
 
       {isOpen && (
         <div
-          className={`absolute z-50 mt-2 w-full overflow-hidden rounded-[24px] border border-slate-200/90 bg-white/98 shadow-[0_28px_80px_rgba(15,23,42,0.16)] backdrop-blur-xl dark:border-slate-700/80 dark:bg-slate-950/96 ${menuClassName}`}
+          className={`absolute z-50 mt-2 w-full overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-[0_20px_48px_rgba(15,23,42,0.12)] ${menuClassName}`}
         >
-          <div className="border-b border-slate-200/90 p-2 dark:border-slate-800/90">
+          <div className="border-b border-slate-200 p-2">
             <input
               ref={searchInputRef}
               type="text"
               value={searchTerm}
               onChange={(event) => setSearchTerm(event.target.value)}
               placeholder={searchPlaceholder}
-              className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-teal-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+              className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-sky-500"
             />
           </div>
 
@@ -143,8 +143,8 @@ const SearchableSelect = ({
                     onClick={() => handleSelect(option.value)}
                     className={`flex w-full items-center justify-between px-3 py-2 text-left text-sm transition ${
                       isSelected
-                        ? 'bg-teal-50 text-teal-700 dark:bg-teal-500/12 dark:text-teal-300'
-                        : 'text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-900/70'
+                        ? 'bg-sky-50 text-sky-700'
+                        : 'text-slate-700 hover:bg-slate-50'
                     }`}
                   >
                     <span>{option.label}</span>
@@ -161,7 +161,7 @@ const SearchableSelect = ({
                 );
               })
             ) : (
-              <div className="px-3 py-3 text-sm text-slate-500 dark:text-slate-400">{emptyMessage}</div>
+              <div className="px-3 py-3 text-sm text-slate-500">{emptyMessage}</div>
             )}
           </div>
         </div>
