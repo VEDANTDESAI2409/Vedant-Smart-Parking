@@ -4,6 +4,9 @@ const Pincode = require('../models/Pincode');
 const Area = require('../models/Area');
 const Location = require('../models/Location');
 
+const canRunWithoutDb = () =>
+  process.env.NODE_ENV !== 'production' && process.env.ALLOW_SERVER_WITHOUT_DB === 'true';
+
 const syncCoreIndexes = async () => {
   const models = [
     { name: 'City', model: City },
@@ -60,6 +63,12 @@ const connectDB = async () => {
 
   } catch (error) {
     console.error('Error connecting to MongoDB:', error.message);
+
+    if (canRunWithoutDb()) {
+      console.warn('Starting server without database connection because ALLOW_SERVER_WITHOUT_DB is enabled.');
+      return null;
+    }
+
     process.exit(1);
   }
 };

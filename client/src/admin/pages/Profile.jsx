@@ -3,6 +3,7 @@ import { FaSave, FaUser, FaCamera } from 'react-icons/fa';
 import Button from '../../components/Button';
 import Card from '../../components/Card';
 import { useAuth } from '../../context/AuthContext';
+import { showError, showSuccess, showWarning } from '../../utils/toastService';
 
 const Profile = () => {
   // Pull user and the new update function from context
@@ -40,7 +41,7 @@ const Profile = () => {
     e.preventDefault();
     
     if (profile.newPassword && profile.newPassword !== profile.confirmPassword) {
-      alert("New passwords do not match!");
+      showWarning('New passwords do not match');
       return;
     }
 
@@ -57,7 +58,7 @@ const Profile = () => {
         avatar: profile.avatar 
       });
 
-      alert('Changes saved successfully!');
+      showSuccess('Changes saved successfully');
       
       // Clear password fields after success
       setProfile(prev => ({
@@ -69,7 +70,7 @@ const Profile = () => {
 
     } catch (error) {
       console.error(error);
-      alert('Failed to save changes.');
+      showError('Failed to save changes');
     } finally {
       setLoading(false);
     }
