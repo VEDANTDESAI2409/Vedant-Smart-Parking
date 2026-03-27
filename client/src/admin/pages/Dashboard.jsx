@@ -76,7 +76,7 @@ const Dashboard = () => {
         value: safeStats.totalSlots,
         note: `${safeStats.occupiedSlots || 0} occupied right now`,
         icon: FaParking,
-        accent: 'from-sky-500/20 to-blue-600/10',
+        accent: 'from-sky-100 to-blue-50',
         iconColor: 'text-sky-600 dark:text-sky-300',
       },
       {
@@ -84,7 +84,7 @@ const Dashboard = () => {
         value: `${occupancyRate}%`,
         note: `${safeStats.occupiedSlots}/${safeStats.totalSlots || 0} active spaces`,
         icon: FaChartLine,
-        accent: 'from-emerald-500/20 to-teal-600/10',
+        accent: 'from-emerald-100 to-teal-50',
         iconColor: 'text-emerald-600 dark:text-emerald-300',
       },
       {
@@ -92,7 +92,7 @@ const Dashboard = () => {
         value: safeStats.pendingSlots ?? 0,
         note: 'Awaiting assignment or review',
         icon: FaClock,
-        accent: 'from-amber-500/20 to-orange-500/10',
+        accent: 'from-amber-100 to-orange-50',
         iconColor: 'text-amber-600 dark:text-amber-300',
       },
       {
@@ -100,7 +100,7 @@ const Dashboard = () => {
         value: safeStats.mostUsedSlotType,
         note: 'Most booked parking category',
         icon: FaStar,
-        accent: 'from-fuchsia-500/20 to-rose-500/10',
+        accent: 'from-fuchsia-100 to-rose-50',
         iconColor: 'text-fuchsia-600 dark:text-fuchsia-300',
       },
       {
@@ -108,7 +108,7 @@ const Dashboard = () => {
         value: safeStats.mostBookedVehicleType,
         note: 'Most frequent booking segment',
         icon: FaCar,
-        accent: 'from-orange-500/20 to-amber-500/10',
+        accent: 'from-orange-100 to-amber-50',
         iconColor: 'text-orange-600 dark:text-orange-300',
       },
       {
@@ -116,7 +116,7 @@ const Dashboard = () => {
         value: safeStats.activeBookings,
         note: 'Live reservations in progress',
         icon: FaCalendarAlt,
-        accent: 'from-violet-500/20 to-indigo-500/10',
+        accent: 'from-violet-100 to-indigo-50',
         iconColor: 'text-violet-600 dark:text-violet-300',
       },
       {
@@ -124,7 +124,7 @@ const Dashboard = () => {
         value: safeStats.totalUsers,
         note: 'Registered platform users',
         icon: FaUsers,
-        accent: 'from-cyan-500/20 to-sky-500/10',
+        accent: 'from-cyan-100 to-sky-50',
         iconColor: 'text-cyan-600 dark:text-cyan-300',
       },
       {
@@ -132,7 +132,7 @@ const Dashboard = () => {
         value: `$${Number(safeStats.totalRevenue || 0).toLocaleString()}`,
         note: 'Lifetime processed revenue',
         icon: FaCreditCard,
-        accent: 'from-rose-500/20 to-red-600/10',
+        accent: 'from-rose-100 to-red-50',
         iconColor: 'text-rose-600 dark:text-rose-300',
       },
     ],
@@ -169,30 +169,31 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="space-y-6">
-      <section className="relative overflow-hidden rounded-[36px] border border-slate-200/80 bg-[linear-gradient(135deg,rgba(15,23,42,0.98)_0%,rgba(14,37,62,0.95)_35%,rgba(13,87,98,0.88)_100%)] px-6 py-7 text-white shadow-[0_28px_90px_rgba(15,23,42,0.18)] sm:px-8 lg:px-10">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(245,158,11,0.35),_transparent_28%),radial-gradient(circle_at_bottom_left,_rgba(45,212,191,0.26),_transparent_30%)]" />
-        <div className="absolute right-6 top-6 hidden h-48 w-48 rounded-full border border-white/10 bg-white/5 blur-3xl lg:block" />
+    <div className="space-y-5">
+      <section className="relative overflow-hidden rounded-[30px] border border-sky-100 bg-[linear-gradient(135deg,#f9fdff_0%,#eefaf7_42%,#fef7e8_100%)] px-5 py-5 text-slate-900 shadow-[0_20px_52px_rgba(148,163,184,0.14)] sm:px-6 lg:px-7 dark:border-slate-200/80 dark:bg-[linear-gradient(135deg,rgba(15,23,42,0.98)_0%,rgba(14,37,62,0.95)_35%,rgba(13,87,98,0.88)_100%)] dark:text-white dark:shadow-[0_20px_52px_rgba(15,23,42,0.16)]">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(251,191,36,0.18),_transparent_28%),radial-gradient(circle_at_bottom_left,_rgba(45,212,191,0.16),_transparent_30%)] dark:bg-[radial-gradient(circle_at_top_right,_rgba(245,158,11,0.35),_transparent_28%),radial-gradient(circle_at_bottom_left,_rgba(45,212,191,0.26),_transparent_30%)]" />
+        <div className="absolute right-6 top-6 hidden h-36 w-36 rounded-full border border-white/60 bg-white/50 blur-3xl lg:block dark:border-white/10 dark:bg-white/5" />
 
-        <div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+        <div className="relative flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-3xl">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.34em] text-teal-200/85">Control Center</p>
-            <h1 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-sky-600 dark:text-teal-200/85">Control Center</p>
+            <h1 className="mt-2 text-[2rem] font-black tracking-tight sm:text-[2.4rem] lg:text-[3.05rem] lg:leading-[1.04]">
               Run the platform from a sharper, more executive dashboard.
             </h1>
-            <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-200/85 sm:text-base">
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600 lg:max-w-[780px] dark:text-slate-200/85">
               Monitor occupancy, revenue, booking flow, and service performance from a more polished command layer
               without changing any of your existing logic.
             </p>
           </div>
 
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <div className="rounded-2xl border border-white/10 bg-white/8 px-4 py-3 text-sm text-slate-100/90 backdrop-blur-xl">
+          <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center lg:shrink-0">
+            <div className="rounded-xl border border-sky-100 bg-white/85 px-4 py-3 text-sm text-slate-600 shadow-[0_10px_20px_rgba(148,163,184,0.08)] backdrop-blur-xl dark:border-white/10 dark:bg-white/8 dark:text-slate-100/90">
               Last updated: {new Date().toLocaleString()}
             </div>
             <Button
               onClick={downloadCSVReport}
-              className="bg-white text-slate-900 shadow-[0_18px_40px_rgba(255,255,255,0.12)] hover:bg-slate-100 dark:bg-white dark:text-slate-900"
+              size="sm"
+              className="rounded-xl border border-sky-200 bg-gradient-to-r from-sky-500 via-cyan-500 to-teal-400 px-5 text-white shadow-[0_14px_28px_rgba(14,165,233,0.18)] hover:brightness-105 dark:bg-white dark:text-slate-900"
             >
               <FaFileDownload className="h-4 w-4" />
               Export CSV
@@ -200,48 +201,48 @@ const Dashboard = () => {
           </div>
         </div>
 
-        <div className="relative mt-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <div className="rounded-3xl border border-white/10 bg-white/8 px-5 py-4 backdrop-blur-xl">
-            <p className="text-xs uppercase tracking-[0.24em] text-slate-300/70">Revenue</p>
-            <p className="mt-3 text-3xl font-black">${Number(safeStats.totalRevenue || 0).toLocaleString()}</p>
+        <div className="relative mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="rounded-2xl border border-sky-100 bg-white/75 px-4 py-3 shadow-[0_10px_24px_rgba(148,163,184,0.08)] backdrop-blur-xl dark:border-white/10 dark:bg-white/8">
+            <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 dark:text-slate-300/70">Revenue</p>
+            <p className="mt-2 text-[2rem] font-black leading-none">${Number(safeStats.totalRevenue || 0).toLocaleString()}</p>
           </div>
-          <div className="rounded-3xl border border-white/10 bg-white/8 px-5 py-4 backdrop-blur-xl">
-            <p className="text-xs uppercase tracking-[0.24em] text-slate-300/70">Occupancy</p>
-            <p className="mt-3 text-3xl font-black">{occupancyRate}%</p>
+          <div className="rounded-2xl border border-sky-100 bg-white/75 px-4 py-3 shadow-[0_10px_24px_rgba(148,163,184,0.08)] backdrop-blur-xl dark:border-white/10 dark:bg-white/8">
+            <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 dark:text-slate-300/70">Occupancy</p>
+            <p className="mt-2 text-[2rem] font-black leading-none">{occupancyRate}%</p>
           </div>
-          <div className="rounded-3xl border border-white/10 bg-white/8 px-5 py-4 backdrop-blur-xl">
-            <p className="text-xs uppercase tracking-[0.24em] text-slate-300/70">Active Bookings</p>
-            <p className="mt-3 text-3xl font-black">{safeStats.activeBookings}</p>
+          <div className="rounded-2xl border border-sky-100 bg-white/75 px-4 py-3 shadow-[0_10px_24px_rgba(148,163,184,0.08)] backdrop-blur-xl dark:border-white/10 dark:bg-white/8">
+            <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 dark:text-slate-300/70">Active Bookings</p>
+            <p className="mt-2 text-[2rem] font-black leading-none">{safeStats.activeBookings}</p>
           </div>
         </div>
       </section>
 
-      <section className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
+      <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         {summaryCards.map((card) => (
           <Card
             key={card.title}
             className="overflow-hidden"
-            bodyClassName={`bg-gradient-to-br ${card.accent}`}
+            bodyClassName={`bg-gradient-to-br ${card.accent} px-5 py-4`}
           >
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-500 dark:text-slate-400">
                   {card.title}
                 </p>
-                <p className="mt-4 text-3xl font-black tracking-tight text-slate-900 dark:text-white">
+                <p className="mt-2.5 text-[1.75rem] font-black tracking-tight text-slate-900 dark:text-white">
                   {card.value}
                 </p>
-                <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">{card.note}</p>
+                <p className="mt-1.5 text-[13px] text-slate-500 dark:text-slate-400">{card.note}</p>
               </div>
-              <span className="flex h-14 w-14 items-center justify-center rounded-3xl bg-white/80 shadow-sm dark:bg-slate-950/40">
-                <card.icon className={`h-5 w-5 ${card.iconColor}`} />
+              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/80 shadow-sm dark:bg-slate-950/40">
+                <card.icon className={`h-4.5 w-4.5 ${card.iconColor}`} />
               </span>
             </div>
           </Card>
         ))}
       </section>
 
-      <section className="grid grid-cols-1 gap-6 xl:grid-cols-[1.4fr_0.9fr]">
+      <section className="grid grid-cols-1 gap-5 xl:grid-cols-[1.4fr_0.9fr]">
         <Card
           title="Monthly Revenue"
           subtitle="Track how revenue is moving across reporting periods."
@@ -313,7 +314,7 @@ const Dashboard = () => {
             {safeStats.bookingStatusData.map((item, index) => (
               <div
                 key={`${item.name || 'status'}-${index}`}
-                className="flex items-center justify-between rounded-2xl border border-slate-200/70 bg-slate-50/80 px-4 py-3 dark:border-slate-800 dark:bg-slate-950/40"
+                className="flex items-center justify-between rounded-xl border border-slate-200/70 bg-slate-50/80 px-3.5 py-2.5 dark:border-slate-800 dark:bg-slate-950/40"
               >
                 <div className="flex items-center gap-3">
                   <span
@@ -329,7 +330,7 @@ const Dashboard = () => {
         </Card>
       </section>
 
-      <section className="grid grid-cols-1 gap-6 xl:grid-cols-[1.25fr_0.75fr]">
+      <section className="grid grid-cols-1 gap-5 xl:grid-cols-[1.25fr_0.75fr]">
         <Card
           title="Daily Occupancy Trend"
           subtitle="Watch how space usage changes throughout the day."
@@ -353,8 +354,8 @@ const Dashboard = () => {
         </Card>
 
         <Card title="Operational Notes" subtitle="A quick executive read on current platform posture.">
-          <div className="space-y-4">
-            <div className="rounded-3xl border border-slate-200/70 bg-slate-50/85 p-4 dark:border-slate-800 dark:bg-slate-950/40">
+          <div className="space-y-3">
+            <div className="rounded-2xl border border-slate-200/70 bg-slate-50/85 p-3.5 dark:border-slate-800 dark:bg-slate-950/40">
               <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-500 dark:text-slate-400">
                 Capacity signal
               </p>
@@ -366,7 +367,7 @@ const Dashboard = () => {
               </p>
             </div>
 
-            <div className="rounded-3xl border border-slate-200/70 bg-slate-50/85 p-4 dark:border-slate-800 dark:bg-slate-950/40">
+            <div className="rounded-2xl border border-slate-200/70 bg-slate-50/85 p-3.5 dark:border-slate-800 dark:bg-slate-950/40">
               <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-500 dark:text-slate-400">
                 Demand signal
               </p>
@@ -376,7 +377,7 @@ const Dashboard = () => {
               </p>
             </div>
 
-            <div className="rounded-3xl border border-slate-200/70 bg-slate-50/85 p-4 dark:border-slate-800 dark:bg-slate-950/40">
+            <div className="rounded-2xl border border-slate-200/70 bg-slate-50/85 p-3.5 dark:border-slate-800 dark:bg-slate-950/40">
               <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-500 dark:text-slate-400">
                 Revenue signal
               </p>
