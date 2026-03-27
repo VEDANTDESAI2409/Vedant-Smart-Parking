@@ -1,9 +1,17 @@
-import React, { useEffect, useState } from 'react';
-import { FaEdit, FaPlus, FaTrash } from 'react-icons/fa';
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+  FaCar,
+  FaEdit,
+  FaMapMarkerAlt,
+  FaMotorcycle,
+  FaParking,
+  FaPlus,
+  FaRupeeSign,
+  FaSearch,
+  FaTrash,
+} from 'react-icons/fa';
 import Swal from 'sweetalert2';
 
-import Button from '../../components/Button';
-import Card from '../../components/Card';
 import Modal from '../../components/Modal';
 import SearchableSelect from '../../components/SearchableSelect';
 import Table from '../../components/Table';
@@ -35,6 +43,9 @@ const mapOptions = (items, getLabel) =>
     label: getLabel(item),
   }));
 
+const inputClassName =
+  'w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-medium text-slate-900 shadow-sm outline-none transition-all placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-white dark:placeholder:text-slate-500';
+
 const ParkingSlots = () => {
   const [slots, setSlots] = useState([]);
   const [selectedSlotIds, setSelectedSlotIds] = useState([]);
@@ -42,6 +53,7 @@ const ParkingSlots = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingSlot, setEditingSlot] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
 
   const [cities, setCities] = useState([]);
   const [pincodes, setPincodes] = useState([]);
@@ -98,6 +110,41 @@ const ParkingSlots = () => {
 
     fetchLocations(cityId, pincodeId, areaId);
   }, [cityId, pincodeId, areaId]);
+
+  const filteredSlots = useMemo(() => {
+    const query = searchTerm.trim().toLowerCase();
+    if (!query) return slots;
+
+    return slots.filter((slot) =>
+      [
+        slot.city,
+        slot.pincode,
+        slot.area,
+        slot.location,
+        slot.landmark,
+        slot.vehicleType,
+        slot.slotType,
+        slot.slotLocation,
+        String(slot.price ?? ''),
+        slot._id,
+      ]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(query))
+    );
+  }, [searchTerm, slots]);
+
+  const stats = useMemo(() => {
+    const total = slots.length;
+    const cars = slots.filter((slot) => slot.vehicleType === 'car').length;
+    const bikes = slots.filter((slot) => slot.vehicleType === 'bike').length;
+    const avgPrice = total
+      ? Math.round(
+          (slots.reduce((sum, slot) => sum + Number(slot.price || 0), 0) / total) * 100
+        ) / 100
+      : 0;
+
+    return { total, cars, bikes, avgPrice };
+  }, [slots]);
 
   const fetchSlots = async () => {
     try {
@@ -355,7 +402,7 @@ const ParkingSlots = () => {
       cancelButtonColor: '#64748b',
       background: '#ffffff',
       color: '#0f172a',
-      borderRadius: '12px',
+      borderRadius: '24px',
     });
 
     if (!result.isConfirmed) return;
@@ -377,7 +424,7 @@ const ParkingSlots = () => {
   };
 
   const handleSelectAllSlots = (checked) => {
-    setSelectedSlotIds(checked ? slots.map((item) => item._id).filter(Boolean) : []);
+    setSelectedSlotIds(checked ? filteredSlots.map((item) => item._id).filter(Boolean) : []);
   };
 
   const handleBulkDelete = async () => {
@@ -398,7 +445,7 @@ const ParkingSlots = () => {
         cancelButtonColor: '#64748b',
         background: '#ffffff',
         color: '#0f172a',
-        borderRadius: '12px',
+        borderRadius: '24px',
       });
 
       if (!result.isConfirmed) return;
@@ -428,55 +475,87 @@ const ParkingSlots = () => {
   };
 
   const columns = [
-    { header: 'City', key: 'city' },
-    { header: 'Pincode', key: 'pincode' },
-    { header: 'Area', key: 'area' },
-    { header: 'Location', key: 'location' },
-    { header: 'Landmark', key: 'landmark' },
     {
-      header: 'Vehicle Type',
-      key: 'vehicleType',
-      render: (row) => <span className="capitalize">{row.vehicleType || 'N/A'}</span>,
-    },
-    {
-      header: 'Slot Type',
-      key: 'slotType',
-      render: (row) => <span className="capitalize">{row.slotType || 'N/A'}</span>,
-    },
-    { header: 'Slot Location', key: 'slotLocation' },
-    {
-      header: 'Price',
-      key: 'price',
-      render: (row) => `Rs ${row.price ?? 0}`,
-    },
-    {
-      header: 'Actions',
-      key: 'actions',
+      header: 'SLOT',
       render: (row) => (
-        <div className="flex space-x-2">
+        <div className="flex flex-col gap-1">
+          <span className="text-sm font-black text-slate-900 dark:text-white">
+            {row.slotLocation || 'Unnamed slot'}
+          </span>
+          <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
+            {(row.location || 'No location') + ' | ' + (row.area || 'No area')}
+          </span>
+        </div>
+      ),
+    },
+    {
+      header: 'ADDRESS',
+      render: (row) => (
+        <div className="flex items-start gap-2 text-sm text-slate-600 dark:text-slate-300">
+          <FaMapMarkerAlt className="mt-0.5 text-slate-400" size={11} />
+          <div>
+            <p>{row.city || '---'}, {row.pincode || '---'}</p>
+            <p className="text-[11px] text-slate-400 dark:text-slate-500">{row.landmark || '---'}</p>
+          </div>
+        </div>
+      ),
+    },
+    {
+      header: 'VEHICLE',
+      render: (row) => (
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-black uppercase tracking-wide text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
+          {row.vehicleType === 'bike' ? <FaMotorcycle size={10} /> : <FaCar size={10} />}
+          {row.vehicleType || 'N/A'}
+        </span>
+      ),
+    },
+    {
+      header: 'TYPE',
+      render: (row) => (
+        <span className="inline-flex rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-black uppercase tracking-wide text-blue-700 dark:bg-blue-500/10 dark:text-blue-300">
+          {row.slotType || 'N/A'}
+        </span>
+      ),
+    },
+    {
+      header: 'PRICE',
+      render: (row) => (
+        <span className="text-sm font-black text-slate-900 dark:text-white">
+          Rs. {row.price ?? 0}
+        </span>
+      ),
+    },
+    {
+      header: 'ACTION',
+      render: (row) => (
+        <div className="flex items-center gap-2">
           <button
             onClick={() => handleEdit(row)}
-            className="p-2 text-blue-600 hover:bg-blue-100 rounded-md"
+            className="rounded-lg bg-blue-50 p-2 text-blue-600 transition-colors hover:bg-blue-100 dark:bg-blue-500/10 dark:text-blue-300 dark:hover:bg-blue-500/20"
             title="Edit"
           >
-            <FaEdit />
+            <FaEdit size={13} />
           </button>
           <button
             onClick={() => handleDelete(row._id)}
-            className="p-2 text-red-600 hover:bg-red-100 rounded-md"
+            className="rounded-lg bg-red-50 p-2 text-red-600 transition-colors hover:bg-red-100 dark:bg-red-500/10 dark:text-red-300 dark:hover:bg-red-500/20"
             title="Delete"
           >
-            <FaTrash />
+            <FaTrash size={13} />
           </button>
         </div>
       ),
     },
   ];
 
-  const cityOptions = mapOptions(cities, (item) => item.name);
-  const pincodeOptions = mapOptions(pincodes, (item) => item.pincode);
-  const areaOptions = mapOptions(areas, (item) => item.name);
-  const locationOptions = mapOptions(locations, (item) => item.name);
+  const selectedCity = cities.find((item) => getId(item) === cityId);
+  const selectedPincode = pincodes.find((item) => getId(item) === pincodeId);
+  const selectedArea = areas.find((item) => getId(item) === areaId);
+  const selectedLocation = locations.find((item) => getId(item) === locationId);
+  const cityOptions = mapOptions(cities, (item) => getCityName(item));
+  const pincodeOptions = mapOptions(pincodes, (item) => getPincodeValue(item));
+  const areaOptions = mapOptions(areas, (item) => getAreaValue(item));
+  const locationOptions = mapOptions(locations, (item) => getLocationValue(item));
   const vehicleTypeOptions = [
     { value: 'car', label: 'Car' },
     { value: 'bike', label: 'Bike' },
@@ -487,32 +566,86 @@ const ParkingSlots = () => {
     { value: 'reserved', label: 'Reserved' },
   ];
 
+  const city = getCityName(selectedCity);
+  const pincode = getPincodeValue(selectedPincode);
+  const area = getAreaValue(selectedArea);
+  const location = getLocationValue(selectedLocation);
+
+  const detailCards = [
+    { label: 'Slot ID', value: editingSlot?._id || 'Auto-generated on save' },
+    { label: 'City', value: city || '---' },
+    { label: 'Pincode', value: pincode || '---' },
+    { label: 'Area', value: area || '---' },
+    { label: 'Location', value: location || '---' },
+    { label: 'Landmark', value: landmark || '---' },
+    { label: 'Vehicle Type', value: vehicleType || '---' },
+    { label: 'Slot Type', value: slotType || '---' },
+    { label: 'Slot Location', value: slotLocation || '---' },
+    { label: 'Price', value: price !== '' ? `Rs. ${price}` : '---' },
+  ];
+
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="min-h-screen bg-[#F8FAFC] p-4 font-sans transition-colors duration-300 dark:bg-[#0F172A] lg:p-6">
+      <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Parking Slots</h1>
-          <p className="text-sm text-gray-500 mt-1">Create slots with dependent location mapping.</p>
+          <h1 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white lg:text-[2rem]">
+            Parking Slots
+          </h1>
+          <p className="mt-1.5 text-xs font-medium text-slate-500 dark:text-slate-400 sm:text-sm">
+            Same polished flow as the user experience, with the full slot data visible for admins.
+          </p>
         </div>
 
-        <div className="flex gap-3">
-          {selectedSlotIds.length > 0 && (
-            <Button variant="danger" onClick={handleBulkDelete}>
-              <FaTrash className="mr-2" />
-              Delete Selected ({selectedSlotIds.length})
-            </Button>
-          )}
-          <Button onClick={openCreateModal}>
-            <FaPlus className="mr-2" />
-            Add Slot
-          </Button>
+        <div className="flex w-full items-center gap-4 md:w-auto">
+          <div className="group relative flex-grow md:w-72">
+            <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-blue-500 dark:text-slate-500" />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search city, slot, landmark, type..."
+              className="w-full rounded-xl border-none bg-white py-2.5 pl-11 pr-4 text-sm text-slate-900 shadow-sm ring-1 ring-slate-200 outline-none transition-all focus:ring-2 focus:ring-blue-500 dark:bg-[#1E293B] dark:text-white dark:ring-slate-700"
+            />
+          </div>
+
+          <div className="flex items-center gap-3">
+            {selectedSlotIds.length > 0 && (
+              <button
+                onClick={handleBulkDelete}
+                className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-bold text-white transition-all hover:opacity-90 active:scale-[0.98]"
+              >
+                <FaTrash size={12} />
+                Delete Selected ({selectedSlotIds.length})
+              </button>
+            )}
+
+            <button
+              onClick={openCreateModal}
+              className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-sky-500 via-cyan-500 to-teal-400 px-4 py-2.5 text-sm font-bold text-white shadow-[0_14px_28px_rgba(14,165,233,0.18)] transition-all hover:opacity-90 active:scale-[0.98] dark:bg-blue-600"
+            >
+              <FaPlus size={12} />
+              Add Slot
+            </button>
+          </div>
         </div>
       </div>
 
-      <Card>
+      <div className="mb-6 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <StatCard label="Total Slots" value={stats.total} icon={FaParking} accent="blue" />
+        <StatCard label="Car Slots" value={stats.cars} icon={FaCar} accent="amber" />
+        <StatCard label="Bike Slots" value={stats.bikes} icon={FaMotorcycle} accent="emerald" />
+        <StatCard
+          label="Avg Price"
+          value={`Rs. ${stats.avgPrice}`}
+          icon={FaRupeeSign}
+          accent="slate"
+        />
+      </div>
+
+      <div className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm dark:border-slate-800 dark:bg-[#1E293B] dark:shadow-none">
         <Table
           columns={columns}
-          data={slots}
+          data={filteredSlots}
           loading={loading}
           emptyMessage="No parking slots found"
           selectable
@@ -521,7 +654,15 @@ const ParkingSlots = () => {
           onSelectAll={handleSelectAllSlots}
           getRowId={(row) => row._id}
         />
-      </Card>
+
+        {!loading && filteredSlots.length === 0 && searchTerm.trim() && (
+          <div className="border-t border-slate-100 px-4 py-8 text-center dark:border-slate-800">
+            <p className="font-medium text-slate-400 dark:text-slate-500">
+              No slots found matching "{searchTerm}"
+            </p>
+          </div>
+        )}
+      </div>
 
       <Modal
         isOpen={modalOpen}
@@ -531,130 +672,266 @@ const ParkingSlots = () => {
             resetForm();
           }
         }}
-        title={editingSlot ? 'Edit Slot' : 'Add Slot'}
+        size="xl"
+        showCloseButton={!submitting}
       >
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <form onSubmit={handleSubmit} className="space-y-8">
+          <div className="flex flex-col gap-4 border-b border-slate-200 pb-6 md:flex-row md:items-start md:justify-between">
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">City</label>
-              <SearchableSelect
-                value={cityId}
-                onChange={handleCityChange}
-                options={cityOptions}
-                placeholder="Select a city"
-              />
+              <span className="rounded-full bg-sky-50 px-3 py-1 text-[11px] font-black uppercase tracking-[0.2em] text-sky-700">
+                Slot Profile
+              </span>
+              <h2 className="mt-3 text-3xl font-black text-slate-900">
+                {editingSlot ? 'Update Parking Slot' : 'Create Parking Slot'}
+              </h2>
+              <p className="mt-2 text-sm font-medium text-slate-500">
+                All 10 slot details stay visible while you create or edit the record.
+              </p>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Pincode</label>
-              <SearchableSelect
-                value={pincodeId}
-                onChange={handlePincodeChange}
-                options={pincodeOptions}
-                placeholder={!cityId ? 'Select a city first' : 'Select a pincode'}
-                disabled={!cityId}
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Area</label>
-              <SearchableSelect
-                value={areaId}
-                onChange={handleAreaChange}
-                options={areaOptions}
-                placeholder={!pincodeId ? 'Select a pincode first' : 'Select an area'}
-                disabled={!pincodeId}
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Location</label>
-              <SearchableSelect
-                value={locationId}
-                onChange={setLocationId}
-                options={locationOptions}
-                placeholder={!areaId ? 'Select an area first' : 'Select a location'}
-                disabled={!areaId}
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Landmark</label>
-              <input
-                type="text"
-                value={landmark}
-                onChange={(e) => setLandmark(e.target.value)}
-                className="mt-1 w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Vehicle Type</label>
-              <SearchableSelect
-                value={vehicleType}
-                onChange={setVehicleType}
-                options={vehicleTypeOptions}
-                placeholder="Select a vehicle type"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Slot Type</label>
-              <SearchableSelect
-                value={slotType}
-                onChange={setSlotType}
-                options={slotTypeOptions}
-                placeholder="Select a slot type"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Slot Location</label>
-              <input
-                type="text"
-                value={slotLocation}
-                onChange={(e) => setSlotLocation(e.target.value)}
-                className="mt-1 w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                placeholder="e.g. Floor 1, Section B"
-                required
-              />
-            </div>
-
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Price</label>
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                value={price}
-                onChange={(e) => setPrice(e.target.value)}
-                className="mt-1 w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                required
-              />
+            <div className="rounded-3xl border border-sky-100 bg-[linear-gradient(135deg,#ffffff_0%,#f0f9ff_100%)] p-4">
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+                Current Rate
+              </p>
+              <p className="mt-2 text-3xl font-black text-slate-900">
+                {price !== '' ? `Rs. ${price}` : 'Rs. 0'}
+              </p>
             </div>
           </div>
 
-          <div className="flex justify-end gap-3 pt-2">
-            <Button
+          <div className="grid grid-cols-1 gap-8 xl:grid-cols-[1.4fr,0.9fr]">
+            <div className="space-y-8">
+              <section className="rounded-[2rem] border border-slate-200 bg-[linear-gradient(180deg,#fcfdff_0%,#f8fbff_100%)] p-6 shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
+                <SectionTitle
+                  title="Location Mapping"
+                  description="Keep the same linked city, pincode, area, and location hierarchy used across the app."
+                />
+                <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <SearchableField
+                    label="City"
+                    value={cityId}
+                    onChange={handleCityChange}
+                    options={cityOptions}
+                    placeholder="Select a city"
+                  />
+
+                  <SearchableField
+                    label="Pincode"
+                    value={pincodeId}
+                    onChange={handlePincodeChange}
+                    options={pincodeOptions}
+                    placeholder={!cityId ? 'Select a city first' : 'Select a pincode'}
+                    disabled={!cityId}
+                  />
+
+                  <SearchableField
+                    label="Area"
+                    value={areaId}
+                    onChange={handleAreaChange}
+                    options={areaOptions}
+                    placeholder={!pincodeId ? 'Select a pincode first' : 'Select an area'}
+                    disabled={!pincodeId}
+                  />
+
+                  <SearchableField
+                    label="Location"
+                    value={locationId}
+                    onChange={setLocationId}
+                    options={locationOptions}
+                    placeholder={!areaId ? 'Select an area first' : 'Select a location'}
+                    disabled={!areaId}
+                  />
+
+                  <InputField
+                    label="Landmark"
+                    value={landmark}
+                    onChange={(e) => setLandmark(e.target.value)}
+                    placeholder="Opposite mall gate, near metro..."
+                  />
+
+                  <InputField
+                    label="Slot Location"
+                    value={slotLocation}
+                    onChange={(e) => setSlotLocation(e.target.value)}
+                    placeholder="Floor 1, Section B"
+                  />
+                </div>
+              </section>
+
+              <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
+                <SectionTitle
+                  title="Slot Configuration"
+                  description="Vehicle category, slot class, and pricing are grouped here for faster edits."
+                />
+                <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
+                  <SearchableField
+                    label="Vehicle Type"
+                    value={vehicleType}
+                    onChange={setVehicleType}
+                    options={vehicleTypeOptions}
+                    placeholder="Select a vehicle type"
+                    searchPlaceholder="Search vehicle type..."
+                  />
+
+                  <SearchableField
+                    label="Slot Type"
+                    value={slotType}
+                    onChange={setSlotType}
+                    options={slotTypeOptions}
+                    placeholder="Select a slot type"
+                    searchPlaceholder="Search slot type..."
+                  />
+
+                  <InputField
+                    label="Price"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={price}
+                    onChange={(e) => setPrice(e.target.value)}
+                    placeholder="Enter hourly price"
+                  />
+                </div>
+              </section>
+            </div>
+
+            <aside className="space-y-4">
+              <div className="rounded-[2rem] border border-sky-100 bg-[linear-gradient(135deg,#f7fcff_0%,#ecfeff_48%,#f0fdf4_100%)] p-6 text-slate-900 shadow-[0_16px_36px_rgba(148,163,184,0.10)] dark:border-slate-700 dark:bg-[#1E293B] dark:text-white">
+                <p className="text-[10px] font-black uppercase tracking-[0.25em] text-sky-600 dark:text-blue-200">
+                  Live Preview
+                </p>
+                <h3 className="mt-3 text-2xl font-black">{slotLocation || 'New Slot'}</h3>
+                <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+                  {[location, area, city].filter(Boolean).join(', ') || 'Select the slot location details'}
+                </p>
+                <div className="mt-6 flex flex-wrap gap-2">
+                  <PreviewBadge>{vehicleType || 'vehicle'}</PreviewBadge>
+                  <PreviewBadge>{slotType || 'type'}</PreviewBadge>
+                  <PreviewBadge>{pincode || 'pincode'}</PreviewBadge>
+                </div>
+              </div>
+
+              <div className="rounded-[2rem] border border-slate-200 bg-[linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] p-6 shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
+                <p className="text-sm font-black text-slate-900">
+                  10 visible slot details
+                </p>
+                <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  {detailCards.map((card) => (
+                    <div
+                      key={card.label}
+                      className="rounded-2xl border border-slate-200 bg-white p-3 shadow-[0_6px_18px_rgba(15,23,42,0.03)]"
+                    >
+                      <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
+                        {card.label}
+                      </p>
+                      <p className="mt-1 break-words text-sm font-bold text-slate-900">
+                        {card.value}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </aside>
+          </div>
+
+          <div className="flex flex-col-reverse gap-3 border-t border-slate-200 pt-6 sm:flex-row sm:justify-end">
+            <button
               type="button"
-              variant="outline"
               onClick={() => {
                 setModalOpen(false);
                 resetForm();
               }}
               disabled={submitting}
+              className="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-700 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
             >
               Cancel
-            </Button>
-            <Button type="submit" disabled={submitting}>
+            </button>
+            <button
+              type="submit"
+              disabled={submitting}
+              className="rounded-2xl bg-blue-600 px-5 py-3 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+            >
               {submitting ? 'Saving...' : editingSlot ? 'Update Slot' : 'Create Slot'}
-            </Button>
+            </button>
           </div>
         </form>
       </Modal>
     </div>
   );
 };
+
+const StatCard = ({ label, value, icon: Icon, accent }) => {
+  const accentMap = {
+    blue: 'bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-300',
+    amber: 'bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-300',
+    emerald: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-300',
+    slate: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200',
+  };
+
+  return (
+    <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-[#1E293B]">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">
+            {label}
+          </p>
+          <p className="mt-2 text-2xl font-black text-slate-900 dark:text-white">{value}</p>
+        </div>
+        <div className={`rounded-xl p-2.5 ${accentMap[accent]}`}>
+          <Icon size={16} />
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const SectionTitle = ({ title, description }) => (
+  <div>
+    <h3 className="text-lg font-black text-slate-900 dark:text-white">{title}</h3>
+    <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">{description}</p>
+  </div>
+);
+
+const FieldLabel = ({ children }) => (
+  <label className="mb-2 block text-xs font-black uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+    {children}
+  </label>
+);
+
+const InputField = ({ label, ...props }) => (
+  <div>
+    <FieldLabel>{label}</FieldLabel>
+    <input className={inputClassName} {...props} />
+  </div>
+);
+
+const SearchableField = ({
+  label,
+  value,
+  onChange,
+  options,
+  placeholder,
+  disabled = false,
+  searchPlaceholder,
+}) => (
+  <div>
+    <FieldLabel>{label}</FieldLabel>
+    <SearchableSelect
+      value={value}
+      onChange={onChange}
+      options={options}
+      placeholder={placeholder}
+      disabled={disabled}
+      searchPlaceholder={searchPlaceholder}
+      className={disabled ? 'opacity-100' : ''}
+    />
+  </div>
+);
+
+const PreviewBadge = ({ children }) => (
+  <span className="rounded-full bg-sky-100 px-3 py-1 text-xs font-black uppercase tracking-wide text-sky-700 dark:bg-white/10 dark:text-white">
+    {children}
+  </span>
+);
 
 export default ParkingSlots;

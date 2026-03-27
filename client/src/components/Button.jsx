@@ -16,9 +16,9 @@ const Button = ({
 
   const variants = {
     primary:
-      'border border-slate-900/15 bg-gradient-to-r from-slate-950 via-slate-900 to-teal-900 text-white shadow-[0_18px_36px_rgba(15,23,42,0.20)] hover:-translate-y-0.5 hover:shadow-[0_24px_44px_rgba(15,23,42,0.24)] hover:brightness-105 focus:ring-teal-500 dark:border-teal-300/20 dark:from-teal-500 dark:via-cyan-500 dark:to-blue-600 dark:text-slate-950 dark:shadow-[0_18px_42px_rgba(20,184,166,0.28)]',
+      'border border-sky-200 bg-gradient-to-r from-sky-500 via-cyan-500 to-teal-400 text-white shadow-[0_14px_28px_rgba(14,165,233,0.22)] hover:-translate-y-0.5 hover:shadow-[0_20px_36px_rgba(6,182,212,0.24)] hover:brightness-105 focus:ring-cyan-500 dark:border-teal-300/20 dark:from-teal-500 dark:via-cyan-500 dark:to-blue-600 dark:text-slate-950 dark:shadow-[0_18px_42px_rgba(20,184,166,0.28)]',
     secondary:
-      'border border-emerald-500/20 bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-[0_16px_30px_rgba(13,148,136,0.22)] hover:-translate-y-0.5 hover:shadow-[0_22px_38px_rgba(13,148,136,0.26)] hover:brightness-105 focus:ring-emerald-500',
+      'border border-teal-200 bg-gradient-to-r from-teal-400 to-emerald-400 text-white shadow-[0_14px_28px_rgba(16,185,129,0.2)] hover:-translate-y-0.5 hover:shadow-[0_18px_34px_rgba(16,185,129,0.24)] hover:brightness-105 focus:ring-emerald-500',
     outline:
       'border border-slate-200/90 bg-white/92 text-slate-700 shadow-[0_10px_24px_rgba(15,23,42,0.04)] hover:-translate-y-0.5 hover:border-slate-300 hover:bg-white hover:shadow-[0_16px_32px_rgba(15,23,42,0.08)] focus:ring-slate-400 dark:border-slate-700/80 dark:bg-slate-900/88 dark:text-slate-200 dark:hover:border-slate-600 dark:hover:bg-slate-800',
     danger:
