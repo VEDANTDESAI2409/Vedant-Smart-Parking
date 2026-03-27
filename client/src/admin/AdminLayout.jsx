@@ -5,17 +5,11 @@ import { getAdminPreferences, subscribeToAdminPreferences } from '../utils/admin
 
 const AdminLayout = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [isDarkMode, setIsDarkMode] = useState(false);
   const [adminPreferences, setAdminPreferences] = useState(getAdminPreferences());
 
   useEffect(() => {
-    const darkMode = localStorage.getItem('darkMode') === 'true';
-    setIsDarkMode(darkMode);
-    if (darkMode) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
+    localStorage.setItem('darkMode', 'false');
+    document.documentElement.classList.remove('dark');
   }, []);
 
   useEffect(() => subscribeToAdminPreferences(setAdminPreferences), []);
@@ -28,28 +22,15 @@ const AdminLayout = ({ children }) => {
     setSidebarOpen(!sidebarOpen);
   };
 
-  const toggleDarkMode = () => {
-    const newDarkMode = !isDarkMode;
-    setIsDarkMode(newDarkMode);
-    localStorage.setItem('darkMode', newDarkMode.toString());
-    if (newDarkMode) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  };
-
   return (
-    <div className="flex min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(20,184,166,0.10),_transparent_26%),radial-gradient(circle_at_top_right,_rgba(245,158,11,0.09),_transparent_20%),linear-gradient(180deg,_#f8fbff_0%,_#eef3f8_100%)] text-slate-900 dark:bg-[radial-gradient(circle_at_top_left,_rgba(20,184,166,0.16),_transparent_20%),radial-gradient(circle_at_top_right,_rgba(245,158,11,0.10),_transparent_18%),linear-gradient(180deg,_#04111d_0%,_#071521_100%)] dark:text-slate-100">
+    <div className="flex min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(56,189,248,0.16),_transparent_24%),radial-gradient(circle_at_top_right,_rgba(253,224,71,0.16),_transparent_22%),linear-gradient(180deg,_#fcfdfd_0%,_#eef7f7_44%,_#f7fbff_100%)] text-slate-900">
       <Sidebar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} />
 
       <div className="relative flex min-h-screen flex-1 flex-col overflow-hidden">
-        <div className="pointer-events-none absolute inset-0 opacity-50 [background-image:linear-gradient(rgba(148,163,184,0.09)_1px,transparent_1px),linear-gradient(90deg,rgba(148,163,184,0.07)_1px,transparent_1px)] [background-size:32px_32px] dark:opacity-35" />
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-white/40 to-transparent dark:from-teal-400/5" />
+        <div className="pointer-events-none absolute inset-0 opacity-40 [background-image:linear-gradient(rgba(148,163,184,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(148,163,184,0.06)_1px,transparent_1px)] [background-size:32px_32px]" />
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-sky-100/55 to-transparent" />
         <Navbar
           toggleSidebar={toggleSidebar}
-          toggleDarkMode={toggleDarkMode}
-          isDarkMode={isDarkMode}
           systemName={adminPreferences.systemName}
         />
 
