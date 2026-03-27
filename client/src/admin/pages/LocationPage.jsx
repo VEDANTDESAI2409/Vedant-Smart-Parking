@@ -1,40 +1,39 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { FaPlus, FaEdit, FaTrash, FaSearch, FaMapMarkerAlt, FaCity, FaMailBulk, FaLayerGroup, FaFileImport } from 'react-icons/fa';
+import { FaEdit, FaFileImport, FaPlus, FaTrash } from 'react-icons/fa';
+import Swal from 'sweetalert2';
 
 import Button from '../../components/Button';
 import Modal from '../../components/Modal';
 import Table from '../../components/Table';
+import Card from '../../components/Card';
+import SearchableSelect from '../../components/SearchableSelect';
 import DataImportModal from '../components/DataImportModal';
 import { areasAPI, citiesAPI, locationsAPI, pincodesAPI } from '../../services/api';
+import { shouldConfirmBulkDelete } from '../../utils/adminPreferences';
+import { showError, showSuccess, showWarning } from '../../utils/toastService';
 
 const initialFormData = {
-  city: '',
-  pincode: '',
-  area: '',
+  cityId: '',
+  pincodeId: '',
+  areaId: '',
   name: '',
+  lat: '',
+  lng: '',
   status: true,
 };
 
-// Response helper functions
-const getLocationsFromResponse = (response) => response?.data?.data?.locations || response?.data?.locations || response?.data?.data || response?.data || [];
-const getCitiesFromResponse = (response) => response?.data?.data?.cities || response?.data?.cities || response?.data?.data || response?.data || [];
-const getPincodesFromResponse = (response) => response?.data?.data?.pincodes || response?.data?.pincodes || response?.data?.data || response?.data || [];
-const getAreasFromResponse = (response) => response?.data?.data?.areas || response?.data?.areas || response?.data?.data || response?.data || [];
-
-const getDisplayValue = (value) => {
-  if (typeof value === 'string' || typeof value === 'number') return String(value);
-  if (value && typeof value === 'object') {
-    return value.name || value.title || value.code || value._id || '';
-  }
-  return '';
-};
-
-const getCityName = (item) => getDisplayValue(item?.city || item?.cityId);
-const getPincodeValue = (item) => getDisplayValue(item?.pincode || item?.pincodeId);
-const getAreaValue = (item) => getDisplayValue(item?.area || item?.areaId);
+const getLocationsFromResponse = (response) => response?.data?.data?.locations || [];
+const getCitiesFromResponse = (response) => response?.data?.data?.cities || [];
+const getPincodesFromResponse = (response) => response?.data?.data?.pincodes || [];
+const getAreasFromResponse = (response) => response?.data?.data?.areas || [];
+const getId = (value) => value?._id || value || '';
+const getCityName = (item) => item?.cityId?.name || 'N/A';
+const getPincodeValue = (item) => item?.pincodeId?.pincode || 'N/A';
+const getAreaValue = (item) => item?.areaId?.name || 'N/A';
 
 const LocationPage = () => {
   const [locations, setLocations] = useState([]);
+  const [selectedLocationIds, setSelectedLocationIds] = useState([]);
   const [cities, setCities] = useState([]);
   const [pincodes, setPincodes] = useState([]);
   const [areas, setAreas] = useState([]);
@@ -44,299 +43,504 @@ const LocationPage = () => {
   const [editingLocation, setEditingLocation] = useState(null);
   const [formData, setFormData] = useState(initialFormData);
   const [submitting, setSubmitting] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
-    fetchLocations();
     fetchCities();
     fetchPincodes();
     fetchAreas();
+    fetchLocations();
   }, []);
 
-  const fetchLocations = async () => {
-    try {
-      setLoading(true);
-      const response = await locationsAPI.getAll();
-      const list = getLocationsFromResponse(response);
-      setLocations(Array.isArray(list) ? list : []);
-    } catch (error) {
-      setLocations([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+  useEffect(() => {
+    setSelectedLocationIds((prev) => prev.filter((id) => locations.some((item) => item._id === id)));
+  }, [locations]);
 
   const fetchCities = async () => {
     try {
       const response = await citiesAPI.getAll();
       setCities(getCitiesFromResponse(response));
-    } catch (error) { setCities([]); }
+    } catch (error) {
+      console.error('Error fetching cities:', error);
+      setCities([]);
+    }
   };
 
   const fetchPincodes = async () => {
     try {
       const response = await pincodesAPI.getAll();
       setPincodes(getPincodesFromResponse(response));
-    } catch (error) { setPincodes([]); }
+    } catch (error) {
+      console.error('Error fetching pincodes:', error);
+      setPincodes([]);
+    }
   };
 
   const fetchAreas = async () => {
     try {
       const response = await areasAPI.getAll();
       setAreas(getAreasFromResponse(response));
-    } catch (error) { setAreas([]); }
-  };
-
-  const filteredLocations = useMemo(() => {
-    const lowerSearch = searchTerm.toLowerCase().trim();
-    if (!lowerSearch) return locations;
-    return locations.filter(l => 
-      l.name?.toLowerCase().includes(lowerSearch) || 
-      getCityName(l)?.toLowerCase().includes(lowerSearch) ||
-      getAreaValue(l)?.toLowerCase().includes(lowerSearch)
-    );
-  }, [locations, searchTerm]);
-
-  const filteredPincodes = useMemo(
-    () => pincodes.filter((item) => getCityName(item) === formData.city),
-    [formData.city, pincodes]
-  );
-
-  const filteredAreas = useMemo(
-    () => areas.filter((item) => getPincodeValue(item) === formData.pincode),
-    [areas, formData.pincode]
-  );
-
-  const handleStatusToggle = async (location) => {
-    try {
-      const newStatus = !location.status;
-      await locationsAPI.update(location._id, {
-        city: getCityName(location),
-        pincode: getPincodeValue(location),
-        area: getAreaValue(location),
-        name: location.name,
-        status: newStatus,
-      });
-      setLocations(prev => prev.map(l => l._id === location._id ? { ...l, status: newStatus } : l));
     } catch (error) {
-      alert('Failed to update status');
+      console.error('Error fetching areas:', error);
+      setAreas([]);
     }
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const fetchLocations = async () => {
+    try {
+      setLoading(true);
+      const response = await locationsAPI.getAll();
+      setLocations(getLocationsFromResponse(response));
+    } catch (error) {
+      console.error('Error fetching locations:', error);
+      setLocations([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredPincodes = useMemo(
+    () => pincodes.filter((item) => getId(item.cityId) === formData.cityId),
+    [formData.cityId, pincodes]
+  );
+
+  const filteredAreas = useMemo(
+    () =>
+      areas.filter(
+        (item) => getId(item.cityId) === formData.cityId && getId(item.pincodeId) === formData.pincodeId
+      ),
+    [areas, formData.cityId, formData.pincodeId]
+  );
+
+  const cityOptions = useMemo(
+    () =>
+      cities.map((city) => ({
+        value: city._id,
+        label: `${city.name} (${city.state})`,
+      })),
+    [cities]
+  );
+
+  const pincodeOptions = useMemo(
+    () =>
+      filteredPincodes.map((item) => ({
+        value: item._id,
+        label: item.pincode,
+      })),
+    [filteredPincodes]
+  );
+
+  const areaOptions = useMemo(
+    () =>
+      filteredAreas.map((item) => ({
+        value: item._id,
+        label: item.name,
+      })),
+    [filteredAreas]
+  );
+
+  const resetForm = () => {
+    setEditingLocation(null);
+    setFormData(initialFormData);
+  };
+
+  const handleInputChange = (field, value) => {
+    setFormData((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
+  const handleEdit = (item) => {
+    setEditingLocation(item);
+    setFormData({
+      cityId: getId(item.cityId),
+      pincodeId: getId(item.pincodeId),
+      areaId: getId(item.areaId),
+      name: item.name || '',
+      lat: item.lat ?? '',
+      lng: item.lng ?? '',
+      status: item.status ?? true,
+    });
+    setModalOpen(true);
+  };
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+
+    if (!formData.cityId || !formData.pincodeId || !formData.areaId || !formData.name.trim()) {
+      showWarning('City, pincode, area, and location name are required');
+      return;
+    }
+
+    if (formData.lat === '' || formData.lng === '') {
+      showWarning('Latitude and longitude are required');
+      return;
+    }
+
+    const payload = {
+      cityId: formData.cityId,
+      pincodeId: formData.pincodeId,
+      areaId: formData.areaId,
+      name: formData.name.trim(),
+      lat: Number(formData.lat),
+      lng: Number(formData.lng),
+      status: formData.status,
+    };
+
     try {
       setSubmitting(true);
+
       if (editingLocation) {
-        await locationsAPI.update(editingLocation._id, formData);
+        await locationsAPI.update(editingLocation._id, payload);
       } else {
-        await locationsAPI.create(formData);
+        await locationsAPI.create(payload);
       }
+
       await fetchLocations();
       setModalOpen(false);
-      setFormData(initialFormData);
+      resetForm();
+      showSuccess(editingLocation ? 'Location updated successfully' : 'Location created successfully');
     } catch (error) {
-      alert('Failed to save location');
+      console.error('Error saving location:', error);
+      showError(error?.response?.data?.message || 'Failed to save location');
     } finally {
       setSubmitting(false);
     }
   };
 
+  const handleDelete = async (id) => {
+    const result = await Swal.fire({
+      title: 'Delete Location?',
+      text: 'This location will be removed from the system.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, Delete',
+      cancelButtonText: 'Cancel',
+      confirmButtonColor: '#dc2626',
+      cancelButtonColor: '#64748b',
+      background: '#ffffff',
+      color: '#0f172a',
+      borderRadius: '12px',
+    });
+
+    if (!result.isConfirmed) {
+      return;
+    }
+
+    try {
+      await locationsAPI.delete(id);
+      await fetchLocations();
+      showSuccess('Location deleted successfully');
+    } catch (error) {
+      console.error('Delete error:', error);
+      showError(error?.response?.data?.message || 'Failed to delete location');
+    }
+  };
+
+  const handleLocationSelect = (id, checked) => {
+    setSelectedLocationIds((prev) =>
+      checked ? [...new Set([...prev, id])] : prev.filter((selectedId) => selectedId !== id)
+    );
+  };
+
+  const handleSelectAllLocations = (checked) => {
+    setSelectedLocationIds(checked ? locations.map((item) => item._id).filter(Boolean) : []);
+  };
+
+  const handleBulkDelete = async () => {
+    if (!selectedLocationIds.length) {
+      showWarning('Please select at least one location');
+      return;
+    }
+
+    if (shouldConfirmBulkDelete()) {
+      const result = await Swal.fire({
+        title: 'Delete Selected Locations?',
+        text: `Delete ${selectedLocationIds.length} selected locations? This action cannot be undone.`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, Delete All',
+        cancelButtonText: 'Cancel',
+        confirmButtonColor: '#dc2626',
+        cancelButtonColor: '#64748b',
+        background: '#ffffff',
+        color: '#0f172a',
+        borderRadius: '12px',
+      });
+
+      if (!result.isConfirmed) return;
+    }
+
+    try {
+      const results = await Promise.allSettled(selectedLocationIds.map((id) => locationsAPI.delete(id)));
+      const successCount = results.filter((item) => item.status === 'fulfilled').length;
+      const failureCount = results.length - successCount;
+
+      await fetchLocations();
+      setSelectedLocationIds([]);
+
+      if (successCount) {
+        showSuccess(
+          failureCount
+            ? `${successCount} locations deleted, ${failureCount} failed`
+            : `${successCount} locations deleted successfully`
+        );
+      } else {
+        showError('Failed to delete selected locations');
+      }
+    } catch (error) {
+      console.error('Bulk location delete error:', error);
+      showError('Failed to delete selected locations');
+    }
+  };
+
+  const handleStatusToggle = async (item) => {
+    try {
+      await locationsAPI.update(item._id, {
+        cityId: getId(item.cityId),
+        pincodeId: getId(item.pincodeId),
+        areaId: getId(item.areaId),
+        name: item.name,
+        lat: item.lat,
+        lng: item.lng,
+        status: !item.status,
+      });
+      await fetchLocations();
+    } catch (error) {
+      console.error('Error updating location status:', error);
+      showError(error?.response?.data?.message || 'Failed to update location status');
+    }
+  };
+
   const columns = [
-    { 
-      header: 'LOCATION NAME', 
-      render: (row) => (
-        <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-blue-600">
-                <FaMapMarkerAlt size={14} />
-            </div>
-            <span className="font-bold text-gray-800 dark:text-gray-100 text-sm">{row.name}</span> 
-        </div>
-      )
-    },
-    { 
-      header: 'CITY/AREA', 
-      render: (row) => (
-        <div className="flex flex-col">
-            <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 font-bold capitalize text-xs">
-                <FaCity size={10} className="text-blue-500" /> {getCityName(row)}
-            </div>
-            <div className="flex items-center gap-2 text-slate-400 text-[10px] uppercase tracking-tight">
-                <FaLayerGroup size={10} /> {getAreaValue(row)}
-            </div>
-        </div>
-      )
-    },
-    { 
-      header: 'PINCODE', 
-      render: (row) => (
-        <span className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-2.5 py-1 rounded-md text-xs font-bold border border-slate-200 dark:border-slate-700">
-            {getPincodeValue(row)}
-        </span>
-      )
-    },
-    { 
-      header: 'STATUS', 
+    { header: 'CITY', key: 'cityId', render: (row) => <span className="capitalize">{getCityName(row)}</span> },
+    { header: 'PINCODE', key: 'pincodeId', render: (row) => getPincodeValue(row) },
+    { header: 'AREA', key: 'areaId', render: (row) => getAreaValue(row) },
+    { header: 'LOCATION', key: 'name' },
+    { header: 'LAT', key: 'lat', render: (row) => row.lat ?? 'N/A' },
+    { header: 'LNG', key: 'lng', render: (row) => row.lng ?? 'N/A' },
+    {
+      header: 'STATUS',
+      key: 'status',
       render: (row) => (
         <button
+          type="button"
+          role="switch"
+          aria-checked={row.status}
           onClick={() => handleStatusToggle(row)}
-          className={`inline-flex items-center gap-3 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
-            row.status ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
+          className={`inline-flex items-center gap-3 rounded-full px-3 py-1.5 text-xs font-semibold ${
+            row.status
+              ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
+              : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
           }`}
         >
-          <span className={`relative inline-flex h-5 w-9 items-center rounded-full ${row.status ? 'bg-green-600' : 'bg-gray-400 dark:bg-gray-600'}`}>
-            <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${row.status ? 'translate-x-5' : 'translate-x-0.5'}`} />
+          <span
+            className={`relative inline-flex h-5 w-9 items-center rounded-full ${
+              row.status ? 'bg-green-600' : 'bg-gray-400 dark:bg-gray-600'
+            }`}
+          >
+            <span
+              className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
+                row.status ? 'translate-x-5' : 'translate-x-0.5'
+              }`}
+            />
           </span>
           {row.status ? 'Active' : 'Inactive'}
         </button>
-      ) 
+      ),
     },
-    { 
-      header: 'ACTION', 
+    {
+      header: 'ACTIONS',
+      key: 'actions',
       render: (row) => (
-        <div className="flex items-center gap-2">
-            <button onClick={() => {
-                setEditingLocation(row);
-                setFormData({ city: getCityName(row), pincode: getPincodeValue(row), area: getAreaValue(row), name: row.name, status: row.status });
-                setModalOpen(true);
-            }} className="text-blue-500 hover:text-blue-700 transition-colors p-2 bg-blue-50 dark:bg-blue-900/10 rounded-lg group">
-                <FaEdit size={14} className="group-active:scale-90 transition-transform" />
-            </button>
-            <button onClick={() => { if(window.confirm('Delete?')) locationsAPI.delete(row._id).then(fetchLocations) }} className="text-red-500 hover:text-red-700 transition-colors p-2 bg-red-50 dark:bg-red-900/10 rounded-lg group">
-                <FaTrash size={14} className="group-active:scale-90 transition-transform" />
-            </button>
+        <div className="flex space-x-2">
+          <button onClick={() => handleEdit(row)} className="p-2 text-blue-600 hover:bg-blue-100 rounded-md" title="Edit">
+            <FaEdit />
+          </button>
+          <button onClick={() => handleDelete(row._id)} className="p-2 text-red-600 hover:bg-red-100 rounded-md" title="Delete">
+            <FaTrash />
+          </button>
         </div>
-      ) 
+      ),
     },
   ];
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#0F172A] p-6 lg:p-10 font-sans transition-colors duration-300">
-      
-      {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-end mb-8 gap-6">
+    <div className="space-y-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tight">Location Management</h1>
-          <p className="text-slate-500 dark:text-slate-400 font-medium mt-2">Manage specific building or spot data</p>
+          <h1 className="text-2xl font-bold">Location Management</h1>
+          <p className="text-sm text-gray-500 mt-1">Manage location points inside an area, including coordinates.</p>
         </div>
-        
-        <div className="flex items-center gap-4 w-full md:w-auto">
-          <div className="relative flex-grow md:w-80 group">
-            <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
-            <input 
-              type="text" 
-              value={searchTerm}
-              placeholder="Search location, city, area..." 
-              className="w-full pl-12 pr-4 py-3 bg-white dark:bg-[#1E293B] border-none shadow-sm ring-1 ring-slate-200 dark:ring-slate-700 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none text-sm dark:text-white transition-all font-medium"
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-          <button
-            onClick={() => setImportModalOpen(true)}
-            className="flex items-center gap-2 px-5 py-3.5 bg-white dark:bg-[#1E293B] text-slate-700 dark:text-slate-200 rounded-2xl shadow-sm ring-1 ring-slate-200 dark:ring-slate-700 transition-all active:scale-95 font-bold text-sm"
+
+        <div className="flex gap-3">
+          {selectedLocationIds.length > 0 && (
+            <Button variant="danger" onClick={handleBulkDelete}>
+              <FaTrash className="mr-2" />
+              Delete Selected ({selectedLocationIds.length})
+            </Button>
+          )}
+          <Button variant="outline" onClick={() => setImportModalOpen(true)}>
+            <FaFileImport className="mr-2" />
+            Import CSV
+          </Button>
+          <Button
+            onClick={() => {
+              resetForm();
+              setModalOpen(true);
+            }}
           >
-            <FaFileImport size={14} />
-            <span>Import CSV</span>
-          </button>
-          <button 
-            onClick={() => { setEditingLocation(null); setFormData(initialFormData); setModalOpen(true); }}
-            className="flex items-center gap-2 px-6 py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl shadow-lg shadow-blue-500/20 transition-all active:scale-95 font-bold text-sm"
-          >
-            <FaPlus size={14} />
-            <span>Add Location</span>
-          </button>
+            <FaPlus className="mr-2" />
+            Add Location
+          </Button>
         </div>
       </div>
 
-      {/* Table */}
-      <div className="bg-white dark:bg-[#1E293B] rounded-[2.5rem] shadow-xl border border-slate-100 dark:border-slate-800 overflow-hidden">
-        <Table columns={columns} data={filteredLocations} loading={loading} />
-      </div>
+      <Card>
+        <Table
+          columns={columns}
+          data={locations}
+          loading={loading}
+          emptyMessage="No locations found"
+          selectable
+          selectedRowIds={selectedLocationIds}
+          onRowSelect={handleLocationSelect}
+          onSelectAll={handleSelectAllLocations}
+          getRowId={(row) => row._id}
+        />
+      </Card>
 
-      {/* Modal */}
       <Modal
         isOpen={modalOpen}
-        onClose={() => !submitting && setModalOpen(false)}
-        title={editingLocation ? 'Update Location' : 'Create New Location'}
+        onClose={() => {
+          if (!submitting) {
+            setModalOpen(false);
+            resetForm();
+          }
+        }}
+        title={editingLocation ? 'Edit Location' : 'Add Location'}
       >
-        <form onSubmit={handleSubmit} className="space-y-5 pt-2">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-black uppercase tracking-widest text-slate-400 mb-2 ml-1">City</label>
-              <select
-                value={formData.city}
-                onChange={(e) => setFormData(prev => ({ ...prev, city: e.target.value, pincode: '', area: '' }))}
-                className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border-none ring-1 ring-slate-200 dark:ring-slate-700 rounded-xl outline-none text-sm dark:text-white font-bold appearance-none"
-                required
-              >
-                <option value="">Select City</option>
-                {cities.map((city) => <option key={city._id} value={city.name}>{city.name}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-black uppercase tracking-widest text-slate-400 mb-2 ml-1">Pincode</label>
-              <select
-                value={formData.pincode}
-                onChange={(e) => setFormData(prev => ({ ...prev, pincode: e.target.value, area: '' }))}
-                disabled={!formData.city}
-                className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border-none ring-1 ring-slate-200 dark:ring-slate-700 rounded-xl outline-none text-sm dark:text-white disabled:opacity-50 font-bold appearance-none"
-                required
-              >
-                <option value="">Pincode</option>
-                {filteredPincodes.map((p) => <option key={p._id} value={p.name}>{p.name}</option>)}
-              </select>
-            </div>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">City</label>
+            <SearchableSelect
+              value={formData.cityId}
+              onChange={(value) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  cityId: value,
+                  pincodeId: '',
+                  areaId: '',
+                }))
+              }
+              options={cityOptions}
+              placeholder="Select a city"
+            />
           </div>
 
           <div>
-            <label className="block text-xs font-black uppercase tracking-widest text-slate-400 mb-2 ml-1">Area</label>
-            <select
-              value={formData.area}
-              onChange={(e) => setFormData(prev => ({ ...prev, area: e.target.value }))}
-              disabled={!formData.pincode}
-              className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border-none ring-1 ring-slate-200 dark:ring-slate-700 rounded-xl outline-none text-sm dark:text-white disabled:opacity-50 font-bold appearance-none"
-              required
-            >
-              <option value="">Select Area</option>
-              {filteredAreas.map((a) => <option key={a._id} value={a.name}>{a.name}</option>)}
-            </select>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Pincode</label>
+            <SearchableSelect
+              value={formData.pincodeId}
+              onChange={(value) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  pincodeId: value,
+                  areaId: '',
+                }))
+              }
+              options={pincodeOptions}
+              placeholder={formData.cityId ? 'Select a pincode' : 'Select a city first'}
+              disabled={!formData.cityId}
+            />
           </div>
 
           <div>
-            <label className="block text-xs font-black uppercase tracking-widest text-slate-400 mb-2 ml-1">Location / Building Name</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Area</label>
+            <SearchableSelect
+              value={formData.areaId}
+              onChange={(value) => handleInputChange('areaId', value)}
+              options={areaOptions}
+              placeholder={formData.pincodeId ? 'Select an area' : 'Select a pincode first'}
+              disabled={!formData.pincodeId}
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Location Name</label>
             <input
               type="text"
               value={formData.name}
-              onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-              className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border-none ring-1 ring-slate-200 dark:ring-slate-700 rounded-xl outline-none text-sm dark:text-white font-bold"
-              placeholder="e.g. Empire Business Hub"
+              onChange={(e) => handleInputChange('name', e.target.value)}
+              className="mt-1 w-full rounded-lg border px-3 py-2 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
               required
             />
           </div>
 
-          <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-800">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <span className="block text-sm font-bold text-slate-700 dark:text-slate-200">Active Status</span>
-              <span className="block text-xs text-slate-500">Enable this location for users</span>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Latitude</label>
+              <input
+                type="number"
+                step="any"
+                value={formData.lat}
+                onChange={(e) => handleInputChange('lat', e.target.value)}
+                className="mt-1 w-full rounded-lg border px-3 py-2 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                required
+              />
             </div>
-            <button 
-                type="button"
-                onClick={() => setFormData(prev => ({ ...prev, status: !prev.status }))}
-                className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors focus:outline-none ${
-                    formData.status ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-700'
-                }`}
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Longitude</label>
+              <input
+                type="number"
+                step="any"
+                value={formData.lng}
+                onChange={(e) => handleInputChange('lng', e.target.value)}
+                className="mt-1 w-full rounded-lg border px-3 py-2 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                required
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between rounded-lg border border-gray-200 dark:border-gray-600 px-4 py-3">
+            <div>
+              <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Status</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">{formData.status ? 'Active' : 'Inactive'}</p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={formData.status}
+              onClick={() => handleInputChange('status', !formData.status)}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                formData.status ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-600'
+              }`}
             >
-                <span className={`${formData.status ? 'translate-x-6' : 'translate-x-1'} inline-block h-5 w-5 transform rounded-full bg-white transition-transform shadow-md`} />
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                  formData.status ? 'translate-x-6' : 'translate-x-1'
+                }`}
+              />
             </button>
           </div>
 
-          <button 
-              type="submit" 
+          <div className="flex justify-end space-x-3">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => {
+                setModalOpen(false);
+                resetForm();
+              }}
               disabled={submitting}
-              className="w-full py-4 bg-slate-900 dark:bg-blue-600 text-white rounded-2xl font-bold text-sm shadow-lg hover:opacity-90 transition-all active:scale-95 disabled:opacity-50 mt-2"
-          >
-            {submitting ? 'Processing...' : editingLocation ? 'Update Location' : 'Create Location'}
-          </button>
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={submitting}>
+              {submitting ? 'Saving...' : editingLocation ? 'Update' : 'Create'}
+            </Button>
+          </div>
         </form>
       </Modal>
 
