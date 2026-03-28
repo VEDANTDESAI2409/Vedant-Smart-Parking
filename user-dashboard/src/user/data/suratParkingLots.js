@@ -1,0 +1,53 @@
+export const suratDemoParkingLots = [
+  {
+    _id: 'surat-athwa-gate',
+    name: 'Athwa Gate Parking',
+    city: 'Surat',
+    state: 'Gujarat',
+    pincode: '395001',
+    area: 'Athwa Gate',
+    lat: 21.1865,
+    lng: 72.8081,
+    status: true,
+    description: 'Central city parking near Athwa Gate with fast access to shopping and office areas.',
+  },
+  {
+    _id: 'surat-ring-road',
+    name: 'Ring Road Smart Parking',
+    city: 'Surat',
+    state: 'Gujarat',
+    pincode: '395002',
+    area: 'Ring Road',
+    lat: 21.1954,
+    lng: 72.8387,
+    status: true,
+    description: 'Convenient parking close to the textile and commercial corridor on Ring Road.',
+  },
+  {
+    _id: 'surat-vesu',
+    name: 'Vesu Urban Parking',
+    city: 'Surat',
+    state: 'Gujarat',
+    pincode: '395007',
+    area: 'Vesu',
+    lat: 21.1509,
+    lng: 72.7726,
+    status: true,
+    description: 'Modern parking hub serving Vesu residential and dining destinations.',
+  },
+  {
+    _id: 'surat-adajan',
+    name: 'Adajan Riverside Parking',
+    city: 'Surat',
+    state: 'Gujarat',
+    pincode: '395009',
+    area: 'Adajan',
+    lat: 21.2047,
+    lng: 72.7936,
+    status: true,
+    description: 'Parking access point for Adajan and nearby riverfront traffic movement.',
+  },
+];
+
+export const getSuratDemoParkingLotById = (parkingLotId) =>
+  suratDemoParkingLots.find((lot) => lot._id === parkingLotId) || null;

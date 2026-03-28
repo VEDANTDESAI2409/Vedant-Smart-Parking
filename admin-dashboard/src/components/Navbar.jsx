@@ -25,8 +25,8 @@ const Navbar = ({ toggleSidebar, systemName }) => {
 
   return (
     <header className="relative z-10 border-b border-sky-100 bg-white/80 backdrop-blur-2xl">
-      <div className="mx-auto flex w-full max-w-[1600px] items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
-        <div className="flex min-w-0 items-center gap-3">
+      <div className="mx-auto flex w-full max-w-[1600px] flex-wrap items-start justify-between gap-3 px-4 py-3 sm:px-6 md:flex-nowrap md:items-center lg:px-8">
+        <div className="flex min-w-0 flex-1 items-center gap-3">
           <button
             type="button"
             onClick={toggleSidebar}
@@ -48,7 +48,7 @@ const Navbar = ({ toggleSidebar, systemName }) => {
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex w-full flex-wrap items-center justify-end gap-3 sm:w-auto sm:flex-nowrap">
           <div className="hidden items-center gap-3 rounded-xl border border-sky-100 bg-white px-3.5 py-2 shadow-[0_12px_24px_rgba(148,163,184,0.08)] md:flex">
             <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-teal-500 to-cyan-600 text-white shadow-lg shadow-teal-900/20">
               <FaShieldAlt className="h-3.5 w-3.5" />
