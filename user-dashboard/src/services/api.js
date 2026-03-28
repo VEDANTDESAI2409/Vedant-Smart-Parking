@@ -36,6 +36,11 @@ export const slotsAPI = {
   getAll: (params) => api.get('/slots', { params }),
 };
 
+export const locationsAPI = {
+  getPublic: () => api.get('/locations/public'),
+  getPublicById: (id) => api.get(`/locations/public/${id}`),
+};
+
 export const bookingsAPI = {
   getAll: (params) => api.get('/bookings', { params }),
   getById: (id) => api.get(`/bookings/${id}`),
