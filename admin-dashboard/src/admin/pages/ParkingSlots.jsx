@@ -562,8 +562,8 @@ const ParkingSlots = () => {
   ];
   const slotTypeOptions = [
     { value: 'normal', label: 'Normal' },
-    { value: 'vip', label: 'VIP' },
-    { value: 'reserved', label: 'Reserved' },
+    { value: 'ev', label: 'EV' },
+    { value: 'disabled', label: 'Disabled' },
   ];
 
   const city = getCityName(selectedCity);
