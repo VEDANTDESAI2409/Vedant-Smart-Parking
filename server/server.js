@@ -17,12 +17,24 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // CORS configuration
-const corsOptions = {
-  origin: process.env.CLIENT_URL || 'http://localhost:3000',
-  credentials: true,
-  optionSuccessStatus: 200
-};
-app.use(cors(corsOptions));
+const allowedOrigins = (process.env.CLIENT_URL || 'http://localhost:3000')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      return callback(new Error('Not allowed by CORS'));
+    },
+    credentials: true,
+    optionSuccessStatus: 200,
+  })
+);
 
 // Security headers
 app.use((req, res, next) => {
