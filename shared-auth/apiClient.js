@@ -4,6 +4,7 @@ export const createApiClient = ({
   axiosLib,
   baseURL,
   unauthorizedRedirectPath = '/login',
+  storage = authStorage,
 } = {}) => {
   const apiClient = axiosLib.create({
     baseURL,
@@ -14,7 +15,7 @@ export const createApiClient = ({
 
   apiClient.interceptors.request.use(
     (config) => {
-      const token = authStorage.getToken();
+      const token = storage.getToken();
 
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
@@ -29,7 +30,7 @@ export const createApiClient = ({
     (response) => response,
     (error) => {
       if (error.response?.status === 401) {
-        authStorage.clear();
+        storage.clear();
 
         if (typeof window !== 'undefined' && unauthorizedRedirectPath) {
           window.location.assign(unauthorizedRedirectPath);
