@@ -17,7 +17,10 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // CORS configuration
-const allowedOrigins = (process.env.CLIENT_URL || 'http://localhost:3000')
+const defaultClientUrls =
+  'http://localhost:3000,http://localhost:3001,http://127.0.0.1:3000,http://127.0.0.1:3001';
+
+const allowedOrigins = (process.env.CLIENT_URL || defaultClientUrls)
   .split(',')
   .map((origin) => origin.trim())
   .filter(Boolean);
