@@ -2,19 +2,16 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ArrowRight,
-  BadgeCheck,
   BatteryCharging,
   ChevronDown,
   CircleDollarSign,
   Clock3,
-  CarFront,
   CheckCircle2,
   Facebook,
   Headphones,
   Linkedin,
   MapPinned,
   Menu,
-  ParkingSquare,
   Search,
   ShieldCheck,
   Sparkles,
@@ -23,6 +20,7 @@ import {
   Youtube,
   Zap,
 } from 'lucide-react';
+import HeroParkingMap from '../components/HeroParkingMap';
 
 const navigation = [
   { label: 'How it Works', href: '#how-it-works' },
@@ -315,20 +313,20 @@ const Home = () => {
       <main id="main-content">
         <section className="landing-grid relative overflow-hidden">
           <div className="absolute inset-x-0 top-0 h-[620px] bg-[radial-gradient(circle_at_top_left,_rgba(176,228,204,0.4),_transparent_34%),radial-gradient(circle_at_top_right,_rgba(64,138,113,0.12),_transparent_30%)]" />
-          <div className="relative mx-auto grid max-w-7xl gap-14 px-4 py-16 sm:px-6 sm:py-20 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:px-8 lg:py-24">
+          <div className="relative mx-auto grid max-w-7xl gap-10 px-4 py-12 sm:px-6 sm:py-16 lg:grid-cols-[minmax(0,1.02fr)_minmax(0,0.98fr)] lg:items-center lg:gap-12 lg:px-8 lg:py-20 xl:gap-16">
             <div className="flex flex-col justify-center">
               <div className="reveal-up inline-flex w-fit items-center gap-2 rounded-full border border-[rgba(64,138,113,0.18)] bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm">
                 <Sparkles className="h-4 w-4 text-[var(--color-primary)]" />
                 Built for cashless parking, access control, and live availability
               </div>
-              <h1 className="reveal-up reveal-delay-1 max-w-xl text-5xl font-semibold leading-[0.95] tracking-[-0.04em] text-[var(--color-secondary)] sm:text-6xl lg:text-7xl">
+              <h1 className="reveal-up reveal-delay-1 mt-5 max-w-[11ch] text-5xl font-semibold leading-[0.92] tracking-[-0.045em] text-[var(--color-secondary)] sm:text-6xl lg:text-[5rem]">
                 The Smarter Way to Park
               </h1>
-              <p className="reveal-up reveal-delay-2 mt-6 max-w-xl text-lg leading-8 text-slate-600 sm:text-xl">
+              <p className="reveal-up reveal-delay-2 mt-5 max-w-[36rem] text-lg leading-8 text-slate-600 sm:text-[1.15rem]">
                 Deliver seamless, cashless parking with real-time discovery, faster gate access, and
                 session controls that keep drivers moving.
               </p>
-              <div className="reveal-up reveal-delay-3 mt-8 flex flex-col gap-3 sm:flex-row">
+              <div className="reveal-up reveal-delay-3 mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
                 <Link
                   to="/search"
                   className="inline-flex items-center justify-center gap-2 rounded-full bg-[var(--color-primary)] px-7 py-3.5 text-base font-semibold text-white shadow-[0_20px_40px_rgba(40,90,72,0.24)] transition hover:bg-[#1f4739]"
@@ -343,7 +341,7 @@ const Home = () => {
                   Login
                 </a>
               </div>
-              <div className="reveal-up reveal-delay-4 mt-6 flex flex-wrap gap-3 text-sm text-slate-600">
+              <div className="reveal-up reveal-delay-4 mt-7 flex flex-wrap gap-3 text-sm text-slate-600">
                 {[
                   ['Live slot map', Search],
                   ['Secure payment flow', ShieldCheck],
@@ -358,7 +356,7 @@ const Home = () => {
                   </div>
                 ))}
               </div>
-              <div className="mt-10 grid gap-4 sm:grid-cols-3">
+              <div className="mt-8 grid gap-4 sm:grid-cols-3">
                 {[
                   ['98%', 'Successful gate pass-through'],
                   ['24/7', 'Live visibility on slot status'],
@@ -373,136 +371,8 @@ const Home = () => {
             </div>
 
             <div className="relative flex items-center justify-center lg:justify-end">
-              <div className="hero-scene reveal-up reveal-delay-2 w-full max-w-[620px] rounded-[44px] border border-white/80 bg-[linear-gradient(145deg,#ffffff_0%,#f6fbf9_60%,#eef7f2_100%)] p-4 shadow-[0_34px_80px_rgba(17,31,26,0.12)] sm:p-5">
-                <div className="grid gap-4 md:grid-cols-[0.88fr_1.12fr]">
-                  <div className="hero-zone-card rounded-[34px] bg-[#081412] px-6 pb-8 pt-7 text-white">
-                    <div className="flex items-start justify-between gap-4">
-                      <div>
-                        <p className="text-[0.82rem] uppercase tracking-[0.34em] text-white/55">Live zone</p>
-                        <h2 className="mt-5 text-[3rem] font-semibold leading-[0.92] tracking-[-0.05em]">Central Plaza</h2>
-                      </div>
-                      <div className="rounded-full bg-white/10 px-4 py-3 text-center text-[1rem] font-semibold leading-[1.2] text-[#f2dece]">
-                        18 spots
-                        <br />
-                        free
-                      </div>
-                    </div>
-
-                    <div className="mt-8 grid grid-cols-3 gap-4">
-                      {['A1', 'A2', 'A3', 'B1', 'B2', 'B3'].map((slot, index) => {
-                        const active = index === 1 || index === 4;
-                        return (
-                          <div
-                            key={slot}
-                            className={`flex h-[78px] items-center justify-center rounded-[22px] border text-[1.1rem] font-semibold ${
-                              active
-                                ? 'border-[rgba(176,228,204,0.38)] bg-[rgba(176,228,204,0.16)] text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)]'
-                                : 'border-white/10 bg-white/4 text-white/72'
-                            }`}
-                          >
-                            {slot}
-                          </div>
-                        );
-                      })}
-                    </div>
-
-                    <div className="mt-10 grid grid-cols-[0.8fr_1fr] items-end gap-4">
-                      <div className="text-[1.05rem] leading-[1.2] text-white/72">
-                        EV
-                        <br />
-                        charging
-                      </div>
-                      <div className="text-[1.1rem] font-semibold leading-[1.2]">
-                        4 bays
-                        <br />
-                        online
-                      </div>
-                    </div>
-
-                    <div className="mt-5 h-[8px] rounded-full bg-white/10">
-                      <div className="h-[8px] w-[66%] rounded-full bg-[var(--color-accent)]" />
-                    </div>
-                  </div>
-
-                  <div className="hero-mobile-card rounded-[34px] border border-[rgba(176,228,204,0.8)] bg-[rgba(255,255,255,0.7)] p-6 backdrop-blur-sm">
-                    <div className="flex items-start justify-between gap-4">
-                      <div>
-                        <p className="text-[0.82rem] uppercase tracking-[0.3em] text-slate-400">Mobile preview</p>
-                        <h3 className="mt-4 text-[2.2rem] font-semibold tracking-[-0.04em] text-[var(--color-secondary)]">
-                          Session control
-                        </h3>
-                      </div>
-                      <div className="mt-2 rounded-full border border-[rgba(64,138,113,0.2)] bg-white p-2 text-[var(--color-primary)]">
-                        <BadgeCheck className="h-5 w-5" />
-                      </div>
-                    </div>
-
-                    <div className="mt-6 rounded-[28px] border border-[rgba(64,138,113,0.14)] bg-[linear-gradient(180deg,rgba(243,250,246,0.98)_0%,rgba(235,246,240,0.92)_100%)] p-5">
-                      <div className="flex items-start justify-between gap-4">
-                        <div>
-                          <p className="text-[1.15rem] font-semibold leading-[1.35] text-slate-700">Vehicle detected</p>
-                          <p className="mt-1 text-[1rem] leading-[1.5] text-slate-500">Gate 3 access granted</p>
-                        </div>
-                        <div className="rounded-full bg-[rgba(176,228,204,0.8)] px-4 py-2 text-[1rem] font-semibold text-[var(--color-primary)]">
-                          Active
-                        </div>
-                      </div>
-
-                      <div className="mt-6 rounded-[30px] bg-[rgba(255,250,247,0.9)] p-5 shadow-[0_12px_28px_rgba(17,31,26,0.05)]">
-                        <div className="flex items-end justify-between gap-4">
-                          <div>
-                            <p className="text-[1rem] text-slate-500">Time remaining</p>
-                            <p className="mt-2 text-[3.25rem] font-semibold leading-none tracking-[-0.04em] text-[var(--color-secondary)]">
-                              01:42
-                            </p>
-                          </div>
-                          <div className="rounded-[24px] bg-[rgba(176,228,204,0.28)] px-5 py-4 text-[1rem] font-semibold leading-[1.35] text-[var(--color-primary)]">
-                            Extend
-                            <br />
-                            +30m
-                          </div>
-                        </div>
-                        <div className="mt-5 h-[8px] rounded-full bg-slate-200/70">
-                          <div className="hero-progress h-[8px] w-[62%] rounded-full bg-[var(--color-primary)]" />
-                        </div>
-                      </div>
-
-                      <div className="mt-5 grid grid-cols-2 gap-3">
-                        <div className="rounded-[24px] bg-[var(--color-secondary)] p-4 text-white">
-                          <p className="text-xs uppercase tracking-[0.24em] text-white/58">Payment</p>
-                          <p className="mt-2 text-[1.05rem] font-semibold">$12.00 secure</p>
-                        </div>
-                        <div className="rounded-[24px] border border-[rgba(64,138,113,0.14)] bg-white p-4">
-                          <p className="text-xs uppercase tracking-[0.24em] text-slate-400">Status</p>
-                          <p className="mt-2 text-[1.05rem] font-semibold text-slate-700">Barrier synced</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="hero-strip absolute inset-x-4 bottom-9 rounded-[34px] border border-white/60 bg-[linear-gradient(180deg,rgba(229,246,239,0.92)_0%,rgba(213,235,225,0.92)_100%)] px-5 py-4 shadow-[0_18px_40px_rgba(40,90,72,0.14)] backdrop-blur-md sm:inset-x-5">
-                  <div className="absolute left-10 right-10 top-1/2 h-[3px] -translate-y-1/2 bg-[repeating-linear-gradient(90deg,transparent_0px,transparent_18px,rgba(15,36,31,0.2)_18px,rgba(15,36,31,0.2)_38px)]" />
-                  <div className="hero-strip-small-slot absolute right-[6.4rem] top-1/2 flex h-[40px] w-[42px] -translate-y-1/2 items-center justify-center rounded-[12px] border border-[rgba(15,36,31,0.35)] text-[var(--color-secondary)]">
-                    <ParkingSquare className="h-5 w-5" />
-                  </div>
-                  <div className="hero-strip-target-slot absolute right-5 top-1/2 flex h-[64px] w-[66px] -translate-y-1/2 items-center justify-center rounded-[20px] border border-[rgba(176,228,204,0.75)] bg-white text-[var(--color-primary)] shadow-[0_12px_28px_rgba(64,138,113,0.16)]">
-                    <ParkingSquare className="h-8 w-8" />
-                  </div>
-                  <div className="hero-park-car absolute left-10 top-1/2 h-[54px] w-[100px] -translate-y-1/2">
-                    <div className="absolute inset-0 rounded-[20px] bg-[var(--color-secondary)] shadow-[0_18px_34px_rgba(9,20,19,0.24)]" />
-                    <div className="absolute inset-0 flex items-center justify-center rounded-[20px] bg-[linear-gradient(180deg,#10201d_0%,#0b1715_100%)]">
-                      <CarFront className="h-8 w-8 text-white" />
-                    </div>
-                    <span className="absolute -bottom-[8px] left-[14px] h-[12px] w-[12px] rounded-full bg-[#d9e8e1] shadow-[inset_0_0_0_2px_rgba(9,20,19,0.18)]" />
-                    <span className="absolute -bottom-[8px] right-[14px] h-[12px] w-[12px] rounded-full bg-[#d9e8e1] shadow-[inset_0_0_0_2px_rgba(9,20,19,0.18)]" />
-                  </div>
-                </div>
-
-                <div className="hero-sync-card absolute bottom-[-18px] right-5 rounded-[22px] border border-[rgba(64,138,113,0.14)] bg-white px-5 py-4 shadow-[0_18px_40px_rgba(64,138,113,0.14)]">
-                  <p className="text-xs uppercase tracking-[0.24em] text-slate-400">Live sync</p>
-                  <p className="mt-1 text-[1rem] font-semibold text-slate-600">Parking map updates every 4 sec</p>
-                </div>
+              <div className="reveal-up reveal-delay-2 w-full max-w-[640px]">
+                <HeroParkingMap />
               </div>
             </div>
           </div>
@@ -537,16 +407,16 @@ const Home = () => {
           </div>
         </section>
 
-        <section id="features" className="bg-[var(--color-muted-surface)] py-20">
+        <section id="features" className="bg-[var(--color-muted-surface)] py-14 sm:py-16 lg:py-18">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="max-w-2xl reveal-up">
               <p className="section-kicker">Features</p>
-              <h2 className="mt-4 text-3xl font-semibold tracking-tight text-[var(--color-secondary)] sm:text-4xl">
+              <h2 className="mt-3 text-3xl font-semibold tracking-tight text-[var(--color-secondary)] sm:text-4xl">
                 Modern parking operations without the friction
               </h2>
             </div>
 
-            <div className="mt-12 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+            <div className="mt-8 grid gap-6 md:grid-cols-2 xl:grid-cols-3 lg:mt-10">
               {features.map((feature) => {
                 const Icon = feature.icon;
 

@@ -33,6 +33,7 @@ html {
 body {
   margin: 0;
   min-width: 320px;
+  overflow-x: hidden;
   background:
     radial-gradient(circle at top left, rgba(176, 228, 204, 0.18), transparent 28%),
     radial-gradient(circle at top right, rgba(20, 184, 166, 0.06), transparent 24%),
@@ -69,6 +70,12 @@ body {
   box-sizing: border-box;
 }
 
+*,
+*::before,
+*::after {
+  min-width: 0;
+}
+
 a {
   color: inherit;
   text-decoration: none;
@@ -85,6 +92,24 @@ textarea {
     color 180ms ease,
     box-shadow 180ms ease,
     transform 180ms ease;
+}
+
+img,
+picture,
+video,
+canvas,
+svg,
+iframe {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+input,
+select,
+textarea {
+  width: 100%;
+  max-width: 100%;
 }
 
 code,
@@ -727,6 +752,27 @@ select:focus {
 
   .hero-park-car {
     animation: parkCarMobile 2.45s cubic-bezier(0.2, 0.82, 0.2, 1) 980ms forwards;
+  }
+}
+
+@media (max-width: 768px) {
+  body {
+    overflow-x: hidden;
+  }
+
+  button,
+  [type='button'],
+  [type='submit'],
+  [type='reset'] {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .Toastify__toast-container {
+    width: min(100%, calc(100vw - 1rem));
+    left: 0.5rem;
+    right: 0.5rem;
+    margin: 0 auto;
   }
 }
 
