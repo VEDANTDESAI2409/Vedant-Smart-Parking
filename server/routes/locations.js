@@ -1,5 +1,5 @@
 const express = require('express');
-const { body, param } = require('express-validator');
+const { body, param, query } = require('express-validator');
 const {
   getPublicLocations,
   getPublicLocation,
@@ -8,6 +8,8 @@ const {
   createLocation,
   updateLocation,
   deleteLocation,
+  getNearbyLocations,
+  getLocationBlueprint,
 } = require('../controllers/locationController');
 
 const { protect, authorize } = require('../middleware/auth');
@@ -42,6 +44,14 @@ const updateLocationValidation = [
 ];
 
 const locationIdValidation = [param('id').isMongoId().withMessage('Invalid location ID')];
+const nearbyLocationsValidation = [
+  query('lat').isFloat().withMessage('Latitude is required'),
+  query('lng').isFloat().withMessage('Longitude is required'),
+  query('radiusKm').optional().isFloat({ min: 1, max: 25 }).withMessage('Radius must be between 1 and 25 km'),
+];
+
+router.get('/nearby', nearbyLocationsValidation, getNearbyLocations);
+router.get('/:id/slots', locationIdValidation, getLocationBlueprint);
 
 router.get('/public', getPublicLocations);
 router.get('/public/:id', locationIdValidation, getPublicLocation);

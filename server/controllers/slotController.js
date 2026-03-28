@@ -1,6 +1,7 @@
 const asyncHandler = require('express-async-handler');
 const { validationResult } = require('express-validator');
 const ParkingSlot = require('../models/ParkingSlot');
+const Location = require('../models/Location');
 
 // @desc    Get all parking slots
 // @route   GET /api/slots
@@ -55,6 +56,7 @@ const createSlot = asyncHandler(async (req, res) => {
   }
 
   const {
+    locationId,
     city,
     pincode,
     area,
@@ -67,6 +69,7 @@ const createSlot = asyncHandler(async (req, res) => {
   } = req.body;
 
   if (
+    !locationId ||
     !city ||
     !pincode ||
     !area ||
@@ -83,7 +86,14 @@ const createSlot = asyncHandler(async (req, res) => {
     throw new Error('Please fill all required fields');
   }
 
+  const linkedLocation = await Location.findById(locationId);
+  if (!linkedLocation) {
+    res.status(404);
+    throw new Error('Linked location not found');
+  }
+
   const slot = await ParkingSlot.create({
+    locationId,
     city: String(city).trim(),
     pincode: String(pincode).trim(),
     area: String(area).trim(),
@@ -92,7 +102,11 @@ const createSlot = asyncHandler(async (req, res) => {
     vehicleType: String(vehicleType).trim(),
     slotType: String(slotType).trim(),
     slotLocation: String(slotLocation).trim(),
+    slotNumber: String(slotLocation).trim(),
+    supportedVehicleTypes: [String(vehicleType).trim()],
     price: Number(price),
+    isActive: true,
+    status: 'available',
   });
 
   res.status(201).json({
@@ -122,6 +136,7 @@ const updateSlot = asyncHandler(async (req, res) => {
   }
 
   const {
+    locationId,
     city,
     pincode,
     area,
@@ -133,15 +148,31 @@ const updateSlot = asyncHandler(async (req, res) => {
     price,
   } = req.body;
 
+  if (locationId) {
+    const linkedLocation = await Location.findById(locationId);
+    if (!linkedLocation) {
+      res.status(404);
+      throw new Error('Linked location not found');
+    }
+    slot.locationId = locationId;
+  }
   slot.city = city !== undefined ? String(city).trim() : slot.city;
   slot.pincode = pincode !== undefined ? String(pincode).trim() : slot.pincode;
   slot.area = area !== undefined ? String(area).trim() : slot.area;
   slot.location = location !== undefined ? String(location).trim() : slot.location;
   slot.landmark = landmark !== undefined ? String(landmark).trim() : slot.landmark;
   slot.vehicleType = vehicleType !== undefined ? String(vehicleType).trim() : slot.vehicleType;
+  if (vehicleType !== undefined) {
+    slot.supportedVehicleTypes = [String(vehicleType).trim()];
+  }
   slot.slotType = slotType !== undefined ? String(slotType).trim() : slot.slotType;
   slot.slotLocation = slotLocation !== undefined ? String(slotLocation).trim() : slot.slotLocation;
+  if (slotLocation !== undefined) {
+    slot.slotNumber = String(slotLocation).trim();
+  }
   slot.price = price !== undefined ? Number(price) : slot.price;
+  slot.isActive = slot.isActive !== false;
+  slot.status = slot.status || 'available';
 
   const updatedSlot = await slot.save();
 
