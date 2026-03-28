@@ -1,6 +1,8 @@
 const express = require('express');
 const { body, param } = require('express-validator');
 const {
+  getPublicLocations,
+  getPublicLocation,
   getLocations,
   getLocation,
   createLocation,
@@ -40,6 +42,9 @@ const updateLocationValidation = [
 ];
 
 const locationIdValidation = [param('id').isMongoId().withMessage('Invalid location ID')];
+
+router.get('/public', getPublicLocations);
+router.get('/public/:id', locationIdValidation, getPublicLocation);
 
 router.use(protect);
 router.use(authorize('admin', 'superadmin'));
