@@ -17,9 +17,25 @@ const paymentValidation = [
   body('amount').isFloat({ min: 0 }).withMessage('Valid amount is required'),
 ];
 
+const initiatePaymentValidation = [
+  body('bookingId').isMongoId().withMessage('Valid booking id is required'),
+  body('paymentMethod').isIn(['upi', 'card']).withMessage('Payment method must be upi or card'),
+  body('upiApp').optional().isIn(['gpay', 'phonepe', 'paytm', 'generic']).withMessage('Invalid UPI app'),
+  body('cardLast4').optional().isLength({ min: 4, max: 4 }).withMessage('cardLast4 must be 4 digits'),
+];
+
+const verifyPaymentValidation = [
+  body('paymentId').isMongoId().withMessage('Valid payment id is required'),
+  body('bookingId').isMongoId().withMessage('Valid booking id is required'),
+  body('status').isIn(['success', 'failed', 'pending']).withMessage('Invalid payment status'),
+  body('transactionId').optional().notEmpty().withMessage('transactionId cannot be empty'),
+];
+
 // @route GET /api/payments
 // @desc Get payments (admin or user)
 router.get('/', paymentController.getPayments);
+router.post('/initiate', initiatePaymentValidation, paymentController.initiatePayment);
+router.post('/verify', verifyPaymentValidation, paymentController.verifyPayment);
 
 // @route POST /api/payments
 // @desc Process a payment (user)

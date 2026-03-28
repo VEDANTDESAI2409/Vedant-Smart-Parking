@@ -353,6 +353,7 @@ const ParkingSlots = () => {
     }
 
     const payload = {
+      locationId,
       city: selectedCity.name,
       pincode: selectedPincode.pincode,
       area: selectedArea.name,

@@ -15,6 +15,7 @@ const { protect, authorize } = require('../middleware/auth');
 const router = express.Router();
 
 const createSlotValidation = [
+  body('locationId').isMongoId().withMessage('Valid locationId is required'),
   body('city').notEmpty().withMessage('City is required'),
   body('pincode')
     .notEmpty()
@@ -37,6 +38,7 @@ const createSlotValidation = [
 ];
 
 const updateSlotValidation = [
+  body('locationId').optional().isMongoId().withMessage('Valid locationId is required'),
   body('city').optional().notEmpty().withMessage('City cannot be empty'),
   body('pincode')
     .optional()
