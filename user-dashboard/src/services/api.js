@@ -1,5 +1,8 @@
 import axios from 'axios';
 import { createApiClient } from '../../../shared-auth/apiClient';
+import { createAuthStorage } from '../../../shared-auth/authStorage';
+
+export const userAuthStorage = createAuthStorage('user-dashboard');
 
 const normalizeBaseUrl = (value) => String(value || '').replace(/\/+$/, '');
 
@@ -22,13 +25,19 @@ const api = createApiClient({
   axiosLib: axios,
   baseURL: `${normalizeBaseUrl(resolvedApiBaseUrl)}/api`,
   unauthorizedRedirectPath: import.meta.env.VITE_AUTH_REDIRECT_PATH || '/',
+  storage: userAuthStorage,
 });
 
 export const authAPI = {
   login: (credentials) => api.post('/auth/login', credentials),
-  register: (payload) => api.post('/auth/register', payload),
+  register: (payload) => api.post('/auth/signup', payload),
   logout: () => api.post('/auth/logout'),
   getProfile: () => api.get('/auth/profile'),
+};
+
+export const locationsAPI = {
+  getNearby: (params) => api.get('/locations/nearby', { params }),
+  getBlueprint: (locationId, params) => api.get(`/locations/${locationId}/slots`, { params }),
 };
 
 export const slotsAPI = {
@@ -43,10 +52,18 @@ export const locationsAPI = {
 
 export const bookingsAPI = {
   getAll: (params) => api.get('/bookings', { params }),
+  getMine: () => api.get('/bookings/me'),
   getById: (id) => api.get(`/bookings/${id}`),
+  createSmart: (data) => api.post('/bookings/create', data),
   create: (data) => api.post('/bookings', data),
   update: (id, data) => api.put(`/bookings/${id}`, data),
   cancel: (id) => api.put(`/bookings/${id}/cancel`),
+};
+
+export const paymentsAPI = {
+  initiate: (data) => api.post('/payments/initiate', data),
+  verify: (data) => api.post('/payments/verify', data),
+  getAll: (params) => api.get('/payments', { params }),
 };
 
 export default api;

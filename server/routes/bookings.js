@@ -4,11 +4,13 @@ const {
   getBookings,
   getBooking,
   createBooking,
+  createSmartBooking,
   updateBooking,
   cancelBooking,
   extendBooking,
   checkInBooking,
-  checkOutBooking
+  checkOutBooking,
+  getCurrentUserBookings,
 } = require('../controllers/bookingController');
 
 const { protect, authorize } = require('../middleware/auth');
@@ -82,6 +84,8 @@ router.use(protect);
 
 // Routes accessible by authenticated users
 router.get('/', getBookings);
+router.get('/me', getCurrentUserBookings);
+router.post('/create', createSmartBooking);
 router.post('/', createBookingValidation, createBooking);
 
 // Routes for specific booking
