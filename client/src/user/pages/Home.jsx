@@ -200,16 +200,7 @@ const Home = () => {
         <div className="intro-orb intro-orb-left" />
         <div className="intro-orb intro-orb-right" />
         <div className="intro-brand">
-          <div className="intro-logo-wrap">
-            <div className="intro-logo">
-              <MapPinned className="h-10 w-10" />
-            </div>
-          </div>
-          <div className="intro-copy">
-            <p className="intro-kicker">Smart Parking</p>
-            <h1 className="intro-title">ParkNGo</h1>
-            <p className="intro-tagline">Seamless parking, smarter access, cleaner journeys.</p>
-          </div>
+          <ParkNGoLogo size="lg" />
         </div>
       </div>
 
@@ -222,14 +213,8 @@ const Home = () => {
       <div className={showIntro ? 'page-shell page-shell-hidden' : 'page-shell page-shell-visible'}>
       <header className="reveal-down sticky top-0 z-50 border-b border-[rgba(64,138,113,0.12)] bg-white/80 backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
-          <Link to="/" className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--color-primary)] text-white shadow-[0_16px_36px_rgba(40,90,72,0.24)]">
-              <MapPinned className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="text-lg font-semibold tracking-tight">ParkNGo</p>
-              <p className="text-xs uppercase tracking-[0.24em] text-slate-500">Smart Parking</p>
-            </div>
+          <Link to="/" className="flex items-center">
+            <ParkNGoLogo size="sm" />
           </Link>
 
           <nav className="hidden items-center gap-8 lg:flex">
@@ -725,15 +710,7 @@ const Home = () => {
       <footer className="bg-[var(--color-secondary)] text-white">
         <div className="mx-auto grid max-w-7xl gap-10 px-4 py-16 sm:px-6 lg:grid-cols-[minmax(0,1.2fr)_repeat(3,minmax(0,0.6fr))] lg:px-8">
           <div>
-            <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--color-primary)] text-white">
-                <MapPinned className="h-6 w-6" />
-              </div>
-              <div>
-                <p className="text-xl font-semibold">ParkNGo</p>
-                <p className="text-sm text-white/60">Parking intelligence for modern cities</p>
-              </div>
-            </div>
+            <ParkNGoLogo size="sm" />
             <p className="mt-6 max-w-md text-sm leading-7 text-white/68">
               A conversion-focused landing experience for smart parking products, ready to connect with your existing admin dashboard and booking flows.
             </p>
@@ -810,6 +787,59 @@ const Home = () => {
           </Link>
         </div>
       </div>
+      </div>
+    </div>
+  );
+};
+
+const ParkNGoLogo = ({ size = 'sm' }) => {
+  const sizes = {
+    sm: {
+      wrapper: 'rounded-[24px] px-4 py-3',
+      arrow: 'h-14 w-14',
+      arrowLine: 'h-3.5 w-8',
+      arrowHead: 'border-b-[10px] border-r-[10px] border-t-[10px]',
+      stem: 'left-[28px] top-[20px] h-14 w-4 rounded-b-[18px]',
+      topCurve: 'left-[28px] top-[6px] h-11 w-14 rounded-r-[26px] rounded-t-[26px] border-r-[16px] border-t-[16px]',
+      baseCurve: 'left-[24px] top-[34px] h-10 w-14 rounded-l-[24px] rounded-b-[26px] border-b-[16px] border-l-[16px]',
+      park: 'text-[1.9rem]',
+      n: 'text-[2.15rem]',
+      go: 'text-[1.9rem]',
+      kicker: 'text-[10px]',
+    },
+    lg: {
+      wrapper: 'rounded-[34px] px-6 py-5',
+      arrow: 'h-24 w-24',
+      arrowLine: 'h-5 w-14',
+      arrowHead: 'border-b-[16px] border-r-[16px] border-t-[16px]',
+      stem: 'left-[46px] top-[30px] h-24 w-6 rounded-b-[26px]',
+      topCurve: 'left-[46px] top-[10px] h-20 w-24 rounded-r-[38px] rounded-t-[38px] border-r-[24px] border-t-[24px]',
+      baseCurve: 'left-[40px] top-[58px] h-16 w-24 rounded-l-[28px] rounded-b-[38px] border-b-[24px] border-l-[24px]',
+      park: 'text-[4.2rem]',
+      n: 'text-[4.6rem]',
+      go: 'text-[4.2rem]',
+      kicker: 'text-xs',
+    },
+  };
+
+  const current = sizes[size] || sizes.sm;
+
+  return (
+    <div className={`inline-flex items-center gap-4 bg-[#08bf63] shadow-[0_18px_44px_rgba(8,191,99,0.22)] ${current.wrapper}`}>
+      <div className={`relative shrink-0 ${current.arrow}`}>
+        <div className={`absolute left-0 top-[38%] bg-[#b7f236] ${current.arrowLine}`} />
+        <div className={`absolute left-0 top-[38%] -translate-x-[40%] border-b-transparent border-r-[#b7f236] border-t-transparent ${current.arrowHead}`} />
+        <div className={`absolute bg-[#b7f236] ${current.stem}`} />
+        <div className={`absolute border-[#b7f236] ${current.topCurve}`} />
+        <div className={`absolute border-[#b7f236] ${current.baseCurve}`} />
+      </div>
+      <div className="leading-none">
+        <p className={`font-semibold uppercase tracking-[0.28em] text-white/80 ${current.kicker}`}>Smart Parking</p>
+        <div className="mt-1 flex items-end leading-none">
+          <span className={`font-black tracking-[-0.06em] text-white ${current.park}`}>Park</span>
+          <span className={`px-1 font-black tracking-[-0.08em] text-[#b7ff00] ${current.n}`}>N</span>
+          <span className={`font-black tracking-[-0.06em] text-white ${current.go}`}>Go</span>
+        </div>
       </div>
     </div>
   );

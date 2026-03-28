@@ -21,6 +21,55 @@ const buildLocationPopulate = () => [
   },
 ];
 
+const formatPublicLocation = (location) => ({
+  _id: location._id,
+  name: location.name,
+  lat: location.lat,
+  lng: location.lng,
+  status: location.status,
+  city: location.cityId?.name || '',
+  state: location.cityId?.state || '',
+  pincode: location.pincodeId?.pincode || '',
+  area: location.areaId?.name || '',
+  createdAt: location.createdAt,
+  updatedAt: location.updatedAt,
+});
+
+// @desc    Get public locations for the user map
+// @route   GET /api/locations/public
+// @access  Public
+const getPublicLocations = asyncHandler(async (req, res) => {
+  const query = { status: true };
+
+  const locations = await Location.find(query)
+    .populate(buildLocationPopulate())
+    .sort({ createdAt: -1 });
+
+  res.status(200).json({
+    success: true,
+    data: {
+      locations: locations.map(formatPublicLocation),
+    },
+  });
+});
+
+// @desc    Get single public location for the user map
+// @route   GET /api/locations/public/:id
+// @access  Public
+const getPublicLocation = asyncHandler(async (req, res) => {
+  const location = await Location.findOne({ _id: req.params.id, status: true }).populate(buildLocationPopulate());
+
+  if (!location) {
+    res.status(404);
+    throw new Error('Location not found');
+  }
+
+  res.status(200).json({
+    success: true,
+    data: formatPublicLocation(location),
+  });
+});
+
 // @desc    Get all locations
 // @route   GET /api/locations
 // @access  Private/Admin
@@ -228,6 +277,8 @@ const deleteLocation = asyncHandler(async (req, res) => {
 });
 
 module.exports = {
+  getPublicLocations,
+  getPublicLocation,
   getLocations,
   getLocation,
   createLocation,
