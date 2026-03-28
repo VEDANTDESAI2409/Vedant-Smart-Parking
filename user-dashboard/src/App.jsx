@@ -11,6 +11,7 @@ import History from './user/pages/History';
 import Profile from './user/pages/Profile';
 import Login from './user/pages/Login';
 import Signup from './user/pages/Signup';
+import ParkingLotDetails from './user/pages/ParkingLotDetails';
 
 const AppShell = () => {
   const [adminPreferences, setAdminPreferences] = React.useState(getAdminPreferences());
@@ -24,6 +25,7 @@ const AppShell = () => {
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
         <Route path="/search" element={<Search />} />
+        <Route path="/parking/:parkingLotId" element={<ParkingLotDetails />} />
         <Route path="/booking" element={<Booking />} />
         <Route path="/history" element={<History />} />
         <Route path="/profile" element={<Profile />} />

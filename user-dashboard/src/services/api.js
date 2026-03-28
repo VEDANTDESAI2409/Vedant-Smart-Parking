@@ -1,9 +1,11 @@
 import axios from 'axios';
 import { createApiClient } from '../../../shared-auth/apiClient';
 
+const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:5000').replace(/\/$/, '');
+
 const api = createApiClient({
   axiosLib: axios,
-  baseURL: `${import.meta.env.VITE_API_BASE_URL}/api`,
+  baseURL: `${apiBaseUrl}/api`,
   unauthorizedRedirectPath: import.meta.env.VITE_AUTH_REDIRECT_PATH || '/',
 });
 
@@ -17,6 +19,11 @@ export const authAPI = {
 export const slotsAPI = {
   getAvailable: (params) => api.get('/slots/available', { params }),
   getAll: (params) => api.get('/slots', { params }),
+};
+
+export const locationsAPI = {
+  getPublic: () => api.get('/locations/public'),
+  getPublicById: (id) => api.get(`/locations/public/${id}`),
 };
 
 export const bookingsAPI = {
