@@ -69,6 +69,7 @@ app.use('/api/users', require('./routes/users'));
 app.use('/api/slots', require('./routes/slots'));
 app.use('/api/parkingslots', require('./routes/slots')); // alias for backward compatibility
 app.use('/api/bookings', require('./routes/bookings'));
+app.use('/api/user/bookings', require('./routes/bookings'));
 app.use('/api/vehicles', require('./routes/vehicles'));
 app.use('/api/payments', require('./routes/payments'));
 app.use('/api/reports', require('./routes/reports'));

@@ -1,36 +1,44 @@
-const TOKEN_KEY = 'token';
-const USER_KEY = 'user';
+const createStorageKeys = (prefix = 'auth') => ({
+  token: `${prefix}:token`,
+  user: `${prefix}:user`,
+});
 
-export const authStorage = {
-  getToken() {
-    return localStorage.getItem(TOKEN_KEY);
-  },
+export const createAuthStorage = (prefix = 'auth') => {
+  const keys = createStorageKeys(prefix);
 
-  setToken(token) {
-    localStorage.setItem(TOKEN_KEY, token);
-  },
+  return {
+    getToken() {
+      return localStorage.getItem(keys.token);
+    },
 
-  removeToken() {
-    localStorage.removeItem(TOKEN_KEY);
-  },
+    setToken(token) {
+      localStorage.setItem(keys.token, token);
+    },
 
-  getUser() {
-    const raw = localStorage.getItem(USER_KEY);
-    return raw ? JSON.parse(raw) : null;
-  },
+    removeToken() {
+      localStorage.removeItem(keys.token);
+    },
 
-  setUser(user) {
-    localStorage.setItem(USER_KEY, JSON.stringify(user));
-  },
+    getUser() {
+      const raw = localStorage.getItem(keys.user);
+      return raw ? JSON.parse(raw) : null;
+    },
 
-  removeUser() {
-    localStorage.removeItem(USER_KEY);
-  },
+    setUser(user) {
+      localStorage.setItem(keys.user, JSON.stringify(user));
+    },
 
-  clear() {
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(USER_KEY);
-  },
+    removeUser() {
+      localStorage.removeItem(keys.user);
+    },
+
+    clear() {
+      localStorage.removeItem(keys.token);
+      localStorage.removeItem(keys.user);
+    },
+
+    keys,
+  };
 };
 
-export { TOKEN_KEY, USER_KEY };
+export const authStorage = createAuthStorage();

@@ -1,12 +1,14 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { createAuthService } from '../../../shared-auth/authService';
 import api, { authAPI } from '../services/api';
+import { adminAuthStorage } from '../services/api';
 
 const AuthContext = createContext(null);
 
 const authService = createAuthService({
   apiClient: api,
   loginEndpoint: '/auth/admin/login',
+  storage: adminAuthStorage,
 });
 
 export const AuthProvider = ({ children }) => {
