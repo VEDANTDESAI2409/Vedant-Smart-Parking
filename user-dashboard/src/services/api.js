@@ -38,16 +38,13 @@ export const authAPI = {
 export const locationsAPI = {
   getNearby: (params) => api.get('/locations/nearby', { params }),
   getBlueprint: (locationId, params) => api.get(`/locations/${locationId}/slots`, { params }),
+  getPublic: () => api.get('/locations/public'),
+  getPublicById: (id) => api.get(`/locations/public/${id}`),
 };
 
 export const slotsAPI = {
   getAvailable: (params) => api.get('/slots/available', { params }),
   getAll: (params) => api.get('/slots', { params }),
-};
-
-export const locationsAPI = {
-  getPublic: () => api.get('/locations/public'),
-  getPublicById: (id) => api.get(`/locations/public/${id}`),
 };
 
 export const bookingsAPI = {
@@ -58,6 +55,14 @@ export const bookingsAPI = {
   create: (data) => api.post('/bookings', data),
   update: (id, data) => api.put(`/bookings/${id}`, data),
   cancel: (id) => api.put(`/bookings/${id}/cancel`),
+};
+
+export const vehiclesAPI = {
+  getAll: (params) => api.get('/vehicles', { params }),
+  getById: (id) => api.get(`/vehicles/${id}`),
+  create: (data) => api.post('/vehicles', data),
+  update: (id, data) => api.put(`/vehicles/${id}`, data),
+  delete: (id) => api.delete(`/vehicles/${id}`),
 };
 
 export const paymentsAPI = {
