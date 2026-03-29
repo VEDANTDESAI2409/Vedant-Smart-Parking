@@ -50,6 +50,11 @@ const vehicleSchema = new mongoose.Schema({
     enum: ['car', 'motorcycle', 'truck', 'van', 'suv', 'electric', 'hybrid'],
     default: 'car'
   },
+  fuelType: {
+    type: String,
+    enum: ['petrol', 'diesel', 'cng', 'electric', 'hybrid', 'other'],
+    default: 'petrol',
+  },
   isDefault: {
     type: Boolean,
     default: false

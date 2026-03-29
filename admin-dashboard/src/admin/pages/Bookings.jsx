@@ -1,5 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { FaCar, FaChevronRight, FaFileCsv, FaMapMarkerAlt, FaMotorcycle, FaSearch, FaUser } from 'react-icons/fa';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { FaCar, FaChevronRight, FaFileCsv, FaMapMarkerAlt, FaRegClock, FaSearch, FaTrashAlt, FaUser } from 'react-icons/fa';
+import Swal from 'sweetalert2';
 
 import Modal from '../../components/Modal';
 import Table from '../../components/Table';
@@ -24,18 +25,56 @@ const mapStatus = (booking) => {
 const Bookings = () => {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
   const [viewingBooking, setViewingBooking] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [now, setNow] = useState(() => new Date());
+  const hasLoadedRef = useRef(false);
 
-  const fetchBookings = async () => {
+  const showSuccess = (title) =>
+    Swal.fire({
+      title,
+      icon: 'success',
+      timer: 1400,
+      showConfirmButton: false,
+      toast: true,
+      position: 'top-end',
+    });
+
+  const showError = (title) =>
+    Swal.fire({
+      title,
+      icon: 'error',
+      timer: 2000,
+      showConfirmButton: false,
+      toast: true,
+      position: 'top-end',
+    });
+
+  const fetchBookings = async ({ silent = false } = {}) => {
     try {
-      setLoading(true);
+      if (!hasLoadedRef.current) {
+        setLoading(true);
+      } else if (!silent) {
+        setRefreshing(true);
+      }
       const response = await bookingsAPI.getAll();
       const rawBookings = response?.data?.data?.bookings || [];
       const formatted = rawBookings.map((booking, index) => ({
         ...booking,
         customId: toAdminBookingId(booking, index),
         bookingDate: booking.startTime ? new Date(booking.startTime).toLocaleDateString() : '---',
+        bookedAtDate: booking.createdAt
+          ? new Date(booking.createdAt).toLocaleDateString()
+          : booking.startTime
+            ? new Date(booking.startTime).toLocaleDateString()
+            : '---',
+        bookedAtTime: booking.createdAt
+          ? new Date(booking.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          : booking.startTime
+            ? new Date(booking.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            : '---',
         userName: booking.user?.name || 'Unknown User',
         mobileNumber: booking.user?.phone || '---',
         emailId: booking.user?.email || '---',
@@ -56,14 +95,34 @@ const Bookings = () => {
       console.error('Error fetching bookings:', error);
       setBookings([]);
     } finally {
+      hasLoadedRef.current = true;
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
   useEffect(() => {
     fetchBookings();
-    const intervalId = window.setInterval(fetchBookings, 15000);
-    return () => window.clearInterval(intervalId);
+
+    const intervalId = window.setInterval(() => fetchBookings({ silent: true }), 3000);
+
+    const handleVisibility = () => {
+      if (!document.hidden) {
+        fetchBookings({ silent: true });
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      window.clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, []);
+
+  useEffect(() => {
+    const clockId = window.setInterval(() => setNow(new Date()), 1000);
+    return () => window.clearInterval(clockId);
   }, []);
 
   const filteredBookings = useMemo(() => {
@@ -84,12 +143,78 @@ const Bookings = () => {
     );
   }, [bookings, searchTerm]);
 
+  const handleCancelBooking = async (booking) => {
+    const result = await Swal.fire({
+      title: 'Delete booking?',
+      text: 'This will cancel the booking and remove it from active reservations.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, Delete',
+      cancelButtonText: 'Cancel',
+      confirmButtonColor: '#dc2626',
+      cancelButtonColor: '#64748b',
+      background: '#ffffff',
+      color: '#0f172a',
+      borderRadius: '12px',
+    });
+
+    if (!result.isConfirmed) return;
+
+    try {
+      await bookingsAPI.cancel(booking._id);
+      showSuccess('Booking deleted');
+      await fetchBookings({ silent: true });
+    } catch (error) {
+      console.error('Error deleting booking:', error);
+      showError(error?.response?.data?.message || 'Failed to delete booking');
+    }
+  };
+
+  const handleDeleteAll = async () => {
+    if (!filteredBookings.length) return;
+
+    const result = await Swal.fire({
+      title: 'Delete all bookings?',
+      text: `This will cancel ${filteredBookings.length} booking(s) in the current list.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, Delete All',
+      cancelButtonText: 'Cancel',
+      confirmButtonColor: '#dc2626',
+      cancelButtonColor: '#64748b',
+      background: '#ffffff',
+      color: '#0f172a',
+      borderRadius: '12px',
+    });
+
+    if (!result.isConfirmed) return;
+
+    try {
+      setBulkDeleting(true);
+      const targets = filteredBookings.filter((booking) => booking?._id);
+      const results = await Promise.allSettled(targets.map((booking) => bookingsAPI.cancel(booking._id)));
+      const failures = results.filter((entry) => entry.status === 'rejected').length;
+      if (failures) {
+        showError(`Deleted with ${failures} failure(s)`);
+      } else {
+        showSuccess('All bookings deleted');
+      }
+      await fetchBookings({ silent: true });
+    } catch (error) {
+      console.error('Error deleting all bookings:', error);
+      showError('Failed to delete all bookings');
+    } finally {
+      setBulkDeleting(false);
+    }
+  };
+
   const handleExportCSV = () => {
     if (!filteredBookings.length) return;
 
     const headers = [
       'Booking ID',
-      'Date',
+      'Booked Date',
+      'Booked Time',
       'Customer Name',
       'Mobile',
       'Email',
@@ -108,7 +233,8 @@ const Bookings = () => {
     const rows = filteredBookings.map((booking) =>
       [
         booking.customId,
-        booking.bookingDate,
+        booking.bookedAtDate,
+        booking.bookedAtTime,
         `"${booking.userName}"`,
         booking.mobileNumber,
         booking.emailId,
@@ -145,6 +271,15 @@ const Bookings = () => {
         <span className="rounded-lg border border-blue-100 bg-blue-50 px-3 py-1 text-xs font-bold text-blue-600 dark:border-blue-800 dark:bg-blue-900/20 dark:text-blue-400">
           {row.customId}
         </span>
+      ),
+    },
+    {
+      header: 'DATE/TIME',
+      render: (row) => (
+        <div className="flex flex-col">
+          <span className="font-bold text-slate-900 dark:text-white">{row.bookedAtDate}</span>
+          <span className="text-[11px] font-medium text-slate-400 dark:text-slate-500">{row.bookedAtTime}</span>
+        </div>
       ),
     },
     {
@@ -199,13 +334,23 @@ const Bookings = () => {
     {
       header: 'ACTION',
       render: (row) => (
-        <button
-          type="button"
-          onClick={() => setViewingBooking(row)}
-          className="group flex items-center gap-2 rounded-xl bg-[#1E293B] px-4 py-2 text-xs font-bold text-white transition-all hover:opacity-90 active:scale-95 dark:bg-blue-600"
-        >
-          VIEW DETAIL <FaChevronRight className="transition-transform group-hover:translate-x-1" size={10} />
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setViewingBooking(row)}
+            className="group flex items-center gap-2 rounded-xl bg-[#1E293B] px-4 py-2 text-xs font-bold text-white transition-all hover:opacity-90 active:scale-95 dark:bg-blue-600"
+          >
+            VIEW DETAIL <FaChevronRight className="transition-transform group-hover:translate-x-1" size={10} />
+          </button>
+          <button
+            type="button"
+            onClick={() => handleCancelBooking(row)}
+            className="flex items-center justify-center rounded-xl bg-rose-600 px-3 py-2 text-xs font-bold text-white transition-all hover:bg-rose-700 active:scale-95"
+            title="Delete booking"
+          >
+            <FaTrashAlt size={12} />
+          </button>
+        </div>
       ),
     },
   ];
@@ -216,6 +361,11 @@ const Bookings = () => {
         <div>
           <h1 className="text-4xl font-black tracking-tight text-slate-900 dark:text-white">Bookings</h1>
           <p className="font-medium text-slate-500 dark:text-slate-400">Live reservations created by users appear here automatically.</p>
+          <div className="mt-2 flex items-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
+            <FaRegClock />
+            <span>{now.toLocaleDateString()} {now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+            {refreshing ? <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-bold dark:bg-slate-700">UPDATING</span> : null}
+          </div>
         </div>
 
         <div className="flex w-full items-center gap-4 md:w-auto">
@@ -236,6 +386,16 @@ const Bookings = () => {
             className="rounded-2xl bg-white p-3.5 text-emerald-600 shadow-sm ring-1 ring-slate-200 transition-colors hover:bg-slate-50 dark:bg-[#1E293B] dark:text-emerald-400 dark:ring-slate-700 dark:hover:bg-slate-800"
           >
             <FaFileCsv size={20} />
+          </button>
+
+          <button
+            type="button"
+            onClick={handleDeleteAll}
+            disabled={bulkDeleting || !filteredBookings.length}
+            className="rounded-2xl bg-rose-600 px-4 py-3 text-xs font-black uppercase tracking-wider text-white shadow-sm transition-colors hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+            title="Delete all bookings in the current list"
+          >
+            {bulkDeleting ? 'DELETING…' : 'DELETE ALL'}
           </button>
         </div>
       </div>
