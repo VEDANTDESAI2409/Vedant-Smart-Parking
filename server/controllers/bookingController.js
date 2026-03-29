@@ -816,6 +816,7 @@ exports.createSmartBooking = async (req, res) => {
       parkingSlotId,
       floor,
       vehicleType = 'car',
+      vehicleId,
       startTime,
       durationMinutes,
       date,
@@ -854,6 +855,36 @@ exports.createSmartBooking = async (req, res) => {
     const duration = Number(durationMinutes || 60) / 60;
     const bookingEnd = new Date(bookingStart.getTime() + duration * 60 * 60 * 1000);
 
+    const desiredVehicleType = vehicleType === 'bike' ? 'motorcycle' : vehicleType;
+
+    const resolveVehicle = async () => {
+      if (vehicleId) {
+        const filter =
+          isAdminRole(req.user.role)
+            ? { _id: vehicleId, isActive: true }
+            : { _id: vehicleId, owner: req.user.id, isActive: true };
+
+        const selectedVehicle = await Vehicle.findOne(filter);
+        if (!selectedVehicle) {
+          return null;
+        }
+
+        return selectedVehicle;
+      }
+
+      const defaultVehicle = await Vehicle.findOne({
+        owner: req.user.id,
+        vehicleType: desiredVehicleType,
+        isActive: true,
+      }).sort({ isDefault: -1, createdAt: -1 });
+
+      if (defaultVehicle) {
+        return defaultVehicle;
+      }
+
+      return ensureVehicleForUser(req.user.id, vehicleType);
+    };
+
     const [location, slot, user, vehicle] = await Promise.all([
       Location.findById(locationId).populate([
         { path: 'cityId', select: 'name' },
@@ -862,7 +893,7 @@ exports.createSmartBooking = async (req, res) => {
       ]),
       ParkingSlot.findById(parkingSlotId),
       Promise.resolve(req.user),
-      ensureVehicleForUser(req.user.id, vehicleType),
+      resolveVehicle(),
     ]);
 
     if (!location) {
@@ -886,6 +917,13 @@ exports.createSmartBooking = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: 'Selected slot is not bookable',
+      });
+    }
+
+    if (!vehicle) {
+      return res.status(400).json({
+        success: false,
+        message: 'Select a valid vehicle before booking',
       });
     }
 
