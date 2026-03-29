@@ -1,5 +1,8 @@
 import axios from 'axios';
 import { createApiClient } from '../../../shared-auth/apiClient';
+import { createAuthStorage } from '../../../shared-auth/authStorage';
+
+export const adminAuthStorage = createAuthStorage('admin-dashboard');
 
 const normalizeBaseUrl = (value) => String(value || '').replace(/\/+$/, '');
 
@@ -22,6 +25,7 @@ const api = createApiClient({
   axiosLib: axios,
   baseURL: `${normalizeBaseUrl(resolvedApiBaseUrl)}/api`,
   unauthorizedRedirectPath: import.meta.env.VITE_AUTH_REDIRECT_PATH || '/login',
+  storage: adminAuthStorage,
 });
 
 export const authAPI = {
