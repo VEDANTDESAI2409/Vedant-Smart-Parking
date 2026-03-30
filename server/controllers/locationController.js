@@ -5,7 +5,9 @@ const City = require('../models/City');
 const Pincode = require('../models/Pincode');
 const Area = require('../models/Area');
 const ParkingSlot = require('../models/ParkingSlot');
+const { checkConnection } = require('../config/database');
 const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const normalizeText = (value) => String(value || '').trim().toLowerCase();
 
 const buildLocationPopulate = () => [
   {
@@ -40,6 +42,16 @@ const formatPublicLocation = (location) => ({
 // @route   GET /api/locations/public
 // @access  Public
 const getPublicLocations = asyncHandler(async (req, res) => {
+  if (!checkConnection()) {
+    return res.status(200).json({
+      success: true,
+      data: {
+        locations: [],
+      },
+      message: 'Database is currently unavailable',
+    });
+  }
+
   const query = { status: true };
 
   const locations = await Location.find(query)
@@ -58,6 +70,11 @@ const getPublicLocations = asyncHandler(async (req, res) => {
 // @route   GET /api/locations/public/:id
 // @access  Public
 const getPublicLocation = asyncHandler(async (req, res) => {
+  if (!checkConnection()) {
+    res.status(503);
+    throw new Error('Database is currently unavailable');
+  }
+
   const location = await Location.findOne({ _id: req.params.id, status: true }).populate(buildLocationPopulate());
 
   if (!location) {
@@ -125,6 +142,16 @@ const buildLegacySlotQuery = (location, vehicleType = null) => {
 // @route   GET /api/locations
 // @access  Private/Admin
 const getLocations = asyncHandler(async (req, res) => {
+  if (!checkConnection()) {
+    return res.status(200).json({
+      success: true,
+      data: {
+        locations: [],
+      },
+      message: 'Database is currently unavailable',
+    });
+  }
+
   const query = {};
 
   if (req.query.cityId) {
@@ -153,6 +180,11 @@ const getLocations = asyncHandler(async (req, res) => {
 // @route   GET /api/locations/:id
 // @access  Private/Admin
 const getLocation = asyncHandler(async (req, res) => {
+  if (!checkConnection()) {
+    res.status(503);
+    throw new Error('Database is currently unavailable');
+  }
+
   const location = await Location.findById(req.params.id).populate(buildLocationPopulate());
 
   if (!location) {
@@ -178,9 +210,9 @@ const createLocation = asyncHandler(async (req, res) => {
 
   const { cityId, pincodeId, areaId, name, lat, lng, status } = req.body;
 
-  if (!cityId || !pincodeId || !areaId || !name || lat === undefined || lng === undefined) {
+  if (!cityId || !pincodeId || !areaId || !name) {
     res.status(400);
-    throw new Error('Please provide cityId, pincodeId, areaId, name, lat, and lng');
+    throw new Error('Please provide cityId, pincodeId, areaId, and name');
   }
 
   const [city, pincode, area] = await Promise.all([
@@ -222,8 +254,8 @@ const createLocation = asyncHandler(async (req, res) => {
     pincodeId,
     areaId,
     name: trimmedName,
-    lat: Number(lat),
-    lng: Number(lng),
+    lat: lat === undefined || lat === null || lat === '' ? 0 : Number(lat),
+    lng: lng === undefined || lng === null || lng === '' ? 0 : Number(lng),
     status: status !== undefined ? Boolean(status) : true,
   });
 
@@ -295,8 +327,8 @@ const updateLocation = asyncHandler(async (req, res) => {
   location.pincodeId = nextPincodeId;
   location.areaId = nextAreaId;
   location.name = nextName;
-  location.lat = lat !== undefined ? Number(lat) : location.lat;
-  location.lng = lng !== undefined ? Number(lng) : location.lng;
+  location.lat = lat !== undefined && lat !== null && lat !== '' ? Number(lat) : location.lat;
+  location.lng = lng !== undefined && lng !== null && lng !== '' ? Number(lng) : location.lng;
   location.status = status !== undefined ? Boolean(status) : location.status;
 
   const updatedLocation = await location.save();
@@ -336,9 +368,22 @@ module.exports = {
   updateLocation,
   deleteLocation,
   getNearbyLocations: asyncHandler(async (req, res) => {
+    if (!checkConnection()) {
+      return res.status(200).json({
+        success: true,
+        data: {
+          locations: [],
+        },
+        message: 'Database is currently unavailable',
+      });
+    }
+
     const lat = Number(req.query.lat);
     const lng = Number(req.query.lng);
     const radiusKm = Math.min(Number(req.query.radiusKm) || 10, 25);
+    const detectedCity = normalizeText(req.query.city);
+    const detectedArea = normalizeText(req.query.area);
+    const detectedPincode = normalizeText(req.query.pincode);
 
     if (Number.isNaN(lat) || Number.isNaN(lng)) {
       res.status(400);
@@ -352,9 +397,28 @@ module.exports = {
     const nearbyLocations = (
       await Promise.all(
         locations.map(async (location) => {
-          const distanceKm = calculateDistanceKm(lat, lng, location.lat, location.lng);
+          const locationCity = normalizeText(location.cityId?.name);
+          const locationArea = normalizeText(location.areaId?.name);
+          const locationPincode = normalizeText(location.pincodeId?.pincode);
+          const hasCoordinates =
+            typeof location.lat === 'number' &&
+            typeof location.lng === 'number' &&
+            !(location.lat === 0 && location.lng === 0);
+          const distanceKm = hasCoordinates
+            ? calculateDistanceKm(lat, lng, location.lat, location.lng)
+            : null;
+          const pincodeMatch = Boolean(detectedPincode && detectedPincode === locationPincode);
+          const areaMatch = Boolean(
+            detectedArea &&
+              detectedCity &&
+              detectedArea === locationArea &&
+              detectedCity === locationCity
+          );
+          const cityMatch = Boolean(detectedCity && detectedCity === locationCity);
+          const textualMatch = pincodeMatch || areaMatch || cityMatch;
+          const withinRadius = distanceKm !== null && distanceKm <= radiusKm;
 
-          if (distanceKm > radiusKm) {
+          if (!withinRadius && !textualMatch) {
             return null;
           }
 
@@ -374,16 +438,22 @@ module.exports = {
             address: location.address || '',
             lat: location.lat,
             lng: location.lng,
-            distanceKm: Number(distanceKm.toFixed(2)),
+            distanceKm: distanceKm === null ? null : Number(distanceKm.toFixed(2)),
             floors: location.floors || [],
             totalSlots: activeSlots.length,
             availableSlots,
+            matchType: pincodeMatch ? 'pincode' : areaMatch ? 'area' : cityMatch ? 'city' : 'radius',
           };
         })
       )
     )
       .filter(Boolean)
-      .sort((a, b) => a.distanceKm - b.distanceKm);
+      .sort((a, b) => {
+        const score = { pincode: 0, area: 1, city: 2, radius: 3 };
+        const scoreDiff = (score[a.matchType] ?? 99) - (score[b.matchType] ?? 99);
+        if (scoreDiff !== 0) return scoreDiff;
+        return (a.distanceKm ?? Number.MAX_SAFE_INTEGER) - (b.distanceKm ?? Number.MAX_SAFE_INTEGER);
+      });
 
     res.status(200).json({
       success: true,
@@ -393,6 +463,23 @@ module.exports = {
     });
   }),
   getLocationBlueprint: asyncHandler(async (req, res) => {
+    if (!checkConnection()) {
+      return res.status(200).json({
+        success: true,
+        data: {
+          location: null,
+          floors: [],
+          legend: [
+            { key: 'normal', label: 'Normal' },
+            { key: 'ev', label: 'EV' },
+            { key: 'reserved', label: 'Reserved' },
+            { key: 'disabled', label: 'Disabled' },
+          ],
+        },
+        message: 'Database is currently unavailable',
+      });
+    }
+
     const location = await Location.findById(req.params.id).populate(buildLocationPopulate());
 
     if (!location) {
