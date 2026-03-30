@@ -21,9 +21,12 @@ if (!import.meta.env.VITE_API_BASE_URL && import.meta.env.DEV) {
   );
 }
 
+export const API_BASE_URL = normalizeBaseUrl(resolvedApiBaseUrl);
+export const API_ROOT_URL = `${API_BASE_URL}/api`;
+
 const api = createApiClient({
   axiosLib: axios,
-  baseURL: `${normalizeBaseUrl(resolvedApiBaseUrl)}/api`,
+  baseURL: API_ROOT_URL,
   unauthorizedRedirectPath: import.meta.env.VITE_AUTH_REDIRECT_PATH || '/login',
   storage: adminAuthStorage,
 });

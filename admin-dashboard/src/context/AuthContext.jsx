@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { createAuthService } from '../../../shared-auth/authService';
-import api, { authAPI } from '../services/api';
+import api, { API_BASE_URL, authAPI } from '../services/api';
 import { adminAuthStorage } from '../services/api';
 
 const AuthContext = createContext(null);
@@ -34,9 +34,14 @@ export const AuthProvider = ({ children }) => {
       setIsAuthenticated(true);
       return { success: true };
     } catch (error) {
+      const isNetworkError = !error.response;
+      const defaultMessage = isNetworkError
+        ? `Cannot reach the server at ${API_BASE_URL}. Start the backend (Vedant-Smart-Parking/server) and make sure http://127.0.0.1:5000/health opens.`
+        : 'Login failed';
+
       return {
         success: false,
-        error: error.response?.data?.message || 'Login failed',
+        error: error.response?.data?.message || defaultMessage,
       };
     }
   };

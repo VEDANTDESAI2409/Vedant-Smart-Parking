@@ -57,6 +57,14 @@ export const bookingsAPI = {
   cancel: (id) => api.put(`/bookings/${id}/cancel`),
 };
 
+export const vehiclesAPI = {
+  getAll: (params) => api.get('/vehicles', { params }),
+  getById: (id) => api.get(`/vehicles/${id}`),
+  create: (data) => api.post('/vehicles', data),
+  update: (id, data) => api.put(`/vehicles/${id}`, data),
+  delete: (id) => api.delete(`/vehicles/${id}`),
+};
+
 export const paymentsAPI = {
   initiate: (data) => api.post('/payments/initiate', data),
   verify: (data) => api.post('/payments/verify', data),
