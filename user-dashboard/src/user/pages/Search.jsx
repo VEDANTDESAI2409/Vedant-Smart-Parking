@@ -98,6 +98,15 @@ const StepTitle = ({ step, title, count, caption }) => (
   </div>
 );
 
+const getDisplayGeoText = (geo) => {
+  if (!geo) return '';
+
+  return [geo.area, geo.city, geo.pincode]
+    .map((value) => String(value || '').trim())
+    .filter(Boolean)
+    .join(', ');
+};
+
 const Search = () => {
   const { user, isAuthenticated, login, register } = useAuth();
   const [error, setError] = useState('');
@@ -165,32 +174,91 @@ const Search = () => {
 
   const reverseGeocode = async (lat, lng) => {
     const key = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
-    if (!key) {
-      return { city: 'Detected City', area: 'Detected Area', pincode: '000000' };
-    }
+    const normalize = (value, fallback = '') => {
+      const cleaned = String(value || '').trim();
+      return cleaned || fallback;
+    };
 
     try {
-      const response = await fetch(
-        `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${key}`,
+      if (key) {
+        const response = await fetch(
+          `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${key}`,
+        );
+        const data = await response.json();
+        const components = data.results?.[0]?.address_components || [];
+        const pick = (type) =>
+          components.find((item) => item.types.includes(type))?.long_name || '';
+
+        return {
+          city: normalize(
+            pick('locality') ||
+              pick('administrative_area_level_3') ||
+              pick('administrative_area_level_2'),
+            'Detected City',
+          ),
+          area: normalize(
+            pick('sublocality_level_1') ||
+              pick('sublocality') ||
+              pick('neighborhood') ||
+              pick('premise') ||
+              pick('route'),
+            pick('locality') || 'Detected Area',
+          ),
+          pincode: normalize(pick('postal_code')),
+        };
+      }
+
+      const fallbackResponse = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`,
       );
-      const data = await response.json();
-      const components = data.results?.[0]?.address_components || [];
-      const pick = (type) =>
-        components.find((item) => item.types.includes(type))?.long_name || '';
+      const fallbackData = await fallbackResponse.json();
+      const address = fallbackData.address || {};
+      const displayNameParts = String(fallbackData.display_name || '')
+        .split(',')
+        .map((value) => value.trim())
+        .filter(Boolean);
+      const fallbackArea =
+        address.suburb ||
+        address.neighbourhood ||
+        address.residential ||
+        address.hamlet ||
+        address.quarter ||
+        address.city_district ||
+        address.municipality ||
+        address.road ||
+        displayNameParts[0] ||
+        address.town ||
+        address.village ||
+        '';
 
       return {
-        city: pick('locality') || pick('administrative_area_level_2'),
-        area: pick('sublocality') || pick('route'),
-        pincode: pick('postal_code'),
+        city: normalize(
+          address.city ||
+            address.town ||
+            address.village ||
+            address.municipality ||
+            address.county ||
+            address.state_district,
+          'Detected City',
+        ),
+        area: normalize(fallbackArea, 'Detected Area'),
+        pincode: normalize(address.postcode),
       };
     } catch {
-      return { city: 'Detected City', area: 'Detected Area', pincode: '000000' };
+      return { city: 'Detected City', area: 'Detected Area', pincode: '' };
     }
   };
 
   const fetchNearbyLocations = async (lat, lng, options = {}) => {
-    const { preserveSelection = true } = options;
-    const response = await locationsAPI.getNearby({ lat, lng, radiusKm: 10 });
+    const { preserveSelection = true, detectedLocation = null } = options;
+    const response = await locationsAPI.getNearby({
+      lat,
+      lng,
+      radiusKm: 10,
+      city: detectedLocation?.city,
+      area: detectedLocation?.area,
+      pincode: detectedLocation?.pincode,
+    });
     const nextLocations = response.data.data.locations || [];
 
     setLocations(nextLocations);
@@ -229,35 +297,24 @@ const Search = () => {
     }
 
     let cancelled = false;
-    const syncBlueprint = async (isInitial = false) => {
+
+    const syncBlueprint = async () => {
       try {
-        if (isInitial) setLoading(true);
-        await fetchBlueprint(selectedLocation.id, { preserveSelection: !isInitial });
+        setLoading(true);
+        await fetchBlueprint(selectedLocation.id, { preserveSelection: true });
       } catch (e) {
         if (!cancelled) setError(e.response?.data?.message || 'Unable to load blueprint');
       } finally {
-        if (isInitial && !cancelled) setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
 
-    syncBlueprint(true);
-    const intervalId = window.setInterval(() => {
-      syncBlueprint(false);
-    }, 15000);
+    syncBlueprint();
 
     return () => {
       cancelled = true;
-      window.clearInterval(intervalId);
     };
   }, [selectedLocation, vehicleType]);
-
-  useEffect(() => {
-    if (!geo?.lat || !geo?.lng) return undefined;
-    const intervalId = window.setInterval(() => {
-      fetchNearbyLocations(geo.lat, geo.lng, { preserveSelection: true }).catch(() => {});
-    }, 15000);
-    return () => window.clearInterval(intervalId);
-  }, [geo?.lat, geo?.lng]);
 
   const loadNearby = async () => {
     setError('');
@@ -275,7 +332,10 @@ const Search = () => {
       const lng = position.coords.longitude;
       const detected = await reverseGeocode(lat, lng);
       setGeo({ lat, lng, ...detected });
-      await fetchNearbyLocations(lat, lng, { preserveSelection: false });
+      await fetchNearbyLocations(lat, lng, {
+        preserveSelection: false,
+        detectedLocation: detected,
+      });
     } catch (e) {
       setError(e.response?.data?.message || 'Location access failed');
     } finally {
@@ -460,7 +520,7 @@ const Search = () => {
               {geo ? (
                 <p className="mt-4 flex items-center gap-2 text-sm text-slate-500">
                   <MapPin className="h-4 w-4 text-[var(--color-primary)]" />
-                  Detected: {geo.city} • {geo.area} • {geo.pincode}
+                  Near {getDisplayGeoText(geo)}
                 </p>
               ) : null}
             </div>
@@ -555,7 +615,13 @@ const Search = () => {
                       </div>
                       <div className="mt-3 flex items-center gap-2 text-xs text-slate-500">
                         <MapPin className="h-3.5 w-3.5" />
-                        {location.distanceKm} km away
+                        {location.distanceKm !== null
+                          ? `${location.distanceKm} km away`
+                          : location.matchType === 'pincode'
+                            ? 'Pincode match'
+                            : location.matchType === 'area'
+                              ? 'Area match'
+                              : 'City match'}
                       </div>
                     </button>
                   ))
@@ -936,8 +1002,8 @@ const Search = () => {
 
       <Modal isOpen={locationModal} onClose={() => setLocationModal(false)} title="Enable Location Access">
         <p className="text-sm leading-7 text-slate-600">
-          We use browser geolocation to detect latitude and longitude, reverse geocode city, area,
-          and pincode, and load nearby parking locations from the backend.
+          We use browser geolocation to detect your current place, reverse geocode city, area, and
+          pincode, and then load matching nearby parking locations from the backend.
         </p>
         <button
           type="button"

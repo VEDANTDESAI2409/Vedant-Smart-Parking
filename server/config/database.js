@@ -7,6 +7,33 @@ const Location = require('../models/Location');
 const canRunWithoutDb = () =>
   process.env.NODE_ENV !== 'production' && process.env.ALLOW_SERVER_WITHOUT_DB === 'true';
 
+const isAtlasUri = (uri = '') => uri.startsWith('mongodb+srv://') || uri.includes('.mongodb.net');
+
+const logConnectionGuidance = (error, uri) => {
+  if (!uri) {
+    console.error('MongoDB connection skipped: MONGODB_URI is not set in server/.env');
+    return;
+  }
+
+  if (isAtlasUri(uri)) {
+    console.error('Atlas troubleshooting checklist:');
+    console.error('1. In MongoDB Atlas, add your current public IP under Network Access, or use 0.0.0.0/0 for temporary development access.');
+    console.error('2. Confirm the database user in the connection string still exists and the password is correct.');
+    console.error('3. Make sure the cluster is not paused and is reachable from your current network.');
+    console.error('4. If your password has special characters, URL-encode them in MONGODB_URI.');
+
+    if (error?.name) {
+      console.error(`MongoDB error type: ${error.name}`);
+    }
+
+    return;
+  }
+
+  console.error('Local MongoDB troubleshooting checklist:');
+  console.error('1. Make sure the MongoDB service is running on the host/port used by MONGODB_URI.');
+  console.error('2. If you expected Atlas, replace the local URI in server/.env with your Atlas connection string.');
+};
+
 const syncCoreIndexes = async () => {
   const models = [
     { name: 'City', model: City },
@@ -30,8 +57,10 @@ const syncCoreIndexes = async () => {
 };
 
 const connectDB = async () => {
+  const mongoUri = process.env.MONGODB_URI;
+
   try {
-    const conn = await mongoose.connect(process.env.MONGODB_URI, {
+    const conn = await mongoose.connect(mongoUri, {
       // Additional options for better performance and reliability
       maxPoolSize: 10, // Maintain up to 10 socket connections
       serverSelectionTimeoutMS: 5000, // Keep trying to send operations for 5 seconds
@@ -63,6 +92,7 @@ const connectDB = async () => {
 
   } catch (error) {
     console.error('Error connecting to MongoDB:', error.message);
+    logConnectionGuidance(error, mongoUri);
 
     if (canRunWithoutDb()) {
       console.warn('Starting server without database connection because ALLOW_SERVER_WITHOUT_DB is enabled.');

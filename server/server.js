@@ -7,9 +7,6 @@ const { errorHandler, notFound } = require('./middleware/errorHandler');
 // Load environment variables
 dotenv.config();
 
-// Connect to database
-connectDB();
-
 const app = express();
 
 // Body parser
@@ -78,6 +75,7 @@ app.use('/api/pincodes', require('./routes/pincodes'));
 app.use('/api/areas', require('./routes/areas'));
 app.use('/api/locations', require('./routes/locations'));
 app.use('/api/imports', require('./routes/imports'));
+
 // Welcome route
 app.get('/', (req, res) => {
   res.json({
@@ -107,24 +105,36 @@ app.use(notFound);
 app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
+let server;
 
-const server = app.listen(PORT, () => {
-  console.log(`
-🚗 Smart Parking System API Server
-📍 Running on port ${PORT}
-🌍 Environment: ${process.env.NODE_ENV || 'development'}
-📊 Health check: http://localhost:${PORT}/health
-📚 API Documentation: http://localhost:${PORT}/
-  `);
-});
+const startServer = async () => {
+  await connectDB();
+
+  server = app.listen(PORT, () => {
+    console.log(`
+Smart Parking System API Server
+Running on port ${PORT}
+Environment: ${process.env.NODE_ENV || 'development'}
+Health check: http://localhost:${PORT}/health
+API Documentation: http://localhost:${PORT}/
+    `);
+  });
+};
+
+startServer();
 
 // Handle unhandled promise rejections
-process.on('unhandledRejection', (err, promise) => {
+process.on('unhandledRejection', (err) => {
   console.log(`Error: ${err.message}`);
-  // Close server & exit process
-  server.close(() => {
-    process.exit(1);
-  });
+
+  if (server) {
+    server.close(() => {
+      process.exit(1);
+    });
+    return;
+  }
+
+  process.exit(1);
 });
 
 // Handle uncaught exceptions

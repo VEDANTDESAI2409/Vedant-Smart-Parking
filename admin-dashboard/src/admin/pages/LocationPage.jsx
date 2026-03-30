@@ -172,18 +172,13 @@ const LocationPage = () => {
       return;
     }
 
-    if (formData.lat === '' || formData.lng === '') {
-      showWarning('Latitude and longitude are required');
-      return;
-    }
-
     const payload = {
       cityId: formData.cityId,
       pincodeId: formData.pincodeId,
       areaId: formData.areaId,
       name: formData.name.trim(),
-      lat: Number(formData.lat),
-      lng: Number(formData.lng),
+      lat: formData.lat === '' ? undefined : Number(formData.lat),
+      lng: formData.lng === '' ? undefined : Number(formData.lng),
       status: formData.status,
     };
 
@@ -317,8 +312,6 @@ const LocationPage = () => {
     { header: 'PINCODE', key: 'pincodeId', render: (row) => getPincodeValue(row) },
     { header: 'AREA', key: 'areaId', render: (row) => getAreaValue(row) },
     { header: 'LOCATION', key: 'name' },
-    { header: 'LAT', key: 'lat', render: (row) => row.lat ?? 'N/A' },
-    { header: 'LNG', key: 'lng', render: (row) => row.lng ?? 'N/A' },
     {
       header: 'STATUS',
       key: 'status',
@@ -370,7 +363,7 @@ const LocationPage = () => {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold">Location Management</h1>
-          <p className="text-sm text-gray-500 mt-1">Manage location points inside an area, including coordinates.</p>
+          <p className="text-sm text-gray-500 mt-1">Manage locations by city, pincode, and area for live parking discovery.</p>
         </div>
 
         <div className="flex gap-3">
@@ -479,29 +472,30 @@ const LocationPage = () => {
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Latitude</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Latitude (optional)</label>
               <input
                 type="number"
                 step="any"
                 value={formData.lat}
                 onChange={(e) => handleInputChange('lat', e.target.value)}
                 className="mt-1 w-full rounded-lg border px-3 py-2 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                required
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Longitude</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Longitude (optional)</label>
               <input
                 type="number"
                 step="any"
                 value={formData.lng}
                 onChange={(e) => handleInputChange('lng', e.target.value)}
                 className="mt-1 w-full rounded-lg border px-3 py-2 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                required
               />
             </div>
           </div>
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            Coordinates are optional. Nearby matching now also uses city, area, and pincode from the selected location.
+          </p>
 
           <div className="flex items-center justify-between rounded-lg border border-gray-200 dark:border-gray-600 px-4 py-3">
             <div>

@@ -24,8 +24,8 @@ const createLocationValidation = [
     .trim()
     .isLength({ min: 1, max: 100 })
     .withMessage('Location name must be between 1 and 100 characters'),
-  body('lat').isFloat().withMessage('Latitude must be a valid number'),
-  body('lng').isFloat().withMessage('Longitude must be a valid number'),
+  body('lat').optional({ nullable: true, checkFalsy: true }).isFloat().withMessage('Latitude must be a valid number'),
+  body('lng').optional({ nullable: true, checkFalsy: true }).isFloat().withMessage('Longitude must be a valid number'),
   body('status').optional().isBoolean().withMessage('Status must be a boolean'),
 ];
 

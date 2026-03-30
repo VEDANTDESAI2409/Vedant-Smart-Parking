@@ -38,16 +38,13 @@ export const authAPI = {
 export const locationsAPI = {
   getNearby: (params) => api.get('/locations/nearby', { params }),
   getBlueprint: (locationId, params) => api.get(`/locations/${locationId}/slots`, { params }),
+  getPublic: () => api.get('/locations/public'),
+  getPublicById: (id) => api.get(`/locations/public/${id}`),
 };
 
 export const slotsAPI = {
   getAvailable: (params) => api.get('/slots/available', { params }),
   getAll: (params) => api.get('/slots', { params }),
-};
-
-export const locationsAPI = {
-  getPublic: () => api.get('/locations/public'),
-  getPublicById: (id) => api.get(`/locations/public/${id}`),
 };
 
 export const bookingsAPI = {

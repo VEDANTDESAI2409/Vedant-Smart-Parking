@@ -255,12 +255,12 @@ const Home = () => {
             >
               Book Now
             </Link>
-            <a
-              href={userSignupUrl}
+            <Link
+              to={userLoginUrl}
               className="rounded-full bg-[var(--color-secondary)] px-5 py-2.5 text-sm font-semibold text-white shadow-[0_16px_36px_rgba(9,20,19,0.28)] transition hover:bg-[#163126]"
             >
-              Login / Register
-            </a>
+              Login / Sign Up
+            </Link>
           </div>
 
           <button
@@ -298,13 +298,13 @@ const Home = () => {
               >
                 Book Now
               </Link>
-              <a
-                href={userSignupUrl}
+              <Link
+                to={userLoginUrl}
                 onClick={() => setMenuOpen(false)}
                 className="rounded-2xl bg-[var(--color-secondary)] px-4 py-3 text-center text-sm font-semibold text-white"
               >
-                Login / Register
-              </a>
+                Login / Sign Up
+              </Link>
             </div>
           </div>
         )}
@@ -334,12 +334,12 @@ const Home = () => {
                   Book Now
                   <ArrowRight className="h-4 w-4" />
                 </Link>
-                <a
-                  href={userLoginUrl}
+                <Link
+                  to={userLoginUrl}
                   className="inline-flex items-center justify-center gap-2 rounded-full border border-[rgba(64,138,113,0.16)] bg-white px-7 py-3.5 text-base font-semibold text-slate-700 transition hover:border-[var(--color-secondary)] hover:text-[var(--color-secondary)]"
                 >
                   Login
-                </a>
+                </Link>
               </div>
               <div className="reveal-up reveal-delay-4 mt-7 flex flex-wrap gap-3 text-sm text-slate-600">
                 {[
@@ -474,8 +474,8 @@ const Home = () => {
                     </div>
                   ))}
                 </div>
-                <a
-                  href={userSignupUrl}
+                <Link
+                  to={userSignupUrl}
                   className={`mt-8 inline-flex w-full items-center justify-center rounded-full px-5 py-3 text-sm font-semibold transition ${
                     card.featured
                       ? 'bg-[var(--color-primary)] text-white hover:bg-[#1f4739]'
@@ -483,7 +483,7 @@ const Home = () => {
                   }`}
                 >
                   Choose plan
-                </a>
+                </Link>
               </article>
             ))}
           </div>
@@ -510,12 +510,12 @@ const Home = () => {
                       Your support area now gives users a clearer next step instead of ending with only FAQs.
                     </p>
                     <div className="mt-4 flex flex-wrap gap-3">
-                      <a
-                        href={userLoginUrl}
+                      <Link
+                        to={userLoginUrl}
                         className="inline-flex items-center justify-center rounded-full bg-[var(--color-secondary)] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#163126]"
                       >
                         Login for Support
-                      </a>
+                      </Link>
                       <Link
                         to="/search"
                         className="inline-flex items-center justify-center rounded-full border border-[rgba(64,138,113,0.14)] px-5 py-3 text-sm font-semibold text-slate-700 transition hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
@@ -583,12 +583,12 @@ const Home = () => {
                 Book parking
                 <ArrowRight className="h-4 w-4" />
               </Link>
-              <a
-                href={userLoginUrl}
+              <Link
+                to={userLoginUrl}
                 className="inline-flex items-center justify-center rounded-full border border-white/14 px-6 py-3.5 text-sm font-semibold text-white transition hover:bg-white/8"
               >
                 Login
-              </a>
+              </Link>
             </div>
           </div>
         </section>
@@ -674,12 +674,12 @@ const Home = () => {
           >
             Book Now
           </Link>
-          <a
-            href={userLoginUrl}
+          <Link
+            to={userLoginUrl}
             className="flex-1 rounded-[18px] border border-[rgba(64,138,113,0.14)] px-4 py-3 text-center text-sm font-semibold text-[var(--color-secondary)]"
           >
             Login
-          </a>
+          </Link>
         </div>
       </div>
       </div>
