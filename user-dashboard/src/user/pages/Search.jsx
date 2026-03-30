@@ -11,9 +11,25 @@ import {
 } from 'lucide-react';
 import Modal from '../../components/Modal';
 import { useAuth } from '../../context/AuthContext';
-import { bookingsAPI, locationsAPI, paymentsAPI } from '../../services/api';
+import { bookingsAPI, locationsAPI, paymentsAPI, vehiclesAPI } from '../../services/api';
 
 const durations = [30, 60, 120, 180, 240, 480, 1440];
+
+const toDateInputValue = (value) => {
+  if (!value) return '';
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  const yyyy = date.getFullYear();
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const dd = String(date.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+};
+
+const oneYearFromTodayInput = () => {
+  const date = new Date();
+  date.setFullYear(date.getFullYear() + 1);
+  return toDateInputValue(date);
+};
 
 const pdfEscape = (value) =>
   String(value || '')
@@ -141,6 +157,28 @@ const Search = () => {
   const [paymentSession, setPaymentSession] = useState(null);
   const [receipt, setReceipt] = useState(null);
   const [paymentMessage, setPaymentMessage] = useState('');
+  const [vehicles, setVehicles] = useState([]);
+  const [vehicleModal, setVehicleModal] = useState(false);
+  const [useExistingVehicle, setUseExistingVehicle] = useState(true);
+  const [selectedVehicleId, setSelectedVehicleId] = useState('');
+  const [vehicleError, setVehicleError] = useState('');
+  const [pendingBooking, setPendingBooking] = useState(false);
+  const [vehicleForm, setVehicleForm] = useState({
+    licensePlate: '',
+    make: '',
+    model: '',
+    year: new Date().getFullYear(),
+    color: '',
+    fuelType: 'petrol',
+    registrationExpiry: oneYearFromTodayInput(),
+    isDefault: true,
+  });
+
+  const desiredVehicleType = vehicleType === 'bike' ? 'motorcycle' : 'car';
+  const compatibleVehicles = useMemo(
+    () => vehicles.filter((item) => (item?.vehicleType || '').toLowerCase() === desiredVehicleType),
+    [vehicles, desiredVehicleType],
+  );
 
   useEffect(() => {
     if (!user) return;
@@ -157,6 +195,54 @@ const Search = () => {
       signupEmail: user.email || '',
     }));
   }, [user]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadVehicles = async () => {
+      if (!isAuthenticated) {
+        setVehicles([]);
+        setSelectedVehicleId('');
+        return;
+      }
+
+      try {
+        const response = await vehiclesAPI.getAll({ limit: 250 });
+        const list = response?.data?.data?.vehicles || response?.data?.vehicles || [];
+        if (!cancelled) {
+          setVehicles(Array.isArray(list) ? list : []);
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setVehicles([]);
+        }
+      }
+    };
+
+    loadVehicles();
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated]);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    if (!compatibleVehicles.length) {
+      setSelectedVehicleId('');
+      setUseExistingVehicle(false);
+      return;
+    }
+
+    const selectedStillValid = compatibleVehicles.some((item) => String(item?._id) === String(selectedVehicleId));
+    if (selectedVehicleId && selectedStillValid) {
+      setUseExistingVehicle(true);
+      return;
+    }
+
+    const preferred = compatibleVehicles.find((item) => item?.isDefault) || compatibleVehicles[0];
+    setSelectedVehicleId(preferred?._id || '');
+    setUseExistingVehicle(true);
+  }, [compatibleVehicles, isAuthenticated, selectedVehicleId]);
 
   const activeFloor = useMemo(
     () => floors.find((floor) => floor.floorNumber === selectedFloor) || floors[0],
@@ -343,7 +429,7 @@ const Search = () => {
     }
   };
 
-  const createBooking = async () => {
+  const createBooking = async ({ vehicleIdOverride } = {}) => {
     try {
       setLoading(true);
       setError('');
@@ -355,6 +441,7 @@ const Search = () => {
         parkingSlotId: selectedSlot.id,
         floor: selectedFloor,
         vehicleType,
+        vehicleId: vehicleIdOverride || selectedVehicleId || undefined,
         date: bookingForm.date,
         time: bookingForm.time,
         durationMinutes: Number(bookingForm.durationMinutes),
@@ -397,7 +484,80 @@ const Search = () => {
       return;
     }
 
+    if (!selectedVehicleId) {
+      setVehicleError('');
+      setPendingBooking(true);
+      setVehicleModal(true);
+      return;
+    }
+
     await createBooking();
+  };
+
+  const submitVehicle = async (event) => {
+    event.preventDefault();
+    setVehicleError('');
+
+    if (useExistingVehicle) {
+      if (!selectedVehicleId) {
+        setVehicleError('Select a vehicle');
+        return;
+      }
+
+      setVehicleModal(false);
+      if (pendingBooking) {
+        setPendingBooking(false);
+        await createBooking({ vehicleIdOverride: selectedVehicleId });
+      }
+      return;
+    }
+
+    if (
+      !vehicleForm.licensePlate ||
+      !vehicleForm.make ||
+      !vehicleForm.model ||
+      !vehicleForm.year ||
+      !vehicleForm.color ||
+      !vehicleForm.registrationExpiry
+    ) {
+      setVehicleError('Fill all vehicle fields');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const payload = {
+        licensePlate: String(vehicleForm.licensePlate).toUpperCase().replace(/\s/g, ''),
+        make: vehicleForm.make,
+        model: vehicleForm.model,
+        year: Number(vehicleForm.year),
+        color: vehicleForm.color,
+        vehicleType: desiredVehicleType,
+        fuelType: vehicleForm.fuelType,
+        registrationExpiry: vehicleForm.registrationExpiry,
+        isDefault: Boolean(vehicleForm.isDefault),
+      };
+
+      const response = await vehiclesAPI.create(payload);
+      const created = response?.data?.data?.vehicle;
+      if (!created?._id) {
+        throw new Error('Vehicle creation failed');
+      }
+
+      setVehicles((prev) => [created, ...prev]);
+      setSelectedVehicleId(created._id);
+      setVehicleModal(false);
+      setUseExistingVehicle(true);
+
+      if (pendingBooking) {
+        setPendingBooking(false);
+        await createBooking({ vehicleIdOverride: created._id });
+      }
+    } catch (e) {
+      setVehicleError(e.response?.data?.message || 'Failed to save vehicle');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const submitAuth = async (event) => {
@@ -1093,6 +1253,169 @@ const Search = () => {
             ) : (
               'Create Account and Continue'
             )}
+          </button>
+        </form>
+      </Modal>
+
+      <Modal
+        isOpen={vehicleModal}
+        onClose={() => {
+          setVehicleModal(false);
+          setPendingBooking(false);
+        }}
+        title="Vehicle Details"
+        size="lg"
+      >
+        <p className="mb-4 text-sm leading-7 text-slate-600">
+          Add your vehicle once and it will automatically appear in the Admin Vehicle Registry. We will reuse your
+          saved vehicle for future bookings.
+        </p>
+
+        {compatibleVehicles.length ? (
+          <div className="mb-4 flex gap-3">
+            {[
+              { key: 'existing', label: 'Use saved vehicle' },
+              { key: 'new', label: 'Add new vehicle' },
+            ].map((item) => (
+              <button
+                key={item.key}
+                type="button"
+                onClick={() => setUseExistingVehicle(item.key === 'existing')}
+                className={`rounded-full px-4 py-2 text-sm font-semibold ${
+                  useExistingVehicle === (item.key === 'existing')
+                    ? 'bg-[var(--color-primary)] text-white'
+                    : 'bg-slate-100 text-slate-600'
+                }`}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+        ) : null}
+
+        {vehicleError ? (
+          <div className="mb-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+            {vehicleError}
+          </div>
+        ) : null}
+
+        <form onSubmit={submitVehicle} className="grid gap-4">
+          {useExistingVehicle && compatibleVehicles.length ? (
+            <>
+              <div>
+                <div className="mb-2 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">Saved vehicles</div>
+                <select
+                  value={selectedVehicleId}
+                  onChange={(e) => setSelectedVehicleId(e.target.value)}
+                  className="w-full rounded-2xl border border-[rgba(64,138,113,0.16)] bg-white px-4 py-3"
+                >
+                  <option value="">Select vehicle</option>
+                  {compatibleVehicles.map((item) => (
+                    <option key={item._id} value={item._id}>
+                      {(item.licensePlate || 'UNKNOWN').toUpperCase()} • {item.make} {item.model}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <div className="mb-2 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">Vehicle type</div>
+                  <input
+                    value={desiredVehicleType}
+                    readOnly
+                    className="w-full rounded-2xl border border-[rgba(64,138,113,0.16)] bg-slate-50 px-4 py-3 uppercase"
+                  />
+                </div>
+                <div>
+                  <div className="mb-2 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">Fuel type</div>
+                  <select
+                    value={vehicleForm.fuelType}
+                    onChange={(e) => setVehicleForm((state) => ({ ...state, fuelType: e.target.value }))}
+                    className="w-full rounded-2xl border border-[rgba(64,138,113,0.16)] bg-white px-4 py-3"
+                  >
+                    {['petrol', 'diesel', 'cng', 'electric', 'hybrid', 'other'].map((fuel) => (
+                      <option key={fuel} value={fuel}>
+                        {fuel}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <input
+                  type="text"
+                  placeholder="License plate (e.g. GJ05AB1234)"
+                  value={vehicleForm.licensePlate}
+                  onChange={(e) => setVehicleForm((state) => ({ ...state, licensePlate: e.target.value }))}
+                  className="rounded-2xl border border-[rgba(64,138,113,0.16)] px-4 py-3 font-mono uppercase"
+                />
+                <input
+                  type="text"
+                  placeholder="Color (e.g. Black)"
+                  value={vehicleForm.color}
+                  onChange={(e) => setVehicleForm((state) => ({ ...state, color: e.target.value }))}
+                  className="rounded-2xl border border-[rgba(64,138,113,0.16)] px-4 py-3"
+                />
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-3">
+                <input
+                  type="text"
+                  placeholder="Make (e.g. Honda)"
+                  value={vehicleForm.make}
+                  onChange={(e) => setVehicleForm((state) => ({ ...state, make: e.target.value }))}
+                  className="rounded-2xl border border-[rgba(64,138,113,0.16)] px-4 py-3"
+                />
+                <input
+                  type="text"
+                  placeholder="Model (e.g. City)"
+                  value={vehicleForm.model}
+                  onChange={(e) => setVehicleForm((state) => ({ ...state, model: e.target.value }))}
+                  className="rounded-2xl border border-[rgba(64,138,113,0.16)] px-4 py-3"
+                />
+                <input
+                  type="number"
+                  placeholder="Year"
+                  min="1900"
+                  max={new Date().getFullYear() + 1}
+                  value={vehicleForm.year}
+                  onChange={(e) => setVehicleForm((state) => ({ ...state, year: e.target.value }))}
+                  className="rounded-2xl border border-[rgba(64,138,113,0.16)] px-4 py-3"
+                />
+              </div>
+
+              <div>
+                <div className="mb-2 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">Registration expiry</div>
+                <input
+                  type="date"
+                  value={vehicleForm.registrationExpiry}
+                  onChange={(e) => setVehicleForm((state) => ({ ...state, registrationExpiry: e.target.value }))}
+                  className="w-full rounded-2xl border border-[rgba(64,138,113,0.16)] bg-white px-4 py-3"
+                />
+              </div>
+
+              <label className="flex items-center gap-3 text-sm font-semibold text-slate-600">
+                <input
+                  type="checkbox"
+                  checked={vehicleForm.isDefault}
+                  onChange={(e) => setVehicleForm((state) => ({ ...state, isDefault: e.target.checked }))}
+                  className="h-4 w-4"
+                />
+                Set as my default vehicle
+              </label>
+            </>
+          )}
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="mt-2 rounded-full bg-[var(--color-primary)] px-5 py-3 text-sm font-semibold text-white disabled:opacity-60"
+          >
+            {useExistingVehicle && compatibleVehicles.length ? 'Continue' : 'Save vehicle & continue'}
           </button>
         </form>
       </Modal>

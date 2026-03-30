@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { FaFileCsv, FaSearch, FaTrash, FaPhone, FaEdit, FaCalendarAlt, FaTicketAlt } from 'react-icons/fa';
+import { FaFileCsv, FaSearch, FaTrash, FaPhone, FaEdit, FaCalendarAlt } from 'react-icons/fa';
 import Swal from 'sweetalert2';
 import Table from '../../components/Table';
 import { usersAPI } from '../../services/api';
@@ -25,16 +25,14 @@ const Users = () => {
         customId: `U${String(index + 1).padStart(3, '0')}`,
         // Formatting the date
         joinDate: u.createdAt ? new Date(u.createdAt).toLocaleDateString('en-GB') : 'N/A',
-        // Counting slots (assuming u.bookedSlots is an array from your API)
-        slotCount: u.bookedSlots ? u.bookedSlots.length : (u.slotCount || 0)
       }));
       setUsers(formatted);
     } catch (error) {
       console.error('Error fetching users:', error);
       // Fallback Dummy Data with new fields
       setUsers([
-        { _id: 1, customId: 'U001', name: 'John Doe', email: 'john@example.com', phone: '+91 98765 43210', isActive: true, joinDate: '15/01/2024', slotCount: 5 },
-        { _id: 2, customId: 'U002', name: 'Jane Smith', email: 'jane@example.com', phone: '+91 91234 56789', isActive: false, joinDate: '14/01/2024', slotCount: 2 },
+        { _id: 1, customId: 'U001', name: 'John Doe', email: 'john@example.com', phone: '+91 98765 43210', isActive: true, joinDate: '15/01/2024' },
+        { _id: 2, customId: 'U002', name: 'Jane Smith', email: 'jane@example.com', phone: '+91 91234 56789', isActive: false, joinDate: '14/01/2024' },
       ]);
     } finally {
       setLoading(false);
@@ -82,13 +80,12 @@ const Users = () => {
   };
 
   const handleExportCSV = () => {
-    const headers = ["User ID,Name,Email,Phone,Slots,Status,Joined Date"];
+    const headers = ["User ID,Name,Email,Phone,Status,Joined Date"];
     const rows = filteredUsers.map(u => [
       u.customId,
       `"${u.name}"`,
       u.email,
       u.phone,
-      u.slotCount,
       u.isActive ? 'Active' : 'Inactive',
       u.joinDate
     ].join(","));
@@ -130,16 +127,6 @@ const Users = () => {
         <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
           <FaCalendarAlt size={12} className="opacity-70" />
           {row.joinDate}
-        </div>
-      ) 
-    },
-    { 
-      header: 'SLOTS', 
-      render: (row) => (
-        <div className="flex items-center gap-2">
-          <span className="bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 px-2.5 py-1 rounded-full text-xs font-black border border-amber-100 dark:border-amber-800 flex items-center gap-1.5">
-            <FaTicketAlt size={10}/> {row.slotCount}
-          </span>
         </div>
       ) 
     },

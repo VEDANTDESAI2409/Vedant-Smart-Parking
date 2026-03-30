@@ -14,8 +14,11 @@ const Vehicles = () => {
 
   const [formData, setFormData] = useState({
     licensePlate: '',
+    make: '',
     model: '',
-    category: 'car',
+    year: new Date().getFullYear(),
+    color: '',
+    vehicleType: 'car',
     fuelType: 'petrol',
     registrationExpiry: ''
   });
@@ -42,13 +45,14 @@ const Vehicles = () => {
     try {
       const payload = { 
         licensePlate: formData.licensePlate.toUpperCase().replace(/\s/g, ''),
+        make: formData.make,
         model: formData.model,
-        category: formData.category,
+        year: Number(formData.year),
+        color: formData.color,
+        vehicleType: formData.vehicleType,
         fuelType: formData.fuelType,
         registrationExpiry: formData.registrationExpiry
       };
-      
-      console.log("Sending Payload:", payload); // Debugging line
 
       let response;
       if (editingId) {
@@ -102,8 +106,11 @@ const Vehicles = () => {
     setEditingId(vehicle._id || vehicle.id);
     setFormData({
       licensePlate: vehicle.licensePlate || '',
+      make: vehicle.make || '',
       model: vehicle.model || '',
-      category: vehicle.category || 'car',
+      year: vehicle.year || new Date().getFullYear(),
+      color: vehicle.color || '',
+      vehicleType: vehicle.vehicleType || 'car',
       fuelType: vehicle.fuelType || 'petrol',
       registrationExpiry: vehicle.registrationExpiry ? vehicle.registrationExpiry.split('T')[0] : ''
     });
@@ -113,7 +120,16 @@ const Vehicles = () => {
   const closeModal = () => {
     setIsModalOpen(false);
     setEditingId(null);
-    setFormData({ licensePlate: '', model: '', category: 'car', fuelType: 'petrol', registrationExpiry: '' });
+    setFormData({
+      licensePlate: '',
+      make: '',
+      model: '',
+      year: new Date().getFullYear(),
+      color: '',
+      vehicleType: 'car',
+      fuelType: 'petrol',
+      registrationExpiry: '',
+    });
   };
 
   const formatIndianPlate = (plate) => {
@@ -143,7 +159,7 @@ const Vehicles = () => {
               </p>
             </div>
             <div className="ml-3 rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-slate-500 dark:bg-slate-700/70 dark:text-slate-300">
-              {row.category || 'car'}
+              {row.vehicleType || 'car'}
             </div>
           </div>
         </div>
@@ -153,10 +169,12 @@ const Vehicles = () => {
       header: 'VEHICLE INFO', 
       render: (row) => (
         <div className="flex flex-col">
-          <span className="font-bold text-slate-800 dark:text-slate-100">{row.model}</span>
+          <span className="font-bold text-slate-800 dark:text-slate-100">{row.make} {row.model}</span>
           <div className="flex items-center gap-1.5 mt-0.5">
-             <span className="text-slate-400">{row.category === 'motorcycle' ? <FaMotorcycle size={12}/> : row.category === 'truck' ? <FaTruck size={12}/> : <FaCar size={12}/>}</span>
-             <span className="text-[10px] text-slate-400 uppercase font-black tracking-widest">{row.category}</span>
+             <span className="text-slate-400">{row.vehicleType === 'motorcycle' ? <FaMotorcycle size={12}/> : row.vehicleType === 'truck' ? <FaTruck size={12}/> : <FaCar size={12}/>}</span>
+             <span className="text-[10px] text-slate-400 uppercase font-black tracking-widest">{row.vehicleType}</span>
+             <span className="text-[10px] text-slate-300">•</span>
+             <span className="text-[10px] text-slate-400 font-semibold">{row.year} • {row.color}</span>
           </div>
         </div>
       )
@@ -188,16 +206,23 @@ const Vehicles = () => {
     },
   ];
 
-  const categoryOptions = [
+  const vehicleTypeOptions = [
     { value: 'car', label: 'Car' },
     { value: 'motorcycle', label: 'Motorcycle' },
     { value: 'truck', label: 'Truck' },
+    { value: 'van', label: 'Van' },
+    { value: 'suv', label: 'SUV' },
+    { value: 'electric', label: 'Electric' },
+    { value: 'hybrid', label: 'Hybrid' },
   ];
 
   const fuelTypeOptions = [
     { value: 'petrol', label: 'Petrol' },
     { value: 'diesel', label: 'Diesel' },
+    { value: 'cng', label: 'CNG' },
     { value: 'electric', label: 'Electric' },
+    { value: 'hybrid', label: 'Hybrid' },
+    { value: 'other', label: 'Other' },
   ];
 
   return (
@@ -241,7 +266,11 @@ const Vehicles = () => {
               <tr><td colSpan={5} className="p-10 text-center text-slate-400">Loading fleet...</td></tr>
             ) : (
               vehicles
-                .filter(v => (v.licensePlate?.toLowerCase().includes(searchTerm.toLowerCase()) || v.model?.toLowerCase().includes(searchTerm.toLowerCase())))
+                .filter(v => (
+                  v.licensePlate?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                  v.make?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                  v.model?.toLowerCase().includes(searchTerm.toLowerCase())
+                ))
                 .map((row, i) => (
                   <tr key={row._id || row.id || i} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
                     {columns.map((col, j) => (
@@ -287,12 +316,12 @@ const Vehicles = () => {
               
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1">Category</label>
+                  <label className="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1">Vehicle Type</label>
                   <SearchableSelect
-                    value={formData.category}
-                    onChange={(value) => setFormData((prev) => ({ ...prev, category: value }))}
-                    options={categoryOptions}
-                    placeholder="Select category"
+                    value={formData.vehicleType}
+                    onChange={(value) => setFormData((prev) => ({ ...prev, vehicleType: value }))}
+                    options={vehicleTypeOptions}
+                    placeholder="Select vehicle type"
                     className="[&>button]:mt-0 [&>button]:rounded-xl [&>button]:border-none [&>button]:bg-slate-50 [&>button]:p-3 [&>button]:ring-1 [&>button]:ring-slate-200 dark:[&>button]:bg-slate-800 dark:[&>button]:ring-slate-700"
                     menuClassName="dark:border-slate-700 dark:bg-slate-900"
                   />
@@ -310,9 +339,57 @@ const Vehicles = () => {
                 </div>
               </div>
 
-              <div>
-                <label className="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1">Model Name</label>
-                <input required name="model" value={formData.model} onChange={handleInputChange} className="w-full bg-slate-50 dark:bg-slate-800 border-none ring-1 ring-slate-200 dark:ring-slate-700 rounded-xl p-3 dark:text-white" placeholder="e.g. Toyota Camry" />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1">Make</label>
+                  <input
+                    required
+                    name="make"
+                    value={formData.make}
+                    onChange={handleInputChange}
+                    className="w-full bg-slate-50 dark:bg-slate-800 border-none ring-1 ring-slate-200 dark:ring-slate-700 rounded-xl p-3 dark:text-white"
+                    placeholder="e.g. Honda"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1">Model</label>
+                  <input
+                    required
+                    name="model"
+                    value={formData.model}
+                    onChange={handleInputChange}
+                    className="w-full bg-slate-50 dark:bg-slate-800 border-none ring-1 ring-slate-200 dark:ring-slate-700 rounded-xl p-3 dark:text-white"
+                    placeholder="e.g. City"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1">Year</label>
+                  <input
+                    required
+                    type="number"
+                    name="year"
+                    min="1900"
+                    max={new Date().getFullYear() + 1}
+                    value={formData.year}
+                    onChange={handleInputChange}
+                    className="w-full bg-slate-50 dark:bg-slate-800 border-none ring-1 ring-slate-200 dark:ring-slate-700 rounded-xl p-3 dark:text-white"
+                    placeholder="2026"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1">Color</label>
+                  <input
+                    required
+                    name="color"
+                    value={formData.color}
+                    onChange={handleInputChange}
+                    className="w-full bg-slate-50 dark:bg-slate-800 border-none ring-1 ring-slate-200 dark:ring-slate-700 rounded-xl p-3 dark:text-white"
+                    placeholder="e.g. Black"
+                  />
+                </div>
               </div>
 
               <div>
