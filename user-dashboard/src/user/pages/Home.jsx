@@ -122,7 +122,7 @@ const pricingCards = [
   },
   {
     name: 'Smart Driver',
-    price: '$9/mo',
+    price: '₹9/mo',
     description: 'For frequent parkers who want faster access and flexible bookings.',
     points: ['Advance reservations', 'Remote extensions', 'Priority support'],
     featured: true,

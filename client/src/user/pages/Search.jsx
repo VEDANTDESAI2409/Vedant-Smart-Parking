@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FaSearch, FaMapMarkerAlt, FaClock, FaDollarSign } from 'react-icons/fa';
+import { FaSearch, FaMapMarkerAlt, FaClock, FaRupeeSign } from 'react-icons/fa';
 import SearchableSelect from '../../components/SearchableSelect';
 
 const Search = () => {
@@ -145,8 +145,8 @@ const Search = () => {
                       {spot.address} • {spot.distance} away
                     </div>
                     <div className="flex items-center text-sm text-gray-600 dark:text-gray-400 mt-1">
-                      <FaDollarSign className="mr-1" />
-                      ${spot.price}/hour • ⭐ {spot.rating}
+                      <FaRupeeSign className="mr-1" />
+                      ₹{spot.price}/hour • ⭐ {spot.rating}
                     </div>
                   </div>
                   <div className="ml-4">
