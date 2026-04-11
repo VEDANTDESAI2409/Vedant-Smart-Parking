@@ -61,7 +61,7 @@ const Reports = () => {
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="month" />
               <YAxis />
-              <Tooltip formatter={(value) => [`$${value}`, 'Revenue']} />
+              <Tooltip formatter={(value) => [`₹${value}`, 'Revenue']} />
               <Line type="monotone" dataKey="revenue" stroke="#3b82f6" strokeWidth={2} />
             </LineChart>
           </ResponsiveContainer>
@@ -83,7 +83,7 @@ const Reports = () => {
       <Card title="Summary Statistics" className="p-6">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           <div className="text-center">
-            <div className="text-2xl font-bold text-blue-600">$45,230</div>
+            <div className="text-2xl font-bold text-blue-600">₹45,230</div>
             <div className="text-sm text-gray-600 dark:text-gray-400">Total Revenue</div>
           </div>
           <div className="text-center">

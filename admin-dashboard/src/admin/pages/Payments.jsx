@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { FaTrash, FaSearch, FaCalendarAlt, FaFileCsv } from 'react-icons/fa';
+import { FaTrash, FaSearch, FaCalendarAlt, FaFileCsv, FaFileInvoice } from 'react-icons/fa';
 import Swal from 'sweetalert2';
 import { MdPayments } from "react-icons/md";
 import Table from '../../components/Table';
@@ -109,7 +109,7 @@ const Payments = () => {
     },
     { 
       header: 'AMOUNT', 
-      render: (row) => <span className="text-slate-900 dark:text-gray-100 font-black">${row.amount.toFixed(2)}</span> 
+      render: (row) => <span className="text-slate-900 dark:text-gray-100 font-black">₹{row.amount.toFixed(2)}</span> 
     },
     { 
       header: 'METHOD', 
@@ -147,7 +147,222 @@ const Payments = () => {
       header: 'ACTION', 
       render: (row) => (
         <div className="flex gap-2">
-          {/* Edit button removed per request */}
+          <button 
+            onClick={() => {
+              const receiptHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Park N Go Payment Receipt</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f3f4f6;
+      color: #111827;
+    }
+    .receipt-wrapper {
+      max-width: 860px;
+      margin: 32px auto;
+      padding: 32px;
+      background: #ffffff;
+      border-radius: 28px;
+      box-shadow: 0 20px 60px rgba(15, 23, 42, 0.12);
+      border: 1px solid #e5e7eb;
+    }
+    .receipt-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 24px;
+      align-items: flex-start;
+      margin-bottom: 32px;
+    }
+    .brand-title {
+      font-size: 2rem;
+      font-weight: 800;
+      margin: 0;
+      color: #0f172a;
+    }
+    .brand-tagline {
+      margin: 8px 0 0;
+      color: #475569;
+      font-size: 0.96rem;
+    }
+    .receipt-meta {
+      text-align: right;
+    }
+    .receipt-meta span {
+      display: block;
+      font-size: 0.95rem;
+      color: #475569;
+    }
+    .receipt-meta strong {
+      display: block;
+      margin-top: 6px;
+      font-size: 1.1rem;
+      color: #0f172a;
+    }
+    .section {
+      margin-bottom: 28px;
+    }
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 18px;
+    }
+    .section-title {
+      margin: 0;
+      font-size: 1rem;
+      font-weight: 700;
+      color: #0f172a;
+    }
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      padding: 10px 16px;
+      border-radius: 9999px;
+      background: #ecfdf5;
+      color: #164e63;
+      font-weight: 700;
+      font-size: 0.88rem;
+    }
+    .grid-two {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 20px;
+    }
+    .field {
+      border-radius: 16px;
+      background: #f8fafc;
+      padding: 18px 20px;
+      line-height: 1.6;
+    }
+    .field-label {
+      font-size: 0.88rem;
+      color: #475569;
+      margin-bottom: 8px;
+    }
+    .field-value {
+      font-weight: 700;
+      color: #0f172a;
+    }
+    .summary-card {
+      border-radius: 22px;
+      background: #eef2ff;
+      padding: 24px;
+      display: grid;
+      gap: 14px;
+    }
+    .summary-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      color: #334155;
+      font-size: 0.98rem;
+    }
+    .summary-row strong {
+      color: #0f172a;
+    }
+    .summary-total {
+      display: flex;
+      justify-content: space-between;
+      border-top: 1px solid #c7d2fe;
+      padding-top: 16px;
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: #0f172a;
+    }
+    .footer {
+      margin-top: 16px;
+      padding-top: 18px;
+      border-top: 1px solid #e2e8f0;
+      color: #64748b;
+      font-size: 0.94rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="receipt-wrapper">
+    <div class="receipt-top">
+      <div>
+        <h1 class="brand-title">Park N Go</h1>
+        <p class="brand-tagline">Your smart parking payment record</p>
+      </div>
+      <div class="receipt-meta">
+        <span>Receipt ID</span>
+        <strong>${row._id}</strong>
+        <span>Date</span>
+        <strong>${row.createdAt}</strong>
+      </div>
+    </div>
+
+    <div class="section section-header">
+      <h2 class="section-title">Payment Overview</h2>
+      <div class="status-pill">${row.status}</div>
+    </div>
+
+    <div class="grid-two">
+      <div class="field">
+        <div class="field-label">Customer</div>
+        <div class="field-value">${row.user?.name || 'N/A'}</div>
+        <div class="field-label">Email</div>
+        <div>${row.user?.email || 'N/A'}</div>
+      </div>
+      <div class="field">
+        <div class="field-label">Booking Reference</div>
+        <div class="field-value">${row.booking?.bookingReference || 'N/A'}</div>
+        <div class="field-label">Parking Location</div>
+        <div>${row.booking?.locationSnapshot?.locationName || 'N/A'}</div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3 class="section-title">Payment Details</h3>
+      <div class="summary-card">
+        <div class="summary-row">
+          <span>Amount paid</span>
+          <strong>₹${row.amount.toFixed(2)}</strong>
+        </div>
+        <div class="summary-row">
+          <span>Payment method</span>
+          <strong>${row.paymentMethod || 'N/A'}</strong>
+        </div>
+        <div class="summary-row">
+          <span>Booked slot</span>
+          <strong>${row.booking?.locationSnapshot?.slotNumber || 'N/A'}</strong>
+        </div>
+        <div class="summary-total">
+          <span>Total</span>
+          <span>₹${row.amount.toFixed(2)}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">
+      <p>Thank you for using Park N Go. Please keep this receipt for your records.</p>
+      <p>If you need help, contact <a href="mailto:support@parkngo.com">support@parkngo.com</a>.</p>
+    </div>
+  </div>
+</body>
+</html>`;
+
+              const blob = new Blob([receiptHtml], { type: 'text/html' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `Payment_Receipt_${row._id}.html`;
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+              URL.revokeObjectURL(url);
+            }}
+            className="p-2 text-blue-500 bg-blue-50 dark:bg-blue-900/10 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/20 transition-colors shadow-sm"
+            title="Download Receipt"
+          >
+            <FaFileInvoice size={14}/>
+          </button>
           <button 
             onClick={() => handleDelete(row._id)}
             className="p-2 text-red-500 bg-red-50 dark:bg-red-900/10 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/20 transition-colors shadow-sm"
