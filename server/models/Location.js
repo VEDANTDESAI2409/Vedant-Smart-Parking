@@ -10,11 +10,11 @@ const locationSchema = new mongoose.Schema(
     },
     lat: {
       type: Number,
-      required: [true, 'Latitude is required'],
+      default: 0,
     },
     lng: {
       type: Number,
-      required: [true, 'Longitude is required'],
+      default: 0,
     },
     areaId: {
       type: mongoose.Schema.Types.ObjectId,
