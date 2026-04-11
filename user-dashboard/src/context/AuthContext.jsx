@@ -64,9 +64,17 @@ export const AuthProvider = ({ children }) => {
     try {
       const response = await authAPI.register(payload);
       const { token, user: userData } = response.data.data;
-      authService.logout();
-      establishSession({ token, user: userData });
-      return { success: true };
+
+      if (token && userData) {
+        authService.logout();
+        establishSession({ token, user: userData });
+      }
+
+      return {
+        success: true,
+        user: userData,
+        message: response.data?.message || 'Account created successfully. Please login to continue.',
+      };
     } catch (error) {
       return {
         success: false,
