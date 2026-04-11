@@ -37,33 +37,98 @@ const pdfEscape = (value) =>
     .replace(/\(/g, '\\(')
     .replace(/\)/g, '\\)');
 
+const formatCurrency = (value) =>
+  new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+  }).format(value || 0);
+
+const formatReceiptDate = (value) =>
+  new Date(value).toLocaleString('en-IN', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+
 const buildReceiptPdfBlob = (receipt) => {
-  const lines = [
-    'Smart Parking Receipt',
-    '',
-    `Booking: ${receipt.bookingId}`,
-    `Receipt: ${receipt.receiptNumber}`,
-    `Name: ${receipt.name}`,
-    `Slot: ${receipt.slot}`,
-    `Location: ${receipt.location}`,
-    `Date & Time: ${new Date(receipt.dateTime).toLocaleString()}`,
-    `Duration: ${receipt.duration} hr`,
-    `Amount: INR ${receipt.amount}`,
-    `Status: ${receipt.paymentStatus}`,
+  const receiptDate = formatReceiptDate(receipt.dateTime);
+  const totalAmount = formatCurrency(receipt.amount);
+
+  const detailLines = [
+    [`Booking ID`, receipt.bookingId || 'N/A'],
+    [`Receipt No`, receipt.receiptNumber || 'N/A'],
+    [`Customer`, receipt.name || 'N/A'],
+    [`Slot`, receipt.slot || 'N/A'],
+    [`Location`, receipt.location || 'N/A'],
+    [`Date & Time`, receiptDate],
+    [`Duration`, `${receipt.duration || 0} hr`],
+    [`Status`, receipt.paymentStatus || 'N/A'],
   ];
 
-  const stream = [
+  const content = [
+    'q',
+    '0.15 0.45 0.88 rg',
+    '0 700 595 142 re',
+    'f',
+    'Q',
+    'q',
+    '0.94 0.96 0.99 rg',
+    '40 500 515 180 re',
+    'f',
+    '0 0 0 RG',
+    '1 w',
+    '40 500 515 180 re',
+    'S',
+    'Q',
     'BT',
-    '/F1 24 Tf',
-    '50 790 Td',
-    `(${pdfEscape(lines[0])}) Tj`,
+    '1 1 1 rg',
+    '/F1 28 Tf',
+    '50 760 Td',
+    `(${pdfEscape('Smart Parking Receipt')}) Tj`,
     '/F1 12 Tf',
-    ...lines.slice(2).flatMap((line, index) => [
-      index === 0 ? '0 -40 Td' : '0 -24 Td',
-      `(${pdfEscape(line)}) Tj`,
-    ]),
+    '0 -26 Td',
+    `(${pdfEscape(`Receipt No: ${receipt.receiptNumber || 'N/A'}`)}) Tj`,
+    '0 -18 Td',
+    `(${pdfEscape(`Date: ${receiptDate}`)}) Tj`,
     'ET',
-  ].join('\n');
+    'BT',
+    '0 0 0 rg',
+    '/F1 12 Tf',
+    '55 660 Td',
+  ];
+
+  detailLines.forEach(([label, value], index) => {
+    content.push(`(${pdfEscape(`${label}:`)}) Tj`);
+    content.push('120 0 Td');
+    content.push(`(${pdfEscape(value)}) Tj`);
+    if (index !== detailLines.length - 1) {
+      content.push('-120 -22 Td');
+    }
+  });
+
+  content.push('ET');
+  content.push('q');
+  content.push('0.12 0.45 0.85 rg');
+  content.push('40 380 515 100 re');
+  content.push('f');
+  content.push('Q');
+  content.push('BT');
+  content.push('/F1 14 Tf');
+  content.push('55 450 Td');
+  content.push(`(${pdfEscape('Amount Paid')}) Tj`);
+  content.push('/F1 18 Tf');
+  content.push('0 -24 Td');
+  content.push(`(${pdfEscape(totalAmount)}) Tj`);
+  content.push('ET');
+  content.push('BT');
+  content.push('/F1 10 Tf');
+  content.push('55 420 Td');
+  content.push(`(${pdfEscape('Thank you for choosing Park N Go. Please keep this receipt for your records.')}) Tj`);
+  content.push('ET');
+
+  const stream = content.join('\n');
 
   const pdf = `%PDF-1.4
 1 0 obj
@@ -341,6 +406,7 @@ const Search = () => {
       lat,
       lng,
       radiusKm: 10,
+      vehicleType,
       city: detectedLocation?.city,
       area: detectedLocation?.area,
       pincode: detectedLocation?.pincode,
@@ -401,6 +467,14 @@ const Search = () => {
       cancelled = true;
     };
   }, [selectedLocation, vehicleType]);
+
+  useEffect(() => {
+    if (!geo?.lat || !geo?.lng) return;
+
+    fetchNearbyLocations(geo.lat, geo.lng, { preserveSelection: true, detectedLocation: geo }).catch(() => {
+      // ignore background refresh errors; blueprint call will surface issues if needed
+    });
+  }, [geo?.lat, geo?.lng, vehicleType]);
 
   const loadNearby = async () => {
     setError('');

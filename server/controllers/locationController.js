@@ -384,6 +384,7 @@ module.exports = {
     const detectedCity = normalizeText(req.query.city);
     const detectedArea = normalizeText(req.query.area);
     const detectedPincode = normalizeText(req.query.pincode);
+    const vehicleType = normalizeText(req.query.vehicleType);
 
     if (Number.isNaN(lat) || Number.isNaN(lng)) {
       res.status(400);
@@ -422,7 +423,7 @@ module.exports = {
             return null;
           }
 
-          const slots = await ParkingSlot.find(buildLegacySlotQuery(location));
+          const slots = await ParkingSlot.find(buildLegacySlotQuery(location, vehicleType || null));
 
           const activeSlots = await Promise.all(slots.map(releaseExpiredLockIfNeeded));
           const availableSlots = activeSlots.filter(
