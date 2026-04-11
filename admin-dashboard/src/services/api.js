@@ -1,12 +1,34 @@
 import axios from 'axios';
 import { createApiClient } from '../../../shared-auth/apiClient';
+import { createAuthStorage } from '../../../shared-auth/authStorage';
 
-const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:5000').replace(/\/$/, '');
+export const adminAuthStorage = createAuthStorage('admin-dashboard');
+
+const normalizeBaseUrl = (value) => String(value || '').replace(/\/+$/, '');
+
+const resolvedApiBaseUrl =
+  import.meta.env.VITE_API_BASE_URL ||
+  (import.meta.env.DEV
+    ? 'http://127.0.0.1:5000'
+    : typeof window !== 'undefined'
+      ? window.location.origin
+      : 'http://127.0.0.1:5000');
+
+if (!import.meta.env.VITE_API_BASE_URL && import.meta.env.DEV) {
+  // eslint-disable-next-line no-console
+  console.warn(
+    '[admin-dashboard] Missing VITE_API_BASE_URL; defaulting API base to http://127.0.0.1:5000. Create a .env file from .env.example to override.',
+  );
+}
+
+export const API_BASE_URL = normalizeBaseUrl(resolvedApiBaseUrl);
+export const API_ROOT_URL = `${API_BASE_URL}/api`;
 
 const api = createApiClient({
   axiosLib: axios,
-  baseURL: `${apiBaseUrl}/api`,
+  baseURL: API_ROOT_URL,
   unauthorizedRedirectPath: import.meta.env.VITE_AUTH_REDIRECT_PATH || '/login',
+  storage: adminAuthStorage,
 });
 
 export const authAPI = {

@@ -40,6 +40,10 @@ const vehicleValidation = [
   body('vehicleType')
     .isIn(['car', 'motorcycle', 'truck', 'van', 'suv', 'electric', 'hybrid'])
     .withMessage('Invalid vehicle type'),
+  body('fuelType')
+    .optional()
+    .isIn(['petrol', 'diesel', 'cng', 'electric', 'hybrid', 'other'])
+    .withMessage('Invalid fuel type'),
   body('registrationExpiry')
     .isISO8601()
     .withMessage('Registration expiry date is required'),

@@ -23,6 +23,8 @@ import {
   Youtube,
   Zap,
 } from 'lucide-react';
+import { useScrollAnimation } from '../../hooks/useScrollAnimation';
+import AnimatedParkingSlider from '../../components/AnimatedParkingSlider';
 
 const navigation = [
   { label: 'How it Works', href: '#how-it-works' },
@@ -142,6 +144,12 @@ const Home = () => {
   const [openFaq, setOpenFaq] = useState(0);
   const [activeSection, setActiveSection] = useState('how-it-works');
   const [showIntro, setShowIntro] = useState(true);
+
+  // Scroll animation for hero section car parking animation
+  const heroSceneRef = useScrollAnimation({
+    threshold: 0.3,
+    animationClass: 'animate-on-scroll'
+  });
 
   useEffect(() => {
     const sectionIds = navigation.map((item) => item.href.slice(1));
@@ -356,7 +364,10 @@ const Home = () => {
             </div>
 
             <div className="relative flex items-center justify-center lg:justify-end">
-              <div className="hero-scene reveal-up reveal-delay-2 w-full max-w-[620px] rounded-[44px] border border-white/80 bg-[linear-gradient(145deg,#ffffff_0%,#f6fbf9_60%,#eef7f2_100%)] p-4 shadow-[0_34px_80px_rgba(17,31,26,0.12)] sm:p-5">
+              <div
+                ref={heroSceneRef}
+                className="hero-scene reveal-up reveal-delay-2 w-full max-w-[620px] rounded-[44px] border border-white/80 bg-[linear-gradient(145deg,#ffffff_0%,#f6fbf9_60%,#eef7f2_100%)] p-4 shadow-[0_34px_80px_rgba(17,31,26,0.12)] sm:p-5"
+              >
                 <div className="grid gap-4 md:grid-cols-[0.88fr_1.12fr]">
                   <div className="hero-zone-card rounded-[34px] bg-[#081412] px-6 pb-8 pt-7 text-white">
                     <div className="flex items-start justify-between gap-4">
@@ -489,6 +500,18 @@ const Home = () => {
               </div>
             </div>
           </div>
+        </section>
+
+        <section className="parking-slider-section mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+          <div className="mb-8 reveal-up">
+            <h2 className="text-2xl font-semibold tracking-tight text-[var(--color-secondary)] sm:text-3xl">
+              Watch Smart Parking in Action
+            </h2>
+            <p className="mt-2 text-base leading-7 text-slate-600">
+              See how our system animates real-time parking slot allocation as you explore
+            </p>
+          </div>
+          <AnimatedParkingSlider />
         </section>
 
         <section id="how-it-works" className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">

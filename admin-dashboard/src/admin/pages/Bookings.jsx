@@ -1,210 +1,430 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { FaEye, FaFileCsv, FaArrowLeft, FaUser, FaMapMarkerAlt, FaCar, FaSearch, FaChevronRight } from 'react-icons/fa';
-import Button from '../../components/Button';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { FaCar, FaChevronRight, FaFileCsv, FaMapMarkerAlt, FaRegClock, FaSearch, FaTrashAlt, FaUser } from 'react-icons/fa';
+import Swal from 'sweetalert2';
+
 import Modal from '../../components/Modal';
 import Table from '../../components/Table';
-import Card from '../../components/Card';
+import { bookingsAPI } from '../../services/api';
+
+const toAdminBookingId = (booking, index) => {
+  const raw = String(booking.bookingReference || booking._id || '').replace(/[^A-Z0-9]/gi, '');
+  const suffix = raw.replace(/\D/g, '').slice(-3).padStart(3, '0');
+  return `${booking.locationSnapshot?.vehicleType === 'bike' ? 'B' : 'C'}${suffix || String(index + 1).padStart(3, '0')}`;
+};
+
+const formatCurrency = (amount) => `₹${Number(amount || 0).toFixed(0)}`;
+
+const mapStatus = (booking) => {
+  if (booking.status === 'confirmed' || booking.status === 'active') return 'reserved';
+  if (booking.status === 'pending') return 'processing';
+  if (booking.status === 'completed') return 'completed';
+  if (booking.status === 'cancelled') return 'cancelled';
+  return booking.status || 'pending';
+};
 
 const Bookings = () => {
-  const navigate = useNavigate();
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
   const [viewingBooking, setViewingBooking] = useState(null);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchTerm, setSearchTerm] = useState('');
+  const [now, setNow] = useState(() => new Date());
+  const hasLoadedRef = useRef(false);
 
-  const mockData = [
-    {
-      id: "raw-1", createdAt: "2024-05-10T10:30:00Z", vehicleType: "car", slotType: "Premium",
-      status: "reserved", paymentStatus: "paid", totalAmount: 500, city: "Mumbai",
-      area: "Andheri West", pincode: "400053", landmark: "Opposite Infinity Mall",
-      user: { name: "Rahul Sharma", phone: "+91 98765 43210", email: "rahul@example.com" },
-      slot: { location: "P1-Level 2", slotNumber: "A-101" }
-    },
-    {
-      id: "raw-2", createdAt: "2024-05-11T14:20:00Z", vehicleType: "bike", slotType: "Standard",
-      status: "unreserved", paymentStatus: "unpaid", totalAmount: 150, city: "Pune",
-      area: "Kothrud", pincode: "411038", landmark: "Near City Pride Cinema",
-      user: { name: "Sneha Patil", phone: "+91 91234 56789", email: "sneha.p@test.com" },
-      slot: { location: "B1-Ground", slotNumber: "B-22" }
-    }
-  ];
+  const showSuccess = (title) =>
+    Swal.fire({
+      title,
+      icon: 'success',
+      timer: 1400,
+      showConfirmButton: false,
+      toast: true,
+      position: 'top-end',
+    });
 
-  useEffect(() => {
-    setLoading(true);
-    setTimeout(() => {
-      const formatted = mockData.map((b, index) => ({
-        ...b,
-        customId: `${b.vehicleType === 'car' ? 'C' : 'B'}${String(index + 1).padStart(3, '0')}`,
-        bookingDate: new Date(b.createdAt).toLocaleDateString(),
-        userName: b.user.name,
-        mobileNumber: b.user.phone,
-        emailId: b.user.email,
-        slotLocation: b.slot.location,
-        slotNumber: b.slot.slotNumber 
+  const showError = (title) =>
+    Swal.fire({
+      title,
+      icon: 'error',
+      timer: 2000,
+      showConfirmButton: false,
+      toast: true,
+      position: 'top-end',
+    });
+
+  const fetchBookings = async ({ silent = false } = {}) => {
+    try {
+      if (!hasLoadedRef.current) {
+        setLoading(true);
+      } else if (!silent) {
+        setRefreshing(true);
+      }
+      const response = await bookingsAPI.getAll();
+      const rawBookings = response?.data?.data?.bookings || [];
+      const formatted = rawBookings.map((booking, index) => ({
+        ...booking,
+        customId: toAdminBookingId(booking, index),
+        bookingDate: booking.startTime ? new Date(booking.startTime).toLocaleDateString() : '---',
+        bookedAtDate: booking.createdAt
+          ? new Date(booking.createdAt).toLocaleDateString()
+          : booking.startTime
+            ? new Date(booking.startTime).toLocaleDateString()
+            : '---',
+        bookedAtTime: booking.createdAt
+          ? new Date(booking.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          : booking.startTime
+            ? new Date(booking.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            : '---',
+        userName: booking.user?.name || 'Unknown User',
+        mobileNumber: booking.user?.phone || '---',
+        emailId: booking.user?.email || '---',
+        vehicleType: booking.locationSnapshot?.vehicleType || booking.vehicle?.vehicleType || 'car',
+        slotType: booking.locationSnapshot?.slotType || booking.parkingSlot?.slotType || 'normal',
+        slotLocation: booking.locationSnapshot?.locationName || booking.parkingSlot?.location || '---',
+        slotNumber: booking.locationSnapshot?.slotNumber || booking.parkingSlot?.slotNumber || '---',
+        city: booking.locationSnapshot?.city || '---',
+        area: booking.locationSnapshot?.area || '---',
+        pincode: booking.locationSnapshot?.pincode || '---',
+        landmark: booking.locationSnapshot?.locationName || '---',
+        totalAmount: booking.pricing?.finalAmount || 0,
+        status: mapStatus(booking),
+        paymentStatus: booking.paymentStatus || 'pending',
       }));
       setBookings(formatted);
+    } catch (error) {
+      console.error('Error fetching bookings:', error);
+      setBookings([]);
+    } finally {
+      hasLoadedRef.current = true;
       setLoading(false);
-    }, 500);
+      setRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchBookings();
+
+    const intervalId = window.setInterval(() => fetchBookings({ silent: true }), 3000);
+
+    const handleVisibility = () => {
+      if (!document.hidden) {
+        fetchBookings({ silent: true });
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      window.clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
   }, []);
 
-  // --- WORKING CSV EXPORT LOGIC ---
-  const handleExportCSV = () => {
-    if (bookings.length === 0) return;
+  useEffect(() => {
+    const clockId = window.setInterval(() => setNow(new Date()), 1000);
+    return () => window.clearInterval(clockId);
+  }, []);
 
-    // Define Headers
+  const filteredBookings = useMemo(() => {
+    const query = searchTerm.trim().toLowerCase();
+    if (!query) return bookings;
+    return bookings.filter((booking) =>
+      [
+        booking.customId,
+        booking.userName,
+        booking.mobileNumber,
+        booking.emailId,
+        booking.slotLocation,
+        booking.slotNumber,
+        booking.status,
+      ]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(query))
+    );
+  }, [bookings, searchTerm]);
+
+  const handleCancelBooking = async (booking) => {
+    const result = await Swal.fire({
+      title: 'Delete booking?',
+      text: 'This will cancel the booking and remove it from active reservations.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, Delete',
+      cancelButtonText: 'Cancel',
+      confirmButtonColor: '#dc2626',
+      cancelButtonColor: '#64748b',
+      background: '#ffffff',
+      color: '#0f172a',
+      borderRadius: '12px',
+    });
+
+    if (!result.isConfirmed) return;
+
+    try {
+      await bookingsAPI.cancel(booking._id);
+      showSuccess('Booking deleted');
+      await fetchBookings({ silent: true });
+    } catch (error) {
+      console.error('Error deleting booking:', error);
+      showError(error?.response?.data?.message || 'Failed to delete booking');
+    }
+  };
+
+  const handleDeleteAll = async () => {
+    if (!filteredBookings.length) return;
+
+    const result = await Swal.fire({
+      title: 'Delete all bookings?',
+      text: `This will cancel ${filteredBookings.length} booking(s) in the current list.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, Delete All',
+      cancelButtonText: 'Cancel',
+      confirmButtonColor: '#dc2626',
+      cancelButtonColor: '#64748b',
+      background: '#ffffff',
+      color: '#0f172a',
+      borderRadius: '12px',
+    });
+
+    if (!result.isConfirmed) return;
+
+    try {
+      setBulkDeleting(true);
+      const targets = filteredBookings.filter((booking) => booking?._id);
+      const results = await Promise.allSettled(targets.map((booking) => bookingsAPI.cancel(booking._id)));
+      const failures = results.filter((entry) => entry.status === 'rejected').length;
+      if (failures) {
+        showError(`Deleted with ${failures} failure(s)`);
+      } else {
+        showSuccess('All bookings deleted');
+      }
+      await fetchBookings({ silent: true });
+    } catch (error) {
+      console.error('Error deleting all bookings:', error);
+      showError('Failed to delete all bookings');
+    } finally {
+      setBulkDeleting(false);
+    }
+  };
+
+  const handleExportCSV = () => {
+    if (!filteredBookings.length) return;
+
     const headers = [
-      "Booking ID", "Date", "Customer Name", "Mobile", "Email", 
-      "Vehicle Type", "Slot Type", "Slot Number", "Location", 
-      "City", "Area", "Pincode", "Landmark", "Status", "Amount", "Payment"
+      'Booking ID',
+      'Booked Date',
+      'Booked Time',
+      'Customer Name',
+      'Mobile',
+      'Email',
+      'Vehicle Type',
+      'Slot Type',
+      'Slot Number',
+      'Location',
+      'City',
+      'Area',
+      'Pincode',
+      'Status',
+      'Amount',
+      'Payment',
     ];
 
-    // Map data to rows
-    const csvRows = bookings.map(b => [
-      b.customId,
-      b.bookingDate,
-      `"${b.userName}"`, // Wrap names in quotes to handle commas
-      b.mobileNumber,
-      b.emailId,
-      b.vehicleType.toUpperCase(),
-      b.slotType,
-      b.slotNumber,
-      `"${b.slotLocation}"`,
-      b.city,
-      `"${b.area}"`,
-      b.pincode,
-      `"${b.landmark}"`,
-      b.status.toUpperCase(),
-      b.totalAmount,
-      b.paymentStatus.toUpperCase()
-    ].join(","));
+    const rows = filteredBookings.map((booking) =>
+      [
+        booking.customId,
+        booking.bookedAtDate,
+        booking.bookedAtTime,
+        `"${booking.userName}"`,
+        booking.mobileNumber,
+        booking.emailId,
+        booking.vehicleType.toUpperCase(),
+        booking.slotType,
+        booking.slotNumber,
+        `"${booking.slotLocation}"`,
+        booking.city,
+        `"${booking.area}"`,
+        booking.pincode,
+        booking.status.toUpperCase(),
+        booking.totalAmount,
+        booking.paymentStatus.toUpperCase(),
+      ].join(',')
+    );
 
-    // Combine headers and rows
-    const csvContent = [headers.join(","), ...csvRows].join("\n");
-    
-    // Create Blob and trigger download
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const blob = new Blob([[headers.join(','), ...rows].join('\n')], {
+      type: 'text/csv;charset=utf-8;',
+    });
     const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `ParkNGo_Bookings_${new Date().toISOString().split('T')[0]}.csv`);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `ParkNGo_Bookings_${new Date().toISOString().split('T')[0]}.csv`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   const columns = [
-    { 
-      header: 'BOOKING ID', 
+    {
+      header: 'BOOKING ID',
       render: (row) => (
-        <span className="bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 px-3 py-1 rounded-lg font-bold text-xs border border-blue-100 dark:border-blue-800">
+        <span className="rounded-lg border border-blue-100 bg-blue-50 px-3 py-1 text-xs font-bold text-blue-600 dark:border-blue-800 dark:bg-blue-900/20 dark:text-blue-400">
           {row.customId}
         </span>
-      ) 
+      ),
     },
-    { 
-      header: 'CUSTOMER', 
+    {
+      header: 'DATE/TIME',
+      render: (row) => (
+        <div className="flex flex-col">
+          <span className="font-bold text-slate-900 dark:text-white">{row.bookedAtDate}</span>
+          <span className="text-[11px] font-medium text-slate-400 dark:text-slate-500">{row.bookedAtTime}</span>
+        </div>
+      ),
+    },
+    {
+      header: 'CUSTOMER',
       render: (row) => (
         <div className="flex flex-col">
           <span className="font-bold text-gray-800 dark:text-gray-100">{row.userName}</span>
-          <span className="text-[11px] text-gray-400 dark:text-gray-500 font-medium">{row.mobileNumber}</span>
+          <span className="text-[11px] font-medium text-gray-400 dark:text-gray-500">{row.mobileNumber}</span>
         </div>
-      ) 
+      ),
     },
-    { 
-      header: 'VEHICLE', 
+    {
+      header: 'VEHICLE',
       render: (row) => (
-        <div className="flex items-center gap-2 capitalize text-gray-600 dark:text-gray-400 font-semibold text-sm">
-          <span className={`w-2 h-2 rounded-full ${row.vehicleType === 'car' ? 'bg-orange-400' : 'bg-blue-400'}`}></span>
+        <div className="flex items-center gap-2 text-sm font-semibold capitalize text-gray-600 dark:text-gray-400">
+          <span className={`h-2 w-2 rounded-full ${row.vehicleType === 'bike' ? 'bg-blue-400' : 'bg-orange-400'}`} />
           {row.vehicleType}
         </div>
-      ) 
+      ),
     },
-    { 
-      header: 'STATUS', 
+    {
+      header: 'SLOT',
       render: (row) => (
-        <span className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider shadow-sm ring-1 ring-inset transition-all ${
-          row.status === 'reserved' 
-            ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 ring-emerald-600/20' 
-            : 'bg-slate-50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 ring-slate-600/20'
-        }`}>
+        <div className="flex flex-col">
+          <span className="font-bold text-slate-900 dark:text-white">{row.slotNumber}</span>
+          <span className="text-[11px] font-medium text-slate-400 dark:text-slate-500">{row.slotLocation}</span>
+        </div>
+      ),
+    },
+    {
+      header: 'STATUS',
+      render: (row) => (
+        <span
+          className={`rounded-lg px-4 py-1.5 text-[10px] font-black uppercase tracking-wider ring-1 ring-inset ${
+            row.status === 'reserved'
+              ? 'bg-emerald-50 text-emerald-700 ring-emerald-600/20 dark:bg-emerald-500/10 dark:text-emerald-400'
+              : row.status === 'processing'
+                ? 'bg-amber-50 text-amber-700 ring-amber-600/20 dark:bg-amber-500/10 dark:text-amber-300'
+                : row.status === 'completed'
+                  ? 'bg-blue-50 text-blue-700 ring-blue-600/20 dark:bg-blue-500/10 dark:text-blue-300'
+                  : 'bg-slate-50 text-slate-500 ring-slate-600/20 dark:bg-slate-800/50 dark:text-slate-400'
+          }`}
+        >
           {row.status}
         </span>
-      ) 
+      ),
     },
-    { 
-      header: 'AMOUNT', 
-      render: (row) => <span className="text-gray-900 dark:text-white font-black text-base">₹{row.totalAmount}</span> 
+    {
+      header: 'AMOUNT',
+      render: (row) => <span className="text-base font-black text-gray-900 dark:text-white">{formatCurrency(row.totalAmount)}</span>,
     },
-    { 
-      header: 'ACTION', 
+    {
+      header: 'ACTION',
       render: (row) => (
-        <button 
-          onClick={() => setViewingBooking(row)} 
-          className="group flex items-center gap-2 bg-[#1E293B] dark:bg-blue-600 text-white px-4 py-2 rounded-xl hover:opacity-90 transition-all active:scale-95 text-xs font-bold"
-        >
-          VIEW DETAIL <FaChevronRight className="group-hover:translate-x-1 transition-transform" size={10}/>
-        </button>
-      ) 
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setViewingBooking(row)}
+            className="group flex items-center gap-2 rounded-xl bg-[#1E293B] px-4 py-2 text-xs font-bold text-white transition-all hover:opacity-90 active:scale-95 dark:bg-blue-600"
+          >
+            VIEW DETAIL <FaChevronRight className="transition-transform group-hover:translate-x-1" size={10} />
+          </button>
+          <button
+            type="button"
+            onClick={() => handleCancelBooking(row)}
+            className="flex items-center justify-center rounded-xl bg-rose-600 px-3 py-2 text-xs font-bold text-white transition-all hover:bg-rose-700 active:scale-95"
+            title="Delete booking"
+          >
+            <FaTrashAlt size={12} />
+          </button>
+        </div>
+      ),
     },
   ];
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#0F172A] p-6 lg:p-10 font-sans transition-colors duration-300">
-      
-      <div className="flex flex-col md:flex-row justify-between items-end mb-8 gap-6">
+    <div className="min-h-screen bg-[#F8FAFC] p-6 font-sans transition-colors duration-300 dark:bg-[#0F172A] lg:p-10">
+      <div className="mb-8 flex flex-col items-end justify-between gap-6 md:flex-row">
         <div>
-          <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tight">Bookings</h1>
-          <p className="text-slate-500 dark:text-slate-400 font-medium">Manage and audit your parking inventory</p>
+          <h1 className="text-4xl font-black tracking-tight text-slate-900 dark:text-white">Bookings</h1>
+          <p className="font-medium text-slate-500 dark:text-slate-400">Live reservations created by users appear here automatically.</p>
+          <div className="mt-2 flex items-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
+            <FaRegClock />
+            <span>{now.toLocaleDateString()} {now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+            {refreshing ? <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-bold dark:bg-slate-700">UPDATING</span> : null}
+          </div>
         </div>
-        
-        <div className="flex items-center gap-4 w-full md:w-auto">
-          <div className="relative flex-grow md:w-80 group">
-            <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 group-focus-within:text-blue-500 transition-colors" />
-            <input 
-              type="text" 
-              placeholder="Search by ID or name..." 
-              className="w-full pl-12 pr-4 py-3 bg-white dark:bg-[#1E293B] border-none shadow-sm ring-1 ring-slate-200 dark:ring-slate-700 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm dark:text-white"
-              onChange={(e) => setSearchTerm(e.target.value)}
+
+        <div className="flex w-full items-center gap-4 md:w-auto">
+          <div className="group relative flex-grow md:w-80">
+            <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-blue-500 dark:text-slate-500" />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+              placeholder="Search by ID or name..."
+              className="w-full rounded-2xl border-none bg-white py-3 pl-12 pr-4 text-sm text-slate-900 shadow-sm ring-1 ring-slate-200 outline-none transition-all focus:ring-2 focus:ring-blue-500 dark:bg-[#1E293B] dark:text-white dark:ring-slate-700"
             />
           </div>
-          {/* UPDATED BUTTON: Added onClick={handleExportCSV} */}
-          <button 
+
+          <button
+            type="button"
             onClick={handleExportCSV}
-            className="p-3.5 bg-white dark:bg-[#1E293B] ring-1 ring-slate-200 dark:ring-slate-700 rounded-2xl shadow-sm text-emerald-600 dark:text-emerald-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+            className="rounded-2xl bg-white p-3.5 text-emerald-600 shadow-sm ring-1 ring-slate-200 transition-colors hover:bg-slate-50 dark:bg-[#1E293B] dark:text-emerald-400 dark:ring-slate-700 dark:hover:bg-slate-800"
           >
             <FaFileCsv size={20} />
+          </button>
+
+          <button
+            type="button"
+            onClick={handleDeleteAll}
+            disabled={bulkDeleting || !filteredBookings.length}
+            className="rounded-2xl bg-rose-600 px-4 py-3 text-xs font-black uppercase tracking-wider text-white shadow-sm transition-colors hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+            title="Delete all bookings in the current list"
+          >
+            {bulkDeleting ? 'DELETING…' : 'DELETE ALL'}
           </button>
         </div>
       </div>
 
-      <div className="bg-white dark:bg-[#1E293B] rounded-[2rem] shadow-xl dark:shadow-none overflow-hidden border border-slate-100 dark:border-slate-800">
-        <Table 
-          columns={columns} 
-          data={bookings.filter(b => b.userName.toLowerCase().includes(searchTerm.toLowerCase()) || b.customId.toLowerCase().includes(searchTerm.toLowerCase()))} 
-          loading={loading} 
-        />
+      <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-white shadow-xl dark:border-slate-800 dark:bg-[#1E293B] dark:shadow-none">
+        <Table columns={columns} data={filteredBookings} loading={loading} emptyMessage="No bookings found" />
       </div>
 
       <Modal isOpen={!!viewingBooking} onClose={() => setViewingBooking(null)}>
-        {viewingBooking && (
-          <div className="p-2 bg-white dark:bg-[#1E293B] text-gray-900 dark:text-gray-100">
-            <div className="flex justify-between items-start mb-8 border-b dark:border-slate-700 pb-6">
+        {viewingBooking ? (
+          <div className="bg-white p-2 text-gray-900 dark:bg-[#1E293B] dark:text-gray-100">
+            <div className="mb-8 flex items-start justify-between border-b pb-6 dark:border-slate-700">
               <div>
-                <span className="text-[10px] font-black text-blue-500 uppercase tracking-widest bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded">Reservation Record</span>
-                <h2 className="text-3xl font-black mt-2">{viewingBooking.customId}</h2>
+                <span className="rounded bg-blue-50 px-2 py-1 text-[10px] font-black uppercase tracking-widest text-blue-500 dark:bg-blue-900/30">
+                  Reservation Record
+                </span>
+                <h2 className="mt-2 text-3xl font-black">{viewingBooking.customId}</h2>
               </div>
               <div className="text-right">
-                <p className="text-xs text-slate-400 dark:text-slate-500 font-bold uppercase">Booking Date</p>
+                <p className="text-[10px] font-bold uppercase text-slate-400 dark:text-slate-500">Booking Date</p>
                 <p className="font-bold">{viewingBooking.bookingDate}</p>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
               <div className="space-y-8">
                 <section>
-                  <h3 className="flex items-center gap-2 font-bold text-sm mb-4 border-b dark:border-slate-700 pb-2">
-                    <FaUser className="text-blue-500"/> Customer Profile
+                  <h3 className="mb-4 flex items-center gap-2 border-b pb-2 text-sm font-bold dark:border-slate-700">
+                    <FaUser className="text-blue-500" /> Customer Profile
                   </h3>
                   <div className="space-y-3">
                     <ModalField label="Full Name" value={viewingBooking.userName} />
@@ -212,11 +432,12 @@ const Bookings = () => {
                     <ModalField label="Email" value={viewingBooking.emailId} />
                   </div>
                 </section>
+
                 <section>
-                  <h3 className="flex items-center gap-2 font-bold text-sm mb-4 border-b dark:border-slate-700 pb-2">
-                    <FaCar className="text-blue-500"/> Vehicle & Slot Info
+                  <h3 className="mb-4 flex items-center gap-2 border-b pb-2 text-sm font-bold dark:border-slate-700">
+                    <FaCar className="text-blue-500" /> Vehicle & Slot Info
                   </h3>
-                  <div className="grid grid-cols-2 gap-y-4 gap-x-4">
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-4">
                     <ModalField label="Vehicle Type" value={viewingBooking.vehicleType} isCaps />
                     <ModalField label="Class" value={viewingBooking.slotType} />
                     <ModalField label="Location" value={viewingBooking.slotLocation} />
@@ -226,11 +447,11 @@ const Bookings = () => {
               </div>
 
               <div className="space-y-8">
-                <section className="bg-slate-50 dark:bg-slate-800/50 p-6 rounded-3xl space-y-4">
-                  <h3 className="flex items-center gap-2 font-bold text-sm mb-2">
-                    <FaMapMarkerAlt className="text-blue-500"/> Location Pin
+                <section className="rounded-3xl bg-slate-50 p-6 dark:bg-slate-800/50">
+                  <h3 className="mb-2 flex items-center gap-2 text-sm font-bold">
+                    <FaMapMarkerAlt className="text-blue-500" /> Location Pin
                   </h3>
-                  <div className="grid grid-cols-2 gap-y-4 gap-x-4">
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-4">
                     <ModalField label="City" value={viewingBooking.city} />
                     <ModalField label="Pincode" value={viewingBooking.pincode} />
                     <ModalField label="Area" value={viewingBooking.area} span={2} />
@@ -238,28 +459,28 @@ const Bookings = () => {
                   </div>
                 </section>
 
-                <div className="bg-blue-600 rounded-3xl p-6 text-white flex justify-between items-center shadow-lg shadow-blue-200 dark:shadow-none">
+                <div className="flex items-center justify-between rounded-3xl bg-blue-600 p-6 text-white shadow-lg shadow-blue-200 dark:shadow-none">
                   <div>
                     <p className="text-[10px] font-bold uppercase opacity-70">Payment Status</p>
                     <p className="text-xl font-black uppercase">{viewingBooking.paymentStatus}</p>
                   </div>
                   <div className="text-right">
                     <p className="text-[10px] font-bold uppercase opacity-70">Total Amount</p>
-                    <p className="text-4xl font-black">₹{viewingBooking.totalAmount}</p>
+                    <p className="text-4xl font-black">{formatCurrency(viewingBooking.totalAmount)}</p>
                   </div>
                 </div>
               </div>
             </div>
           </div>
-        )}
+        ) : null}
       </Modal>
     </div>
   );
 };
 
-const ModalField = ({ label, value, span = 1, isCaps }) => (
+const ModalField = ({ label, value, span = 1, isCaps = false }) => (
   <div className={span === 2 ? 'col-span-2' : 'col-span-1'}>
-    <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-tighter leading-none mb-1">{label}</p>
+    <p className="mb-1 text-[10px] font-bold uppercase leading-none tracking-tighter text-slate-400 dark:text-slate-500">{label}</p>
     <p className={`font-bold dark:text-gray-100 ${isCaps ? 'uppercase' : ''}`}>{value || '---'}</p>
   </div>
 );

@@ -1,12 +1,14 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { createAuthService } from '../../../shared-auth/authService';
 import api, { authAPI } from '../services/api';
+import { userAuthStorage } from '../services/api';
 
 const AuthContext = createContext(null);
 
 const authService = createAuthService({
   apiClient: api,
   loginEndpoint: '/auth/login',
+  storage: userAuthStorage,
 });
 
 export const AuthProvider = ({ children }) => {
@@ -44,8 +46,8 @@ export const AuthProvider = ({ children }) => {
       const response = await authAPI.register(payload);
       const { token, user: userData } = response.data.data;
       authService.logout();
-      localStorage.setItem('token', token);
-      localStorage.setItem('user', JSON.stringify(userData));
+      userAuthStorage.setToken(token);
+      userAuthStorage.setUser(userData);
       setUser(userData);
       setIsAuthenticated(true);
       return { success: true };
