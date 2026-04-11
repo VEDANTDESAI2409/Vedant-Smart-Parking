@@ -129,7 +129,7 @@ const Dashboard = () => {
       },
       {
         title: 'Total Revenue',
-        value: `$${Number(safeStats.totalRevenue || 0).toLocaleString()}`,
+        value: `₹${Number(safeStats.totalRevenue || 0).toLocaleString()}`,
         note: 'Lifetime processed revenue',
         icon: FaCreditCard,
         accent: 'from-rose-100 to-red-50',
@@ -204,7 +204,7 @@ const Dashboard = () => {
         <div className="relative mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
           <div className="rounded-2xl border border-sky-100 bg-white/75 px-4 py-3 shadow-[0_10px_24px_rgba(148,163,184,0.08)] backdrop-blur-xl dark:border-white/10 dark:bg-white/8">
             <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 dark:text-slate-300/70">Revenue</p>
-            <p className="mt-2 text-[2rem] font-black leading-none">${Number(safeStats.totalRevenue || 0).toLocaleString()}</p>
+            <p className="mt-2 text-[2rem] font-black leading-none">₹{Number(safeStats.totalRevenue || 0).toLocaleString()}</p>
           </div>
           <div className="rounded-2xl border border-sky-100 bg-white/75 px-4 py-3 shadow-[0_10px_24px_rgba(148,163,184,0.08)] backdrop-blur-xl dark:border-white/10 dark:bg-white/8">
             <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 dark:text-slate-300/70">Occupancy</p>
@@ -265,7 +265,7 @@ const Dashboard = () => {
                   background: 'rgba(15,23,42,0.96)',
                   color: '#fff',
                 }}
-                formatter={(value) => [`$${value}`, 'Revenue']}
+                formatter={(value) => [`₹${value}`, 'Revenue']}
               />
               <Line
                 type="monotone"

@@ -12,28 +12,28 @@ const Users = () => {
 
   useEffect(() => {
     fetchUsers();
+    // Refresh data every 30 seconds to show new registrations automatically
+    const interval = setInterval(fetchUsers, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      const response = await usersAPI.getAll();
+      const response = await usersAPI.getAll({ limit: 1000, page: 1 });
       const rawData = response.data?.data?.users || [];
       
       const formatted = rawData.map((u, index) => ({
         ...u,
         customId: `U${String(index + 1).padStart(3, '0')}`,
-        // Formatting the date
+        vehicleCount: u.vehicles?.length || 0,
+        lastLogin: u.lastLogin ? new Date(u.lastLogin).toLocaleString('en-GB', { hour12: false }) : 'Never',
         joinDate: u.createdAt ? new Date(u.createdAt).toLocaleDateString('en-GB') : 'N/A',
       }));
       setUsers(formatted);
     } catch (error) {
       console.error('Error fetching users:', error);
-      // Fallback Dummy Data with new fields
-      setUsers([
-        { _id: 1, customId: 'U001', name: 'John Doe', email: 'john@example.com', phone: '+91 98765 43210', isActive: true, joinDate: '15/01/2024' },
-        { _id: 2, customId: 'U002', name: 'Jane Smith', email: 'jane@example.com', phone: '+91 91234 56789', isActive: false, joinDate: '14/01/2024' },
-      ]);
+      setUsers([]);
     } finally {
       setLoading(false);
     }
@@ -128,6 +128,28 @@ const Users = () => {
           <FaCalendarAlt size={12} className="opacity-70" />
           {row.joinDate}
         </div>
+      ) 
+    },
+    { 
+      header: 'ROLE', 
+      render: (row) => (
+        <span className="text-xs uppercase tracking-[0.18em] font-bold text-slate-600 dark:text-slate-300">
+          {row.role || 'user'}
+        </span>
+      ) 
+    },
+    { 
+      header: 'VEHICLES', 
+      render: (row) => (
+        <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+          {row.vehicleCount}
+        </span>
+      ) 
+    },
+    { 
+      header: 'LAST LOGIN', 
+      render: (row) => (
+        <span className="text-sm text-slate-500 dark:text-slate-400">{row.lastLogin}</span>
       ) 
     },
     { 
