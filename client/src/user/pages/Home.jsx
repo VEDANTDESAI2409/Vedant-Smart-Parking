@@ -126,7 +126,7 @@ const pricingCards = [
   },
   {
     name: 'Smart Driver',
-    price: '$9/mo',
+    price: '₹9/mo',
     description: 'For frequent parkers who want faster access and flexible bookings.',
     points: ['Advance reservations', 'Remote extensions', 'Priority support'],
     featured: true,
@@ -464,7 +464,7 @@ const Home = () => {
                       <div className="mt-5 grid grid-cols-2 gap-3">
                         <div className="rounded-[24px] bg-[var(--color-secondary)] p-4 text-white">
                           <p className="text-xs uppercase tracking-[0.24em] text-white/58">Payment</p>
-                          <p className="mt-2 text-[1.05rem] font-semibold">$12.00 secure</p>
+                          <p className="mt-2 text-[1.05rem] font-semibold">₹12.00 secure</p>
                         </div>
                         <div className="rounded-[24px] border border-[rgba(64,138,113,0.14)] bg-white p-4">
                           <p className="text-xs uppercase tracking-[0.24em] text-slate-400">Status</p>

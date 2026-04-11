@@ -106,7 +106,7 @@ const History = () => {
                     </div>
                     <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
                       <FaCreditCard className="mr-2" />
-                      {booking.paymentMethod} - ${booking.totalAmount}
+                      {booking.paymentMethod} - ₹{booking.totalAmount}
                     </div>
                     <div className="text-sm text-gray-600 dark:text-gray-400">
                       Duration: {Math.round((new Date(booking.endTime) - new Date(booking.startTime)) / (1000 * 60 * 60))} hours

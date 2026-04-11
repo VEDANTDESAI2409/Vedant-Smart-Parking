@@ -70,6 +70,33 @@ const ParkingSlots = () => {
   const [slotLocation, setSlotLocation] = useState('');
   const [price, setPrice] = useState('');
 
+  const [bulkModalOpen, setBulkModalOpen] = useState(false);
+  const [bulkSubmitting, setBulkSubmitting] = useState(false);
+  const [bulkCityId, setBulkCityId] = useState('');
+  const [bulkPincodeId, setBulkPincodeId] = useState('');
+  const [bulkAreaId, setBulkAreaId] = useState('');
+  const [bulkLocationId, setBulkLocationId] = useState('');
+  const [bulkLandmark, setBulkLandmark] = useState('');
+  const [bulkVehicleType, setBulkVehicleType] = useState('car');
+  const [bulkSlotType, setBulkSlotType] = useState('normal');
+  const [bulkPrice, setBulkPrice] = useState('');
+  const [bulkFloor, setBulkFloor] = useState('1');
+  const [bulkCreateMode, setBulkCreateMode] = useState('pattern'); // pattern | by_type
+  const [bulkPrefixMode, setBulkPrefixMode] = useState('range'); // range | list | single
+  const [bulkPrefixFrom, setBulkPrefixFrom] = useState('A');
+  const [bulkPrefixTo, setBulkPrefixTo] = useState('A');
+  const [bulkPrefixes, setBulkPrefixes] = useState('A');
+  const [bulkNumberFrom, setBulkNumberFrom] = useState('1');
+  const [bulkNumberTo, setBulkNumberTo] = useState('50');
+  const [bulkTypeBatches, setBulkTypeBatches] = useState([
+    { id: 'batch_normal', slotType: 'normal', prefix: 'N', count: '' },
+    { id: 'batch_ev', slotType: 'ev', prefix: 'EV', count: '' },
+  ]);
+
+  const [bulkPincodes, setBulkPincodes] = useState([]);
+  const [bulkAreas, setBulkAreas] = useState([]);
+  const [bulkLocations, setBulkLocations] = useState([]);
+
   useEffect(() => {
     fetchSlots();
   }, []);
@@ -79,10 +106,10 @@ const ParkingSlots = () => {
   }, [slots]);
 
   useEffect(() => {
-    if (modalOpen) {
+    if (modalOpen || bulkModalOpen) {
       fetchCities();
     }
-  }, [modalOpen]);
+  }, [bulkModalOpen, modalOpen]);
 
   useEffect(() => {
     if (!cityId) {
@@ -94,6 +121,15 @@ const ParkingSlots = () => {
   }, [cityId]);
 
   useEffect(() => {
+    if (!bulkCityId) {
+      setBulkPincodes([]);
+      return;
+    }
+
+    fetchBulkPincodes(bulkCityId);
+  }, [bulkCityId]);
+
+  useEffect(() => {
     if (!cityId || !pincodeId) {
       setAreas([]);
       return;
@@ -103,6 +139,15 @@ const ParkingSlots = () => {
   }, [cityId, pincodeId]);
 
   useEffect(() => {
+    if (!bulkCityId || !bulkPincodeId) {
+      setBulkAreas([]);
+      return;
+    }
+
+    fetchBulkAreas(bulkCityId, bulkPincodeId);
+  }, [bulkCityId, bulkPincodeId]);
+
+  useEffect(() => {
     if (!cityId || !pincodeId || !areaId) {
       setLocations([]);
       return;
@@ -110,6 +155,15 @@ const ParkingSlots = () => {
 
     fetchLocations(cityId, pincodeId, areaId);
   }, [cityId, pincodeId, areaId]);
+
+  useEffect(() => {
+    if (!bulkCityId || !bulkPincodeId || !bulkAreaId) {
+      setBulkLocations([]);
+      return;
+    }
+
+    fetchBulkLocations(bulkCityId, bulkPincodeId, bulkAreaId);
+  }, [bulkCityId, bulkPincodeId, bulkAreaId]);
 
   const filteredSlots = useMemo(() => {
     const query = searchTerm.trim().toLowerCase();
@@ -182,6 +236,17 @@ const ParkingSlots = () => {
     }
   };
 
+  const fetchBulkPincodes = async (selectedCityId) => {
+    try {
+      const response = await pincodesAPI.getAll({ cityId: selectedCityId });
+      const list = getCollection(response, 'pincodes');
+      setBulkPincodes(Array.isArray(list) ? list : []);
+    } catch (error) {
+      console.error('Error fetching bulk pincodes:', error);
+      setBulkPincodes([]);
+    }
+  };
+
   const fetchAreas = async (selectedCityId, selectedPincodeId) => {
     try {
       const response = await areasAPI.getAll({
@@ -193,6 +258,20 @@ const ParkingSlots = () => {
     } catch (error) {
       console.error('Error fetching areas:', error);
       setAreas([]);
+    }
+  };
+
+  const fetchBulkAreas = async (selectedCityId, selectedPincodeId) => {
+    try {
+      const response = await areasAPI.getAll({
+        cityId: selectedCityId,
+        pincodeId: selectedPincodeId,
+      });
+      const list = getCollection(response, 'areas');
+      setBulkAreas(Array.isArray(list) ? list : []);
+    } catch (error) {
+      console.error('Error fetching bulk areas:', error);
+      setBulkAreas([]);
     }
   };
 
@@ -208,6 +287,21 @@ const ParkingSlots = () => {
     } catch (error) {
       console.error('Error fetching locations:', error);
       setLocations([]);
+    }
+  };
+
+  const fetchBulkLocations = async (selectedCityId, selectedPincodeId, selectedAreaId) => {
+    try {
+      const response = await locationsAPI.getAll({
+        cityId: selectedCityId,
+        pincodeId: selectedPincodeId,
+        areaId: selectedAreaId,
+      });
+      const list = getCollection(response, 'locations');
+      setBulkLocations(Array.isArray(list) ? list : []);
+    } catch (error) {
+      console.error('Error fetching bulk locations:', error);
+      setBulkLocations([]);
     }
   };
 
@@ -227,9 +321,60 @@ const ParkingSlots = () => {
     setLocations([]);
   };
 
+  const resetBulkForm = () => {
+    setBulkCityId('');
+    setBulkPincodeId('');
+    setBulkAreaId('');
+    setBulkLocationId('');
+    setBulkLandmark('');
+    setBulkVehicleType('car');
+    setBulkSlotType('normal');
+    setBulkPrice('');
+    setBulkFloor('1');
+    setBulkCreateMode('pattern');
+    setBulkPrefixMode('range');
+    setBulkPrefixFrom('A');
+    setBulkPrefixTo('A');
+    setBulkPrefixes('A');
+    setBulkNumberFrom('1');
+    setBulkNumberTo('50');
+    setBulkTypeBatches([
+      { id: 'batch_normal', slotType: 'normal', prefix: 'N', count: '' },
+      { id: 'batch_ev', slotType: 'ev', prefix: 'EV', count: '' },
+    ]);
+    setBulkPincodes([]);
+    setBulkAreas([]);
+    setBulkLocations([]);
+  };
+
+  const addBulkTypeBatch = () => {
+    const id = `batch_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+    setBulkTypeBatches((prev) => [
+      ...(Array.isArray(prev) ? prev : []),
+      { id, slotType: 'normal', prefix: 'N', count: '' },
+    ]);
+  };
+
+  const updateBulkTypeBatch = (id, field, value) => {
+    setBulkTypeBatches((prev) =>
+      (Array.isArray(prev) ? prev : []).map((batch) =>
+        batch.id === id ? { ...batch, [field]: value } : batch
+      )
+    );
+  };
+
+  const removeBulkTypeBatch = (id) => {
+    setBulkTypeBatches((prev) => (Array.isArray(prev) ? prev : []).filter((batch) => batch.id !== id));
+  };
+
   const openCreateModal = () => {
     resetForm();
     setModalOpen(true);
+  };
+
+  const openBulkModal = () => {
+    resetBulkForm();
+    setBulkModalOpen(true);
   };
 
   const handleCityChange = (value) => {
@@ -242,6 +387,16 @@ const ParkingSlots = () => {
     setLocations([]);
   };
 
+  const handleBulkCityChange = (value) => {
+    setBulkCityId(value);
+    setBulkPincodeId('');
+    setBulkAreaId('');
+    setBulkLocationId('');
+    setBulkPincodes([]);
+    setBulkAreas([]);
+    setBulkLocations([]);
+  };
+
   const handlePincodeChange = (value) => {
     setPincodeId(value);
     setAreaId('');
@@ -250,10 +405,24 @@ const ParkingSlots = () => {
     setLocations([]);
   };
 
+  const handleBulkPincodeChange = (value) => {
+    setBulkPincodeId(value);
+    setBulkAreaId('');
+    setBulkLocationId('');
+    setBulkAreas([]);
+    setBulkLocations([]);
+  };
+
   const handleAreaChange = (value) => {
     setAreaId(value);
     setLocationId('');
     setLocations([]);
+  };
+
+  const handleBulkAreaChange = (value) => {
+    setBulkAreaId(value);
+    setBulkLocationId('');
+    setBulkLocations([]);
   };
 
   const handleEdit = async (slot) => {
@@ -333,6 +502,62 @@ const ParkingSlots = () => {
     return null;
   };
 
+  const validateBulkForm = () => {
+    if (!bulkCityId) return 'City is required for bulk creation';
+    if (!bulkPincodeId) return 'Pincode is required for bulk creation';
+    if (!bulkAreaId) return 'Area is required for bulk creation';
+    if (!bulkLocationId) return 'Location is required for bulk creation';
+    if (!bulkLandmark.trim()) return 'Landmark is required for bulk creation';
+    if (bulkPrice === '' || Number.isNaN(Number(bulkPrice)) || Number(bulkPrice) < 0) {
+      return 'Price must be a valid positive number';
+    }
+
+    if (bulkCreateMode === 'by_type') {
+      const batches = (bulkTypeBatches || [])
+        .map((batch) => ({
+          ...batch,
+          count: Number(batch?.count),
+          prefix: String(batch?.prefix || '').trim(),
+          slotType: String(batch?.slotType || '').trim(),
+        }))
+        .filter((batch) => Number.isFinite(batch.count) && batch.count > 0);
+
+      if (batches.length === 0) {
+        return 'Add at least one slot batch with a count greater than 0';
+      }
+
+      const MAX_BULK_SLOTS = 10000;
+      const invalidBatch = batches.find(
+        (batch) =>
+          !batch.slotType ||
+          !batch.prefix ||
+          !Number.isFinite(batch.count) ||
+          batch.count <= 0 ||
+          batch.count > MAX_BULK_SLOTS
+      );
+
+      if (invalidBatch) {
+        return `Each batch must include slot type, prefix, and count (1-${MAX_BULK_SLOTS})`;
+      }
+
+      return null;
+    }
+
+    const start = Number(bulkNumberFrom);
+    const end = Number(bulkNumberTo);
+    if (!Number.isFinite(start) || !Number.isFinite(end) || start <= 0 || end <= 0 || start > end) {
+      return 'Slot number range must be valid (start <= end, both >= 1)';
+    }
+
+    if (bulkPrefixMode === 'range') {
+      if (!bulkPrefixFrom.trim() || !bulkPrefixTo.trim()) return 'Prefix range is required';
+    } else if (!bulkPrefixes.trim()) {
+      return bulkPrefixMode === 'list' ? 'Prefix list is required (e.g., A,D,F)' : 'Prefix is required';
+    }
+
+    return null;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -388,6 +613,127 @@ const ParkingSlots = () => {
       showError(error?.response?.data?.message || 'Failed to save slot');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleBulkSubmit = async (e) => {
+    e.preventDefault();
+
+    const validationError = validateBulkForm();
+    if (validationError) {
+      showWarning(validationError);
+      return;
+    }
+
+    const selectedCity = cities.find((item) => item._id === bulkCityId);
+    const selectedPincode = bulkPincodes.find((item) => item._id === bulkPincodeId);
+    const selectedArea = bulkAreas.find((item) => item._id === bulkAreaId);
+    const selectedLocation = bulkLocations.find((item) => item._id === bulkLocationId);
+
+    if (!selectedCity || !selectedPincode || !selectedArea || !selectedLocation) {
+      showWarning('Please reselect city, pincode, area, and location');
+      return;
+    }
+
+    try {
+      setBulkSubmitting(true);
+
+      const basePayload = {
+        locationId: bulkLocationId,
+        city: selectedCity.name,
+        pincode: selectedPincode.pincode,
+        area: selectedArea.name,
+        location: selectedLocation.name,
+        landmark: bulkLandmark.trim(),
+        vehicleType: bulkVehicleType,
+        price: Number(bulkPrice),
+        floor: Number(bulkFloor) || 1,
+      };
+
+      if (bulkCreateMode === 'by_type') {
+        const batches = (bulkTypeBatches || [])
+          .map((batch) => ({
+            ...batch,
+            count: Number(batch?.count),
+            prefix: String(batch?.prefix || '').trim(),
+            slotType: String(batch?.slotType || '').trim(),
+          }))
+          .filter((batch) => Number.isFinite(batch.count) && batch.count > 0);
+
+        const results = await Promise.allSettled(
+          batches.map((batch) =>
+            slotsAPI.bulkCreate({
+              ...basePayload,
+              slotType: batch.slotType,
+              prefixes: batch.prefix,
+              numberFrom: 1,
+              numberTo: batch.count,
+            })
+          )
+        );
+
+        const successes = results.filter((item) => item.status === 'fulfilled');
+        const failures = results.filter((item) => item.status === 'rejected');
+
+        const createdCountTotal = successes.reduce((sum, item) => {
+          const response = item.value;
+          const createdCount = response?.data?.data?.createdCount ?? response?.data?.data?.count ?? 0;
+          return sum + Number(createdCount || 0);
+        }, 0);
+
+        if (successes.length && failures.length) {
+          await fetchSlots();
+          setBulkModalOpen(false);
+          resetBulkForm();
+          showSuccess(`Bulk slots created: ${createdCountTotal} (some batches failed)`);
+        } else if (successes.length) {
+          await fetchSlots();
+          setBulkModalOpen(false);
+          resetBulkForm();
+          showSuccess(`Bulk slots created: ${createdCountTotal}`);
+        } else {
+          const all404 =
+            failures.length > 0 &&
+            failures.every((item) => item.reason?.response?.status === 404);
+
+          if (all404) {
+            showError('Bulk slots API not found on the backend. Restart the server and ensure it is the latest code.');
+          } else {
+            showError('Failed to create any slots. Please check batch inputs and try again.');
+          }
+        }
+
+        return;
+      }
+
+      const patternPayload =
+        bulkPrefixMode === 'range'
+          ? { prefixFrom: bulkPrefixFrom.trim(), prefixTo: bulkPrefixTo.trim() }
+          : { prefixes: bulkPrefixes.trim() };
+
+      const response = await slotsAPI.bulkCreate({
+        ...basePayload,
+        slotType: bulkSlotType,
+        numberFrom: Number(bulkNumberFrom),
+        numberTo: Number(bulkNumberTo),
+        ...patternPayload,
+      });
+
+      await fetchSlots();
+      setBulkModalOpen(false);
+      resetBulkForm();
+
+      const createdCount = response?.data?.data?.createdCount ?? response?.data?.data?.count;
+      showSuccess(createdCount !== undefined ? `Bulk slots created: ${createdCount}` : 'Bulk slots created successfully');
+    } catch (error) {
+      console.error('Error bulk creating slots:', error);
+      if (error?.response?.status === 404) {
+        showError('Bulk slots API not found on the backend. Restart the server and ensure it is the latest code.');
+        return;
+      }
+      showError(error?.response?.data?.message || 'Failed to create bulk slots');
+    } finally {
+      setBulkSubmitting(false);
     }
   };
 
@@ -553,10 +899,17 @@ const ParkingSlots = () => {
   const selectedPincode = pincodes.find((item) => getId(item) === pincodeId);
   const selectedArea = areas.find((item) => getId(item) === areaId);
   const selectedLocation = locations.find((item) => getId(item) === locationId);
+  const selectedBulkCity = cities.find((item) => getId(item) === bulkCityId);
+  const selectedBulkPincode = bulkPincodes.find((item) => getId(item) === bulkPincodeId);
+  const selectedBulkArea = bulkAreas.find((item) => getId(item) === bulkAreaId);
+  const selectedBulkLocation = bulkLocations.find((item) => getId(item) === bulkLocationId);
   const cityOptions = mapOptions(cities, (item) => getCityName(item));
   const pincodeOptions = mapOptions(pincodes, (item) => getPincodeValue(item));
   const areaOptions = mapOptions(areas, (item) => getAreaValue(item));
   const locationOptions = mapOptions(locations, (item) => getLocationValue(item));
+  const bulkPincodeOptions = mapOptions(bulkPincodes, (item) => getPincodeValue(item));
+  const bulkAreaOptions = mapOptions(bulkAreas, (item) => getAreaValue(item));
+  const bulkLocationOptions = mapOptions(bulkLocations, (item) => getLocationValue(item));
   const vehicleTypeOptions = [
     { value: 'car', label: 'Car' },
     { value: 'bike', label: 'Bike' },
@@ -565,12 +918,17 @@ const ParkingSlots = () => {
     { value: 'normal', label: 'Normal' },
     { value: 'ev', label: 'EV' },
     { value: 'disabled', label: 'Disabled' },
+    { value: 'reserved', label: 'Reserved' },
   ];
 
   const city = getCityName(selectedCity);
   const pincode = getPincodeValue(selectedPincode);
   const area = getAreaValue(selectedArea);
   const location = getLocationValue(selectedLocation);
+  const bulkCity = getCityName(selectedBulkCity);
+  const bulkPincode = getPincodeValue(selectedBulkPincode);
+  const bulkArea = getAreaValue(selectedBulkArea);
+  const bulkLocation = getLocationValue(selectedBulkLocation);
 
   const detailCards = [
     { label: 'Slot ID', value: editingSlot?._id || 'Auto-generated on save' },
@@ -584,6 +942,73 @@ const ParkingSlots = () => {
     { label: 'Slot Location', value: slotLocation || '---' },
     { label: 'Price', value: price !== '' ? `Rs. ${price}` : '---' },
   ];
+
+  const bulkNumberStart = Number(bulkNumberFrom);
+  const bulkNumberEnd = Number(bulkNumberTo);
+  const bulkNumberCount =
+    Number.isFinite(bulkNumberStart) &&
+    Number.isFinite(bulkNumberEnd) &&
+    bulkNumberStart > 0 &&
+    bulkNumberEnd > 0 &&
+    bulkNumberStart <= bulkNumberEnd
+      ? bulkNumberEnd - bulkNumberStart + 1
+      : 0;
+
+  const bulkPrefixListCount = (() => {
+    if (bulkPrefixMode === 'range') {
+      const from = String(bulkPrefixFrom || '').trim().toUpperCase();
+      const to = String(bulkPrefixTo || '').trim().toUpperCase();
+      if (!/^[A-Z]$/.test(from) || !/^[A-Z]$/.test(to)) return 0;
+      const fromCode = from.charCodeAt(0);
+      const toCode = to.charCodeAt(0);
+      if (fromCode > toCode) return 0;
+      return toCode - fromCode + 1;
+    }
+
+    const list = String(bulkPrefixes || '')
+      .split(/[,;\s]+/)
+      .map((value) => value.trim())
+      .filter(Boolean);
+
+    return new Set(list).size;
+  })();
+
+  const bulkRequestedCount = bulkNumberCount * bulkPrefixListCount;
+  const bulkExample =
+    bulkPrefixMode === 'range'
+      ? `${String(bulkPrefixFrom || '').trim().toUpperCase()}${bulkNumberFrom} → ${String(
+          bulkPrefixTo || '',
+        )
+          .trim()
+          .toUpperCase()}${bulkNumberTo}`
+      : `${String(bulkPrefixes || '').trim().toUpperCase()}${bulkNumberFrom} → ... → ${String(
+          bulkPrefixes || '',
+        )
+          .trim()
+          .toUpperCase()}${bulkNumberTo}`;
+
+  const bulkRequestedCountDisplay =
+    bulkCreateMode === 'by_type'
+      ? (bulkTypeBatches || []).reduce((sum, batch) => {
+          const count = Number(batch?.count);
+          return Number.isFinite(count) && count > 0 ? sum + count : sum;
+        }, 0)
+      : bulkRequestedCount;
+
+  const bulkExampleDisplay =
+    bulkCreateMode === 'by_type'
+      ? (() => {
+          const parts = (bulkTypeBatches || [])
+            .map((batch) => ({
+              prefix: String(batch?.prefix || '').trim().toUpperCase(),
+              count: Number(batch?.count),
+            }))
+            .filter((batch) => batch.prefix && Number.isFinite(batch.count) && batch.count > 0)
+            .map((batch) => `${batch.prefix}1 -> ${batch.prefix}${batch.count}`);
+
+          return parts.length ? parts.join(' + ') : 'Add batches (e.g., N x 30, EV x 20)';
+        })()
+      : bulkExample;
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] p-4 font-sans transition-colors duration-300 dark:bg-[#0F172A] lg:p-6">
@@ -619,6 +1044,14 @@ const ParkingSlots = () => {
                 Delete Selected ({selectedSlotIds.length})
               </button>
             )}
+
+            <button
+              onClick={openBulkModal}
+              className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition-all hover:bg-slate-800 active:scale-[0.98] dark:bg-white/10 dark:hover:bg-white/15"
+            >
+              <FaPlus size={12} />
+              Bulk Add
+            </button>
 
             <button
               onClick={openCreateModal}
@@ -853,6 +1286,376 @@ const ParkingSlots = () => {
               className="rounded-2xl bg-blue-600 px-5 py-3 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {submitting ? 'Saving...' : editingSlot ? 'Update Slot' : 'Create Slot'}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal
+        isOpen={bulkModalOpen}
+        onClose={() => {
+          if (!bulkSubmitting) {
+            setBulkModalOpen(false);
+            resetBulkForm();
+          }
+        }}
+        size="xl"
+        showCloseButton={!bulkSubmitting}
+      >
+        <form onSubmit={handleBulkSubmit} className="space-y-8">
+          <div className="flex flex-col gap-4 border-b border-slate-200 pb-6 md:flex-row md:items-start md:justify-between">
+            <div>
+              <span className="rounded-full bg-slate-900 px-3 py-1 text-[11px] font-black uppercase tracking-[0.2em] text-white dark:bg-white/10">
+                Bulk Slots
+              </span>
+              <h2 className="mt-3 text-3xl font-black text-slate-900 dark:text-white">
+                Bulk Create Slots
+              </h2>
+              <p className="mt-2 text-sm font-medium text-slate-500 dark:text-slate-400">
+                Generate patterns like A1 → A300, or A1 → Z300 for cars/bikes.
+              </p>
+            </div>
+
+            <div className="rounded-3xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-[#1E293B]">
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+                Requested
+              </p>
+              <p className="mt-2 text-3xl font-black text-slate-900 dark:text-white">
+                {bulkRequestedCountDisplay || 0}
+              </p>
+              <p className="mt-1 text-xs font-semibold text-slate-500 dark:text-slate-400">{bulkExampleDisplay}</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-8 xl:grid-cols-[1.4fr,0.9fr]">
+            <div className="space-y-8">
+              <section className="rounded-[2rem] border border-slate-200 bg-[linear-gradient(180deg,#fcfdff_0%,#f8fbff_100%)] p-6 shadow-[0_10px_24px_rgba(15,23,42,0.04)] dark:border-slate-700 dark:bg-[#1E293B]">
+                <SectionTitle
+                  title="Location Mapping"
+                  description="Pick the same city/pincode/area/location used for user blueprints."
+                />
+                <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <SearchableField
+                    label="City"
+                    value={bulkCityId}
+                    onChange={handleBulkCityChange}
+                    options={cityOptions}
+                    placeholder="Select a city"
+                  />
+
+                  <SearchableField
+                    label="Pincode"
+                    value={bulkPincodeId}
+                    onChange={handleBulkPincodeChange}
+                    options={bulkPincodeOptions}
+                    placeholder={!bulkCityId ? 'Select a city first' : 'Select a pincode'}
+                    disabled={!bulkCityId}
+                  />
+
+                  <SearchableField
+                    label="Area"
+                    value={bulkAreaId}
+                    onChange={handleBulkAreaChange}
+                    options={bulkAreaOptions}
+                    placeholder={!bulkPincodeId ? 'Select a pincode first' : 'Select an area'}
+                    disabled={!bulkPincodeId}
+                  />
+
+                  <SearchableField
+                    label="Location"
+                    value={bulkLocationId}
+                    onChange={setBulkLocationId}
+                    options={bulkLocationOptions}
+                    placeholder={!bulkAreaId ? 'Select an area first' : 'Select a location'}
+                    disabled={!bulkAreaId}
+                  />
+
+                  <InputField
+                    label="Landmark"
+                    value={bulkLandmark}
+                    onChange={(e) => setBulkLandmark(e.target.value)}
+                    placeholder="Opposite mall gate, near metro..."
+                  />
+                </div>
+              </section>
+
+              <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-[0_10px_24px_rgba(15,23,42,0.04)] dark:border-slate-700 dark:bg-[#1E293B]">
+                <SectionTitle
+                  title="Slot Configuration"
+                  description="Choose a creation mode and define vehicle type, pricing, and floor."
+                />
+                <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-5">
+                  <SearchableField
+                    label="Vehicle Type"
+                    value={bulkVehicleType}
+                    onChange={setBulkVehicleType}
+                    options={vehicleTypeOptions}
+                    placeholder="Select vehicle type"
+                  />
+
+                  <SearchableField
+                    label="Create Mode"
+                    value={bulkCreateMode}
+                    onChange={setBulkCreateMode}
+                    options={[
+                      { value: 'pattern', label: 'Pattern' },
+                      { value: 'by_type', label: 'By Type Counts' },
+                    ]}
+                    placeholder="Select mode"
+                  />
+
+                  {bulkCreateMode === 'pattern' && (
+                    <SearchableField
+                      label="Slot Type"
+                      value={bulkSlotType}
+                      onChange={setBulkSlotType}
+                      options={slotTypeOptions}
+                      placeholder="Select slot type"
+                    />
+                  )}
+
+                  <InputField
+                    label="Price"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={bulkPrice}
+                    onChange={(e) => setBulkPrice(e.target.value)}
+                    placeholder="Hourly price"
+                  />
+
+                  <InputField
+                    label="Floor"
+                    type="number"
+                    min="1"
+                    step="1"
+                    value={bulkFloor}
+                    onChange={(e) => setBulkFloor(e.target.value)}
+                    placeholder="1"
+                  />
+                </div>
+              </section>
+
+              {bulkCreateMode === 'by_type' && (
+                <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-[0_10px_24px_rgba(15,23,42,0.04)] dark:border-slate-700 dark:bg-[#1E293B]">
+                  <SectionTitle
+                    title="Type Batches"
+                    description="Add multiple slot groups in one go (example: EV 20 + Normal 30)."
+                  />
+
+                  <div className="mt-6 space-y-3">
+                    {(bulkTypeBatches || []).map((batch, index) => (
+                      <div
+                        key={batch.id}
+                        className="grid grid-cols-1 gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-white/5 md:grid-cols-[1fr,1fr,1fr,auto]"
+                      >
+                        <div>
+                          <FieldLabel>Slot Type</FieldLabel>
+                          <select
+                            value={batch.slotType}
+                            onChange={(e) => updateBulkTypeBatch(batch.id, 'slotType', e.target.value)}
+                            className={inputClassName}
+                          >
+                            {slotTypeOptions.map((option) => (
+                              <option key={option.value} value={option.value}>
+                                {option.label}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div>
+                          <FieldLabel>Prefix</FieldLabel>
+                          <input
+                            value={batch.prefix}
+                            onChange={(e) => updateBulkTypeBatch(batch.id, 'prefix', e.target.value)}
+                            placeholder={batch.slotType === 'ev' ? 'EV' : 'N'}
+                            className={inputClassName}
+                          />
+                        </div>
+
+                        <div>
+                          <FieldLabel>Count</FieldLabel>
+                          <input
+                            type="number"
+                            min="1"
+                            step="1"
+                            value={batch.count}
+                            onChange={(e) => updateBulkTypeBatch(batch.id, 'count', e.target.value)}
+                            placeholder="20"
+                            className={inputClassName}
+                          />
+                        </div>
+
+                        <div className="flex items-end justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => removeBulkTypeBatch(batch.id)}
+                            disabled={bulkSubmitting || (bulkTypeBatches || []).length <= 1}
+                            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black uppercase tracking-wide text-slate-700 transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-[#0F172A] dark:text-white dark:hover:bg-white/5"
+                            title="Remove batch"
+                          >
+                            Remove
+                          </button>
+                        </div>
+
+                        {index === (bulkTypeBatches || []).length - 1 && (
+                          <div className="md:col-span-4">
+                            <button
+                              type="button"
+                              onClick={addBulkTypeBatch}
+                              disabled={bulkSubmitting}
+                              className="mt-1 inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-xs font-black uppercase tracking-wide text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-white/10"
+                            >
+                              <FaPlus size={12} />
+                              Add Batch
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {bulkCreateMode === 'pattern' && (
+                <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-[0_10px_24px_rgba(15,23,42,0.04)] dark:border-slate-700 dark:bg-[#1E293B]">
+                  <SectionTitle
+                    title="Pattern Builder"
+                  description="Choose A→Z range or comma list, and the numeric range."
+                />
+
+                <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
+                  <div>
+                    <FieldLabel>Prefix Mode</FieldLabel>
+                    <div className="grid grid-cols-3 gap-2">
+                      {[
+                        ['range', 'A → Z'],
+                        ['single', 'Single'],
+                        ['list', 'List'],
+                      ].map(([key, label]) => (
+                        <button
+                          key={key}
+                          type="button"
+                          onClick={() => setBulkPrefixMode(key)}
+                          className={`rounded-xl px-3 py-2 text-xs font-black uppercase tracking-[0.14em] transition-colors ${
+                            bulkPrefixMode === key
+                              ? 'bg-blue-600 text-white'
+                              : 'bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-white/10 dark:text-white dark:hover:bg-white/15'
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {bulkPrefixMode === 'range' ? (
+                    <>
+                      <InputField
+                        label="Prefix From"
+                        value={bulkPrefixFrom}
+                        onChange={(e) => setBulkPrefixFrom(e.target.value)}
+                        placeholder="A"
+                      />
+                      <InputField
+                        label="Prefix To"
+                        value={bulkPrefixTo}
+                        onChange={(e) => setBulkPrefixTo(e.target.value)}
+                        placeholder="Z"
+                      />
+                    </>
+                  ) : (
+                    <div className="md:col-span-2">
+                      <InputField
+                        label={bulkPrefixMode === 'list' ? 'Prefixes (comma separated)' : 'Prefix'}
+                        value={bulkPrefixes}
+                        onChange={(e) => setBulkPrefixes(e.target.value)}
+                        placeholder={bulkPrefixMode === 'list' ? 'A, D, F' : 'A'}
+                      />
+                      <p className="mt-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
+                        Examples: <span className="font-black">A1 → A300</span>,{' '}
+                        <span className="font-black">D1 → D300</span>
+                      </p>
+                    </div>
+                  )}
+
+                  <InputField
+                    label="Number From"
+                    type="number"
+                    min="1"
+                    step="1"
+                    value={bulkNumberFrom}
+                    onChange={(e) => setBulkNumberFrom(e.target.value)}
+                    placeholder="1"
+                  />
+                  <InputField
+                    label="Number To"
+                    type="number"
+                    min="1"
+                    step="1"
+                    value={bulkNumberTo}
+                    onChange={(e) => setBulkNumberTo(e.target.value)}
+                    placeholder="300"
+                  />
+                </div>
+              </section>
+              )}
+            </div>
+
+            <aside className="space-y-4">
+              <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-[0_10px_24px_rgba(15,23,42,0.04)] dark:border-slate-700 dark:bg-[#1E293B]">
+                <p className="text-sm font-black text-slate-900 dark:text-white">Preview</p>
+                <p className="mt-2 text-sm font-medium text-slate-500 dark:text-slate-400">
+                  {bulkRequestedCountDisplay
+                    ? `Creates up to ${bulkRequestedCountDisplay} slots (existing ones are skipped).`
+                    : bulkCreateMode === 'by_type'
+                      ? 'Add at least one batch (type + prefix + count) to see the requested count.'
+                      : 'Fill the pattern fields to see the requested count.'}
+                </p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <PreviewBadge>{bulkVehicleType}</PreviewBadge>
+                  <PreviewBadge>{bulkCreateMode === 'pattern' ? bulkSlotType : 'mixed'}</PreviewBadge>
+                  <PreviewBadge>{bulkFloor || '1'}</PreviewBadge>
+                  <PreviewBadge>{bulkPincode || 'pincode'}</PreviewBadge>
+                </div>
+                <p className="mt-5 text-xs font-semibold text-slate-500 dark:text-slate-400">
+                  User dashboard loads slots from the same location blueprint API, filtered by vehicle type.
+                </p>
+              </div>
+
+              <div className="rounded-[2rem] border border-slate-200 bg-slate-50 p-6 shadow-[0_10px_24px_rgba(15,23,42,0.04)] dark:border-slate-700 dark:bg-white/5">
+                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
+                  Selected Location
+                </p>
+                <p className="mt-2 text-lg font-black text-slate-900 dark:text-white">
+                  {bulkLocation || 'Choose location'}
+                </p>
+                <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">
+                  {[bulkArea, bulkCity].filter(Boolean).join(', ') || 'Select city & area'}
+                </p>
+              </div>
+            </aside>
+          </div>
+
+          <div className="flex flex-col-reverse gap-3 border-t border-slate-200 pt-6 sm:flex-row sm:justify-end">
+            <button
+              type="button"
+              onClick={() => {
+                setBulkModalOpen(false);
+                resetBulkForm();
+              }}
+              disabled={bulkSubmitting}
+              className="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-700 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-[#1E293B] dark:text-white dark:hover:bg-white/5"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={bulkSubmitting}
+              className="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-white/10"
+            >
+              {bulkSubmitting ? 'Creating...' : 'Create Slots'}
             </button>
           </div>
         </form>

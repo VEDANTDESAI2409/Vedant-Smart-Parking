@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Wrapper } from '@googlemaps/react-wrapper';
+import { Wrapper, Status } from '@googlemaps/react-wrapper';
 import { Link, useNavigate } from 'react-router-dom';
 import { MapPinned, Navigation, ParkingSquare } from 'lucide-react';
 import { locationsAPI } from '../../services/api';
@@ -24,9 +24,9 @@ const DARK_MAP_STYLES = [
 
 const renderStatus = (status) => {
   switch (status) {
-    case 'LOADING':
+    case Status.LOADING:
       return <MapStatus title="Loading map" description="Connecting to Google Maps..." />;
-    case 'FAILURE':
+    case Status.FAILURE:
       return (
         <MapStatus
           title="Map unavailable"
@@ -198,6 +198,7 @@ const MapCanvas = ({ onPermissionStateChange, userLocation, enableLiveUpdate }) 
   const [parkingLots, setParkingLots] = useState([]);
   const [loadingLots, setLoadingLots] = useState(true);
   const [lotsError, setLotsError] = useState('');
+  const [mapError, setMapError] = useState(false);
 
   useEffect(() => {
     const fetchLocations = async () => {
@@ -241,24 +242,32 @@ const MapCanvas = ({ onPermissionStateChange, userLocation, enableLiveUpdate }) 
     const initialize = async () => {
       if (!mapRef.current || !window.google?.maps || loadingLots) return;
 
-      const { Map } = await window.google.maps.importLibrary('maps');
-      const { AdvancedMarkerElement } = await window.google.maps.importLibrary('marker');
+      try {
+        const { Map } = await window.google.maps.importLibrary('maps');
+        const { AdvancedMarkerElement } = await window.google.maps.importLibrary('marker');
 
-      if (!mounted) return;
+        if (!mounted || !mapRef.current) return;
 
-      map = new Map(mapRef.current, {
-        center: DEFAULT_CENTER,
-        zoom: 13,
-        mapId: import.meta.env.VITE_GOOGLE_MAPS_MAP_ID || 'DEMO_MAP_ID',
-        disableDefaultUI: true,
-        zoomControl: true,
-        fullscreenControl: false,
-        streetViewControl: false,
-        mapTypeControl: false,
-        clickableIcons: false,
-        gestureHandling: 'greedy',
-        styles: DARK_MAP_STYLES,
-      });
+        const googleMapId = import.meta.env.VITE_GOOGLE_MAPS_MAP_ID || null;
+        const mapOptions = {
+          center: DEFAULT_CENTER,
+          zoom: 13,
+          disableDefaultUI: true,
+          zoomControl: true,
+          fullscreenControl: false,
+          streetViewControl: false,
+          mapTypeControl: false,
+          clickableIcons: false,
+          gestureHandling: 'greedy',
+        };
+
+        if (googleMapId) {
+          mapOptions.mapId = googleMapId;
+        } else {
+          mapOptions.styles = DARK_MAP_STYLES;
+        }
+
+        map = new Map(mapRef.current, mapOptions);
 
       parkingLots.forEach((lot) => {
         const marker = new AdvancedMarkerElement({
@@ -268,7 +277,7 @@ const MapCanvas = ({ onPermissionStateChange, userLocation, enableLiveUpdate }) 
           content: createParkingPin(),
         });
 
-        marker.addListener('click', () => {
+        marker.addEventListener('gmp-click', () => {
           navigate(`/parking/${lot._id || lot.id}`);
         });
 
@@ -333,23 +342,56 @@ const MapCanvas = ({ onPermissionStateChange, userLocation, enableLiveUpdate }) 
           maximumAge: 60000,
         },
       );
+    } catch (error) {
+      console.error('Google Maps initialization failed:', error);
+      if (mounted) {
+        setMapError(true);
+      }
+    }
     };
 
     initialize();
 
     return () => {
       mounted = false;
-      if (userMarker) {
+      if (userMarker?.map) {
         userMarker.map = null;
       }
       lotMarkers.forEach((marker) => {
-        marker.map = null;
+        if (marker?.map) {
+          marker.map = null;
+        }
       });
     };
   }, [loadingLots, navigate, onPermissionStateChange, parkingLots, userLocation, enableLiveUpdate]);
 
   if (loadingLots) {
     return <MapStatus title="Loading locations" description="Fetching admin-added parking locations..." />;
+  }
+
+  if (mapError) {
+    return (
+      <div className="w-full rounded-[40px] border border-[rgba(64,138,113,0.14)] bg-[linear-gradient(180deg,#ffffff_0%,#f4f8f5_100%)] p-4 shadow-[0_34px_80px_rgba(17,31,26,0.12)] sm:p-5">
+        <div className="mb-4 flex flex-wrap items-start justify-between gap-3 border-b border-[rgba(64,138,113,0.12)] px-1 pb-4">
+          <div>
+            <p className="text-[0.78rem] uppercase tracking-[0.3em] text-slate-400">Live parking map</p>
+            <h3 className="mt-2 text-[1.65rem] font-semibold tracking-[-0.03em] text-[var(--color-secondary)]">Nearby parking lots</h3>
+          </div>
+          <div className="rounded-full border border-[rgba(64,138,113,0.14)] bg-white px-4 py-2 text-right">
+            <p className="text-[0.72rem] uppercase tracking-[0.24em] text-slate-400">Fallback mode</p>
+            <p className="mt-1 text-sm font-semibold text-[var(--color-secondary)]">Google Maps failed</p>
+          </div>
+        </div>
+
+        <SuratFallbackMap parkingLots={parkingLots.length ? parkingLots : suratDemoParkingLots} />
+
+        <div className="mt-4 rounded-2xl border border-[rgba(64,138,113,0.14)] bg-white px-4 py-3">
+          <p className="text-xs leading-6 text-slate-600">
+            Google Maps failed to initialize. Check your `VITE_GOOGLE_MAPS_API_KEY` and `VITE_GOOGLE_MAPS_MAP_ID`, or switch to fallback mode.
+          </p>
+        </div>
+      </div>
+    );
   }
 
   if (lotsError || !parkingLots.length) {
@@ -438,6 +480,7 @@ const HeroParkingMap = () => {
   const [enableLiveUpdate, setEnableLiveUpdate] = useState(true);
   const [publicLocations, setPublicLocations] = useState([]);
   const [loadingPublicLocations, setLoadingPublicLocations] = useState(true);
+  const [mapApiFailed, setMapApiFailed] = useState(false);
 
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 
@@ -459,6 +502,21 @@ const HeroParkingMap = () => {
     fetchPublicLocations();
   }, []);
 
+  useEffect(() => {
+    const authFailureHandler = () => {
+      console.error('Google Maps auth failure detected. Falling back to the demo map.');
+      setMapApiFailed(true);
+    };
+
+    window.gm_authFailure = authFailureHandler;
+
+    return () => {
+      if (window.gm_authFailure === authFailureHandler) {
+        window.gm_authFailure = undefined;
+      }
+    };
+  }, []);
+
   const handlePermissionStateChange = (newState) => {
     setPermissionState(newState);
     if (newState.location) {
@@ -469,7 +527,7 @@ const HeroParkingMap = () => {
 
   const resolvedLocations = publicLocations.length ? publicLocations : suratDemoParkingLots;
 
-  if (!apiKey) {
+  if (!apiKey || mapApiFailed) {
     return (
       <div className="w-full rounded-[40px] border border-[rgba(64,138,113,0.14)] bg-[linear-gradient(180deg,#ffffff_0%,#f4f8f5_100%)] p-4 shadow-[0_34px_80px_rgba(17,31,26,0.12)] sm:p-5">
         <div className="mb-4 flex flex-wrap items-start justify-between gap-3 border-b border-[rgba(64,138,113,0.12)] px-1 pb-4">

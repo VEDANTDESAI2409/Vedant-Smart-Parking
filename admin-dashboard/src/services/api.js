@@ -42,6 +42,30 @@ export const slotsAPI = {
   getAll: (params) => api.get('/slots', { params }),
   getById: (id) => api.get(`/slots/${id}`),
   create: (data) => api.post('/slots', data),
+  bulkCreate: async (data) => {
+    const endpoints = [
+      '/slots/bulk',
+      '/slots/bulk/create',
+      '/parkingslots/bulk',
+      '/parkingslots/bulk/create',
+    ];
+
+    let lastError;
+    for (const endpoint of endpoints) {
+      try {
+        // eslint-disable-next-line no-await-in-loop
+        return await api.post(endpoint, data);
+      } catch (error) {
+        const status = error?.response?.status;
+        if (status !== 404) {
+          throw error;
+        }
+        lastError = error;
+      }
+    }
+
+    throw lastError;
+  },
   update: (id, data) => api.put(`/slots/${id}`, data),
   delete: (id) => api.delete(`/slots/${id}`),
   getStats: (id) => api.get(`/slots/${id}/stats`),

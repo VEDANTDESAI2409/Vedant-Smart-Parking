@@ -48,6 +48,10 @@ const nearbyLocationsValidation = [
   query('lat').isFloat().withMessage('Latitude is required'),
   query('lng').isFloat().withMessage('Longitude is required'),
   query('radiusKm').optional().isFloat({ min: 1, max: 25 }).withMessage('Radius must be between 1 and 25 km'),
+  query('vehicleType')
+    .optional()
+    .isIn(['car', 'bike'])
+    .withMessage('Vehicle type must be car or bike'),
 ];
 
 router.get('/nearby', nearbyLocationsValidation, getNearbyLocations);

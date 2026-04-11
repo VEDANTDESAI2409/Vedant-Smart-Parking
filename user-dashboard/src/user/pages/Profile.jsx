@@ -10,9 +10,14 @@ const Profile = () => {
   });
 
   const [vehicles] = useState([
-    { id: 1, make: 'Toyota', model: 'Camry', year: '2020', licensePlate: 'ABC-123', color: 'Blue' },
-    { id: 2, make: 'Honda', model: 'Civic', year: '2019', licensePlate: 'XYZ-789', color: 'Red' },
+    { id: 1, make: 'Toyota', model: 'Camry', year: '2020', licensePlate: 'GJ05AB1234', color: 'Blue', vehicleType: 'car' },
+    { id: 2, make: 'Honda', model: 'Civic', year: '2019', licensePlate: 'MH12CD3456', color: 'Red', vehicleType: 'car' },
   ]);
+
+  const formatIndianPlate = (plate) => {
+    if (!plate) return '';
+    return plate.toUpperCase().replace(/\s/g, '');
+  };
 
   const [paymentMethods] = useState([
     { id: 1, type: 'Credit Card', last4: '1234', brand: 'Visa', expiry: '12/25' },
@@ -115,19 +120,31 @@ const Profile = () => {
                   Add Vehicle
                 </button>
               </div>
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {vehicles.map((vehicle) => (
-                  <div key={vehicle.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-md">
-                    <div className="flex items-center">
-                      <FaCar className="text-gray-400 mr-3" />
-                      <div>
-                        <p className="text-sm font-medium text-gray-900 dark:text-white">
+                  <div key={vehicle.id} className="flex items-center justify-between gap-4 overflow-hidden rounded-3xl border border-slate-200 bg-gradient-to-r from-white to-slate-50 px-4 py-4 shadow-sm dark:border-slate-700 dark:bg-slate-900/80">
+                    <div className="flex items-center gap-4 min-w-0">
+                      <div className="flex h-16 w-12 flex-col items-center justify-center rounded-l-3xl bg-blue-600 text-[9px] font-black uppercase tracking-[0.3em] text-white">
+                        <span>I</span>
+                        <span>N</span>
+                        <span>D</span>
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[10px] uppercase tracking-[0.32em] text-slate-400 dark:text-slate-500">
+                          License Plate
+                        </p>
+                        <div className="mt-1 max-w-full overflow-x-auto text-slate-900 dark:text-white">
+                          <p className="font-mono text-base font-black tracking-[0.18em] whitespace-pre text-slate-900 dark:text-white">
+                            {formatIndianPlate(vehicle.licensePlate)}
+                          </p>
+                        </div>
+                        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                           {vehicle.year} {vehicle.make} {vehicle.model}
                         </p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">
-                          {vehicle.licensePlate} • {vehicle.color}
-                        </p>
                       </div>
+                    </div>
+                    <div className="flex-shrink-0 rounded-full bg-slate-100 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.18em] text-slate-500 dark:bg-slate-700 dark:text-slate-300">
+                      {vehicle.vehicleType || 'Car'}
                     </div>
                   </div>
                 ))}
