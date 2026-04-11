@@ -37,6 +37,7 @@ const updateAdminValidation = [
 
 // Public routes
 router.post('/register', registerValidation, register);
+router.post('/signup', registerValidation, register);
 router.post('/login', loginValidation, login);
 router.post('/admin/login', loginValidation, adminLogin);
 

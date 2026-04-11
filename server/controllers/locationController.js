@@ -4,6 +4,7 @@ const Location = require('../models/Location');
 const City = require('../models/City');
 const Pincode = require('../models/Pincode');
 const Area = require('../models/Area');
+const ParkingSlot = require('../models/ParkingSlot');
 const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 const buildLocationPopulate = () => [
@@ -69,6 +70,56 @@ const getPublicLocation = asyncHandler(async (req, res) => {
     data: formatPublicLocation(location),
   });
 });
+
+const calculateDistanceKm = (lat1, lng1, lat2, lng2) => {
+  const toRad = (value) => (value * Math.PI) / 180;
+  const earthRadiusKm = 6371;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRad(lat1)) *
+      Math.cos(toRad(lat2)) *
+      Math.sin(dLng / 2) *
+      Math.sin(dLng / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return earthRadiusKm * c;
+};
+
+const releaseExpiredLockIfNeeded = async (slot) => {
+  if (slot.lockExpiresAt && slot.lockExpiresAt.getTime() <= Date.now()) {
+    slot.lockExpiresAt = null;
+    slot.lockedBy = null;
+    slot.lockToken = null;
+    if (slot.status === 'locked') {
+      slot.status = 'available';
+    }
+    await slot.save();
+  }
+  return slot;
+};
+
+const buildLegacySlotQuery = (location, vehicleType = null) => {
+  const query = {
+    city: location.cityId?.name || '',
+    area: location.areaId?.name || '',
+    location: location.name,
+    pincode: location.pincodeId?.pincode || '',
+    $or: [{ locationId: location._id }, { locationId: null }, { locationId: { $exists: false } }],
+    $and: [{ $or: [{ isActive: true }, { isActive: { $exists: false } }] }],
+  };
+
+  if (vehicleType) {
+    query.$and.push({
+      $or: [
+        { supportedVehicleTypes: vehicleType },
+        { vehicleType },
+      ],
+    });
+  }
+
+  return query;
+};
 
 // @desc    Get all locations
 // @route   GET /api/locations
@@ -284,4 +335,135 @@ module.exports = {
   createLocation,
   updateLocation,
   deleteLocation,
+  getNearbyLocations: asyncHandler(async (req, res) => {
+    const lat = Number(req.query.lat);
+    const lng = Number(req.query.lng);
+    const radiusKm = Math.min(Number(req.query.radiusKm) || 10, 25);
+
+    if (Number.isNaN(lat) || Number.isNaN(lng)) {
+      res.status(400);
+      throw new Error('Valid lat and lng query params are required');
+    }
+
+    const locations = await Location.find({ status: true })
+      .populate(buildLocationPopulate())
+      .sort({ createdAt: -1 });
+
+    const nearbyLocations = (
+      await Promise.all(
+        locations.map(async (location) => {
+          const distanceKm = calculateDistanceKm(lat, lng, location.lat, location.lng);
+
+          if (distanceKm > radiusKm) {
+            return null;
+          }
+
+          const slots = await ParkingSlot.find(buildLegacySlotQuery(location));
+
+          const activeSlots = await Promise.all(slots.map(releaseExpiredLockIfNeeded));
+          const availableSlots = activeSlots.filter(
+            (slot) => (slot.status || 'available') === 'available' && (slot.slotType || 'normal') !== 'reserved'
+          ).length;
+
+          return {
+            id: location._id,
+            name: location.name,
+            city: location.cityId?.name || '',
+            area: location.areaId?.name || '',
+            pincode: location.pincodeId?.pincode || '',
+            address: location.address || '',
+            lat: location.lat,
+            lng: location.lng,
+            distanceKm: Number(distanceKm.toFixed(2)),
+            floors: location.floors || [],
+            totalSlots: activeSlots.length,
+            availableSlots,
+          };
+        })
+      )
+    )
+      .filter(Boolean)
+      .sort((a, b) => a.distanceKm - b.distanceKm);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        locations: nearbyLocations,
+      },
+    });
+  }),
+  getLocationBlueprint: asyncHandler(async (req, res) => {
+    const location = await Location.findById(req.params.id).populate(buildLocationPopulate());
+
+    if (!location) {
+      res.status(404);
+      throw new Error('Location not found');
+    }
+
+    const vehicleType = req.query.vehicleType || 'car';
+    const slots = await ParkingSlot.find(buildLegacySlotQuery(location, vehicleType)).sort({
+      floor: 1,
+      row: 1,
+      column: 1,
+      slotNumber: 1,
+    });
+
+    const preparedSlots = await Promise.all(slots.map(releaseExpiredLockIfNeeded));
+    const floorsMap = new Map();
+
+    preparedSlots.forEach((slot) => {
+      const floorKey = slot.floor || 1;
+      if (!floorsMap.has(floorKey)) {
+        floorsMap.set(floorKey, []);
+      }
+
+      floorsMap.get(floorKey).push({
+        id: slot._id,
+        slotNumber: slot.slotNumber || slot.slotLocation,
+        slotType: slot.slotType || 'normal',
+        status: slot.status || 'available',
+        vehicleType: slot.vehicleType,
+        supportedVehicleTypes: slot.supportedVehicleTypes,
+        row: slot.row,
+        column: slot.column,
+        price: slot.price,
+        hourlyRate: slot.hourlyRate,
+        dailyRate: slot.dailyRate,
+        isBookable: (slot.slotType || 'normal') !== 'reserved' && (slot.status || 'available') === 'available',
+        isLocked: (slot.status || 'available') === 'locked' && !!slot.lockExpiresAt,
+        isAccessible: (slot.slotType || 'normal') === 'disabled',
+      });
+    });
+
+    const floors = Array.from(floorsMap.entries()).map(([floorNumber, floorSlots]) => ({
+      floorNumber,
+      label:
+        location.floors?.find((floor) => floor.floorNumber === floorNumber)?.label ||
+        `Floor ${floorNumber}`,
+      slots: floorSlots,
+    }));
+
+    res.status(200).json({
+      success: true,
+      data: {
+        location: {
+          id: location._id,
+          name: location.name,
+          city: location.cityId?.name || '',
+          area: location.areaId?.name || '',
+          pincode: location.pincodeId?.pincode || '',
+          address: location.address || '',
+          lat: location.lat,
+          lng: location.lng,
+        },
+        floors,
+        legend: [
+          { key: 'normal', label: 'Normal' },
+          { key: 'ev', label: 'EV' },
+          { key: 'reserved', label: 'Reserved' },
+          { key: 'disabled', label: 'Disabled' },
+        ],
+      },
+    });
+  }),
 };
