@@ -23,12 +23,17 @@ const Vehicles = () => {
     registrationExpiry: ''
   });
 
-  useEffect(() => { fetchVehicles(); }, []);
+  useEffect(() => {
+    fetchVehicles();
+    // Refresh data every 30 seconds to show new vehicle registrations automatically
+    const interval = setInterval(fetchVehicles, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   const fetchVehicles = async () => {
     setLoading(true);
     try {
-      const response = await vehiclesAPI.getAll();
+      const response = await vehiclesAPI.getAll({ limit: 1000, page: 1 });
       const data = response.data?.data?.vehicles || response.data?.vehicles || response.data || [];
       setVehicles(Array.isArray(data) ? data : []);
     } catch (error) {
@@ -133,17 +138,15 @@ const Vehicles = () => {
   };
 
   const formatIndianPlate = (plate) => {
-    if(!plate) return "";
-    const clean = plate.toUpperCase().replace(/\s/g, '');
-    const match = clean.match(/^([A-Z]{2})([0-9]{2})([A-Z]{1,2})([0-9]{4})$/);
-    return match ? `${match[1]} ${match[2]} ${match[3]} ${match[4]}` : clean;
+    if (!plate) return '';
+    return plate.toUpperCase().replace(/\s/g, '');
   };
 
   const columns = [
     { 
       header: 'LICENSE PLATE', 
       render: (row) => (
-        <div className="flex min-w-[220px] max-w-[240px] items-center overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-r from-white to-slate-50 shadow-[0_10px_30px_rgba(15,23,42,0.08)] dark:border-slate-700 dark:from-slate-800 dark:to-slate-800/80 dark:shadow-none">
+        <div className="flex min-w-[240px] max-w-[320px] items-center overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-r from-white to-slate-50 shadow-[0_10px_30px_rgba(15,23,42,0.08)] dark:border-slate-700 dark:from-slate-800 dark:to-slate-800/80 dark:shadow-none">
           <div className="flex h-14 w-9 flex-col items-center justify-center bg-blue-700 text-[7px] font-black leading-none tracking-[0.24em] text-white">
             <span>I</span>
             <span>N</span>
@@ -154,11 +157,11 @@ const Vehicles = () => {
               <p className="text-[9px] font-black uppercase tracking-[0.28em] text-slate-400 dark:text-slate-500">
                 License Plate
               </p>
-              <p className="mt-1 truncate font-mono text-[15px] font-black tracking-[0.18em] text-slate-900 dark:text-white">
+              <p className="mt-1 whitespace-nowrap font-mono text-[15px] font-black tracking-[0.18em] text-slate-900 dark:text-white">
                 {formatIndianPlate(row.licensePlate)}
               </p>
             </div>
-            <div className="ml-3 rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-slate-500 dark:bg-slate-700/70 dark:text-slate-300">
+            <div className="ml-3 shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-slate-500 dark:bg-slate-700/70 dark:text-slate-300">
               {row.vehicleType || 'car'}
             </div>
           </div>
@@ -190,7 +193,13 @@ const Vehicles = () => {
         </span>
       )
     },
-    { header: 'OWNER', render: (row) => <span className="text-sm font-bold text-slate-700 dark:text-slate-300">{row.owner?.name || '---'}</span> },
+    { header: 'OWNER', render: (row) => (
+      <div className="flex flex-col text-sm text-slate-700 dark:text-slate-300">
+        <span className="font-bold">{row.owner?.name || '---'}</span>
+        <span className="text-xs text-slate-500 dark:text-slate-400">{row.owner?.email || '---'}</span>
+        <span className="text-xs text-slate-500 dark:text-slate-400">{row.owner?.phone || '---'}</span>
+      </div>
+    ) },
     { 
       header: 'ACTIONS', 
       render: (row) => (

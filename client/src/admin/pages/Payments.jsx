@@ -109,7 +109,7 @@ const Payments = () => {
     },
     { 
       header: 'AMOUNT', 
-      render: (row) => <span className="text-slate-900 dark:text-gray-100 font-black">${row.amount.toFixed(2)}</span> 
+      render: (row) => <span className="text-slate-900 dark:text-gray-100 font-black">₹{row.amount.toFixed(2)}</span> 
     },
     { 
       header: 'METHOD', 
