@@ -154,34 +154,56 @@ exports.deleteReport = async (req, res) => {
 // @access  Private/Admin
 exports.getDashboardStats = async (req, res) => {
   try {
+    const now = new Date();
+    const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+    const sevenDaysAgo = new Date(now);
+    sevenDaysAgo.setHours(0, 0, 0, 0);
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
+
     const [
       totalSlots,
       occupiedSlots,
-      availableSlots,
-      totalBookings,
+      pendingSlots,
       activeBookings,
       totalUsers,
-      totalVehicles,
+      totalRevenueResult,
       revenueData,
-      bookingStatusData
+      bookingStatusData,
+      mostUsedSlotTypeResult,
+      mostBookedVehicleTypeResult,
+      occupancyResults,
     ] = await Promise.all([
-      ParkingSlot.countDocuments(),
-      ParkingSlot.countDocuments({ status: { $in: ['occupied', 'reserved'] } }),
-      ParkingSlot.countDocuments({ status: 'available' }),
-      Booking.countDocuments(),
-      Booking.countDocuments({ status: 'active' }),
-      User.countDocuments(),
-      Vehicle.countDocuments(),
-      // Revenue by month (last 6 months)
+      ParkingSlot.countDocuments({ isActive: true }),
+      ParkingSlot.countDocuments({ isActive: true, status: 'occupied' }),
+      ParkingSlot.countDocuments({ isActive: true, status: { $in: ['locked', 'maintenance'] } }),
+      Booking.countDocuments({
+        status: { $in: ['confirmed', 'active'] },
+        endTime: { $gte: now },
+      }),
+      User.countDocuments({ role: 'user' }),
       Payment.aggregate([
         {
-          $match: { status: 'completed' }
+          $match: { status: 'completed' },
+        },
+        {
+          $group: {
+            _id: null,
+            totalRevenue: { $sum: '$amount' },
+          },
+        },
+      ]),
+      Payment.aggregate([
+        {
+          $match: {
+            status: 'completed',
+            paymentDate: { $gte: sixMonthsAgo },
+          }
         },
         {
           $group: {
             _id: {
-              year: { $year: '$createdAt' },
-              month: { $month: '$createdAt' }
+              year: { $year: '$paymentDate' },
+              month: { $month: '$paymentDate' }
             },
             revenue: { $sum: '$amount' }
           }
@@ -198,7 +220,6 @@ exports.getDashboardStats = async (req, res) => {
           $sort: { year: 1, month: 1 }
         }
       ]),
-      // Booking status counts
       Booking.aggregate([
         {
           $group: {
@@ -206,31 +227,55 @@ exports.getDashboardStats = async (req, res) => {
             count: { $sum: 1 }
           }
         }
-      ])
-    ]);
-
-    // Occupancy data for the last 7 days (based on bookings startTime)
-    const startDate = new Date();
-    startDate.setHours(0, 0, 0, 0);
-    startDate.setDate(startDate.getDate() - 6); // include today
-
-    const occupancyResults = await Booking.aggregate([
-      {
-        $match: {
-          startTime: { $gte: startDate },
-          status: { $in: ['active', 'completed'] }
-        }
-      },
-      {
-        $group: {
-          _id: {
-            year: { $year: '$startTime' },
-            month: { $month: '$startTime' },
-            day: { $dayOfMonth: '$startTime' }
+      ]),
+      Booking.aggregate([
+        {
+          $match: {
+            'locationSnapshot.slotType': { $exists: true, $ne: '' },
           },
-          count: { $sum: 1 }
+        },
+        {
+          $group: {
+            _id: '$locationSnapshot.slotType',
+            count: { $sum: 1 },
+          },
+        },
+        { $sort: { count: -1 } },
+        { $limit: 1 },
+      ]),
+      Booking.aggregate([
+        {
+          $match: {
+            'locationSnapshot.vehicleType': { $exists: true, $ne: '' },
+          },
+        },
+        {
+          $group: {
+            _id: '$locationSnapshot.vehicleType',
+            count: { $sum: 1 },
+          },
+        },
+        { $sort: { count: -1 } },
+        { $limit: 1 },
+      ]),
+      Booking.aggregate([
+        {
+          $match: {
+            startTime: { $gte: sevenDaysAgo },
+            status: { $in: ['confirmed', 'active', 'completed'] }
+          }
+        },
+        {
+          $group: {
+            _id: {
+              year: { $year: '$startTime' },
+              month: { $month: '$startTime' },
+              day: { $dayOfMonth: '$startTime' }
+            },
+            count: { $sum: 1 }
+          }
         }
-      }
+      ])
     ]);
 
     const occupancyMap = occupancyResults.reduce((acc, item) => {
@@ -241,7 +286,7 @@ exports.getDashboardStats = async (req, res) => {
 
     const occupancyData = [];
     for (let i = 6; i >= 0; i -= 1) {
-      const date = new Date();
+      const date = new Date(now);
       date.setHours(0, 0, 0, 0);
       date.setDate(date.getDate() - i);
       const key = `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
@@ -251,10 +296,19 @@ exports.getDashboardStats = async (req, res) => {
       });
     }
 
-    // Convert revenue data to month labels
-    const monthlyRevenue = revenueData.map((item) => {
-      const monthName = new Date(item.year, item.month - 1).toLocaleString('default', { month: 'short' });
-      return { month: monthName, revenue: item.revenue };
+    const monthlyRevenueMap = revenueData.reduce((acc, item) => {
+      acc[`${item.year}-${item.month}`] = item.revenue;
+      return acc;
+    }, {});
+
+    const monthlyRevenue = Array.from({ length: 6 }, (_, index) => {
+      const monthDate = new Date(now.getFullYear(), now.getMonth() - (5 - index), 1);
+      const key = `${monthDate.getFullYear()}-${monthDate.getMonth() + 1}`;
+
+      return {
+        month: monthDate.toLocaleString('default', { month: 'short' }),
+        revenue: monthlyRevenueMap[key] || 0,
+      };
     });
 
     const bookingStatusDataFormatted = bookingStatusData.map((item) => {
@@ -265,17 +319,21 @@ exports.getDashboardStats = async (req, res) => {
       };
     });
 
+    const totalRevenue = totalRevenueResult[0]?.totalRevenue || 0;
+    const mostUsedSlotType = mostUsedSlotTypeResult[0]?._id || 'N/A';
+    const mostBookedVehicleType = mostBookedVehicleTypeResult[0]?._id || 'N/A';
+
     res.json({
       success: true,
       data: {
         totalSlots,
         occupiedSlots,
-        availableSlots,
-        totalBookings,
+        pendingSlots,
         activeBookings,
         totalUsers,
-        totalVehicles,
-        totalRevenue: revenueData.reduce((sum, item) => sum + item.revenue, 0),
+        totalRevenue,
+        mostUsedSlotType,
+        mostBookedVehicleType,
         monthlyRevenue,
         occupancyData,
         bookingStatusData: bookingStatusDataFormatted
