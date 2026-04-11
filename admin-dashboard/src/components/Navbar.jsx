@@ -1,6 +1,6 @@
 import React from 'react';
-import { FaBars, FaShieldAlt, FaSignOutAlt } from 'react-icons/fa';
-import { useLocation } from 'react-router-dom';
+import { FaArrowLeft, FaBars, FaShieldAlt, FaSignOutAlt } from 'react-icons/fa';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 const pageLabels = {
@@ -22,6 +22,17 @@ const pageLabels = {
 const Navbar = ({ toggleSidebar, systemName }) => {
   const { user, logout } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
+  const canGoBack = location.pathname !== '/admin/dashboard';
+
+  const handleBack = () => {
+    if (window.history.length > 1) {
+      navigate(-1);
+      return;
+    }
+
+    navigate('/admin/dashboard');
+  };
 
   return (
     <header className="relative z-10 border-b border-sky-100 bg-white/80 backdrop-blur-2xl">
@@ -34,6 +45,17 @@ const Navbar = ({ toggleSidebar, systemName }) => {
           >
             <FaBars className="h-4 w-4" />
           </button>
+
+          {canGoBack && (
+            <button
+              type="button"
+              onClick={handleBack}
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-sky-200"
+            >
+              <FaArrowLeft className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Back</span>
+            </button>
+          )}
 
           <div className="min-w-0">
             <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-teal-700">
