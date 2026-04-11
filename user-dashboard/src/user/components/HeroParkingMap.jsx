@@ -192,7 +192,7 @@ const SuratFallbackMap = ({ parkingLots }) => (
   </div>
 );
 
-const MapCanvas = ({ onPermissionStateChange }) => {
+const MapCanvas = ({ onPermissionStateChange, userLocation, enableLiveUpdate }) => {
   const mapRef = useRef(null);
   const navigate = useNavigate();
   const [parkingLots, setParkingLots] = useState([]);
@@ -203,12 +203,25 @@ const MapCanvas = ({ onPermissionStateChange }) => {
     const fetchLocations = async () => {
       try {
         setLoadingLots(true);
-        const response = await locationsAPI.getPublic();
+        let response;
+
+        if (enableLiveUpdate && userLocation) {
+          // Fetch nearby locations if user location is available
+          response = await locationsAPI.getNearby({
+            lat: userLocation.lat,
+            lng: userLocation.lng,
+            radiusKm: 15, // Search radius in km
+          });
+        } else {
+          // Fallback to all public locations
+          response = await locationsAPI.getPublic();
+        }
+
         const list = response?.data?.data?.locations || [];
         setParkingLots(Array.isArray(list) ? list : []);
         setLotsError('');
       } catch (error) {
-        console.error('Error fetching public locations:', error);
+        console.error('Error fetching parking locations:', error);
         setParkingLots([]);
         setLotsError('Unable to load parking locations from the server.');
       } finally {
@@ -217,7 +230,7 @@ const MapCanvas = ({ onPermissionStateChange }) => {
     };
 
     fetchLocations();
-  }, []);
+  }, [userLocation, enableLiveUpdate]);
 
   useEffect(() => {
     let map;
@@ -256,7 +269,7 @@ const MapCanvas = ({ onPermissionStateChange }) => {
         });
 
         marker.addListener('click', () => {
-          navigate(`/parking/${lot._id}`);
+          navigate(`/parking/${lot._id || lot.id}`);
         });
 
         lotMarkers.push(marker);
@@ -266,6 +279,7 @@ const MapCanvas = ({ onPermissionStateChange }) => {
         onPermissionStateChange({
           kind: 'unsupported',
           message: 'Browser geolocation is not supported on this device.',
+          location: null,
         });
         return;
       }
@@ -292,6 +306,7 @@ const MapCanvas = ({ onPermissionStateChange }) => {
           onPermissionStateChange({
             kind: 'granted',
             message: 'Showing parking lots near your current location.',
+            location: userCenter,
           });
         },
         (error) => {
@@ -306,6 +321,7 @@ const MapCanvas = ({ onPermissionStateChange }) => {
           onPermissionStateChange({
             kind: 'denied',
             message,
+            location: null,
           });
 
           map.setCenter(DEFAULT_CENTER);
@@ -330,18 +346,34 @@ const MapCanvas = ({ onPermissionStateChange }) => {
         marker.map = null;
       });
     };
-  }, [loadingLots, navigate, onPermissionStateChange, parkingLots]);
+  }, [loadingLots, navigate, onPermissionStateChange, parkingLots, userLocation, enableLiveUpdate]);
 
   if (loadingLots) {
     return <MapStatus title="Loading locations" description="Fetching admin-added parking locations..." />;
   }
 
-  if (lotsError) {
-    return <MapStatus title="Locations unavailable" description={lotsError} tone="error" />;
-  }
+  if (lotsError || !parkingLots.length) {
+    return (
+      <div className="w-full rounded-[40px] border border-[rgba(64,138,113,0.14)] bg-[linear-gradient(180deg,#ffffff_0%,#f4f8f5_100%)] p-4 shadow-[0_34px_80px_rgba(17,31,26,0.12)] sm:p-5">
+        <div className="mb-4 flex items-center justify-between gap-4">
+          <div>
+            <p className="text-[0.78rem] uppercase tracking-[0.3em] text-slate-500">Live parking map</p>
+            <h3 className="mt-2 text-[1.65rem] font-semibold tracking-[-0.03em] text-[var(--color-secondary)]">Nearby parking lots</h3>
+          </div>
+          <div className="rounded-full bg-[var(--color-secondary)]/10 px-4 py-2 text-sm font-semibold text-[var(--color-secondary)]">Fallback preview</div>
+        </div>
 
-  if (!parkingLots.length) {
-    return <MapStatus title="No locations yet" description="Add locations from the admin panel to display them on the hero map." />;
+        <SuratFallbackMap parkingLots={suratDemoParkingLots} />
+
+        <div className="mt-4 rounded-2xl border border-[rgba(64,138,113,0.14)] bg-white px-4 py-3 text-sm text-slate-600">
+          {lotsError ? (
+            <p>Unable to load parking locations from server. Showing demo map with animated car behavior until data is available.</p>
+          ) : (
+            <p>No locations found yet. Showing demo map with animated car parking flow while you add locations in admin.</p>
+          )}
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -350,8 +382,8 @@ const MapCanvas = ({ onPermissionStateChange }) => {
       <div className="grid gap-3 border-t border-white/10 px-4 py-4 sm:grid-cols-3">
         {parkingLots.map((lot) => (
           <Link
-            key={lot._id}
-            to={`/parking/${lot._id}`}
+            key={lot._id || lot.id}
+            to={`/parking/${lot._id || lot.id}`}
             className="rounded-[24px] border border-white/10 bg-white/5 px-4 py-4 text-white transition hover:border-[rgba(176,228,204,0.45)] hover:bg-white/10"
           >
             <div className="flex items-center justify-between gap-3">
@@ -361,6 +393,20 @@ const MapCanvas = ({ onPermissionStateChange }) => {
             <p className="mt-2 text-xs leading-6 text-white/65">
               {[lot.city, lot.pincode].filter(Boolean).join(', ') || 'Live location'}
             </p>
+            <div className="mt-3 flex items-center justify-between gap-2">
+              {lot.distanceKm && (
+                <p className="text-xs font-medium text-[var(--color-accent)]">
+                  📍 {lot.distanceKm} km away
+                </p>
+              )}
+              {lot.availableSlots !== undefined && (
+                <p className={`text-xs font-medium ${
+                  lot.availableSlots > 0 ? 'text-green-400' : 'text-red-400'
+                }`}>
+                  {lot.availableSlots} slots available
+                </p>
+              )}
+            </div>
           </Link>
         ))}
       </div>
@@ -386,7 +432,10 @@ const HeroParkingMap = () => {
   const [permissionState, setPermissionState] = useState({
     kind: 'idle',
     message: 'Requesting your location for a more accurate parking view.',
+    location: null,
   });
+  const [userLocation, setUserLocation] = useState(null);
+  const [enableLiveUpdate, setEnableLiveUpdate] = useState(true);
   const [publicLocations, setPublicLocations] = useState([]);
   const [loadingPublicLocations, setLoadingPublicLocations] = useState(true);
 
@@ -409,6 +458,14 @@ const HeroParkingMap = () => {
 
     fetchPublicLocations();
   }, []);
+
+  const handlePermissionStateChange = (newState) => {
+    setPermissionState(newState);
+    if (newState.location) {
+      setUserLocation(newState.location);
+      setEnableLiveUpdate(true); // Auto-enable live updates when location is granted
+    }
+  };
 
   const resolvedLocations = publicLocations.length ? publicLocations : suratDemoParkingLots;
 
@@ -457,7 +514,11 @@ const HeroParkingMap = () => {
 
         <div className="relative">
           <Wrapper apiKey={apiKey} version="weekly" libraries={['marker']} render={renderStatus}>
-            <MapCanvas onPermissionStateChange={setPermissionState} />
+            <MapCanvas 
+              onPermissionStateChange={handlePermissionStateChange} 
+              userLocation={userLocation}
+              enableLiveUpdate={enableLiveUpdate}
+            />
           </Wrapper>
 
           <div className="absolute left-4 top-4 rounded-2xl border border-white/10 bg-[rgba(8,20,18,0.85)] px-4 py-3 text-white shadow-[0_16px_34px_rgba(9,20,19,0.35)] backdrop-blur-md">
@@ -468,6 +529,14 @@ const HeroParkingMap = () => {
               </p>
             </div>
             <p className="mt-2 max-w-[240px] text-xs leading-6 text-white/72">{permissionState.message}</p>
+            {permissionState.kind === 'granted' && (
+              <button
+                onClick={() => setEnableLiveUpdate(!enableLiveUpdate)}
+                className="mt-3 w-full rounded-lg bg-white/10 px-3 py-1.5 text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-white transition hover:bg-white/20"
+              >
+                {enableLiveUpdate ? '📍 Live Enabled' : '📍 Live Disabled'}
+              </button>
+            )}
           </div>
         </div>
 
