@@ -93,7 +93,7 @@ const Booking = () => {
                   </div>
                   <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
                     <FaCreditCard className="mr-2" />
-                    <span className="font-semibold">${booking.totalAmount}</span>
+                    <span className="font-semibold">₹{booking.totalAmount}</span>
                   </div>
                 </div>
 

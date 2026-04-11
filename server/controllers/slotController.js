@@ -254,6 +254,238 @@ const scheduleMaintenance = asyncHandler(async (req, res) => {
   });
 });
 
+// @desc    Create bulk slots with pattern (e.g., A1-A300, D1-D300)
+// @route   POST /api/slots/bulk
+// @access  Private/Admin
+const createBulkSlots = asyncHandler(async (req, res) => {
+  const {
+    locationId,
+    city,
+    pincode,
+    area,
+    location,
+    landmark,
+    vehicleType,
+    slotType,
+    floorPrefix, // legacy: single prefix (e.g., "A")
+    startNumber, // legacy
+    endNumber, // legacy
+    prefixes, // array or comma-separated string: ["A","D"] or "A,D"
+    prefixFrom, // e.g., "A"
+    prefixTo, // e.g., "Z"
+    numberFrom, // e.g., 1
+    numberTo, // e.g., 300
+    floor, // optional floor number (default 1)
+    price,
+  } = req.body;
+
+  const normalizeText = (value) => String(value || '').trim();
+  const normalizePrefix = (value) => normalizeText(value).toUpperCase();
+  const isSingleLetter = (value) => /^[A-Z]$/.test(value);
+
+  // Validate required fields
+  if (
+    !locationId ||
+    !city ||
+    !pincode ||
+    !area ||
+    !location ||
+    !landmark ||
+    !vehicleType ||
+    !slotType ||
+    price === undefined ||
+    price === null ||
+    price === ''
+  ) {
+    return res.status(400).json({
+      success: false,
+      message: 'Please fill all required fields',
+    });
+  }
+
+  const linkedLocation = await Location.findById(locationId);
+  if (!linkedLocation) {
+    return res.status(404).json({
+      success: false,
+      message: 'Linked location not found',
+    });
+  }
+
+  const resolvedVehicleType = normalizeText(vehicleType).toLowerCase();
+  if (!['car', 'bike'].includes(resolvedVehicleType)) {
+    return res.status(400).json({
+      success: false,
+      message: 'Vehicle type must be car or bike',
+    });
+  }
+
+  const resolvedSlotType = normalizeText(slotType).toLowerCase();
+  if (!['normal', 'ev', 'disabled', 'reserved'].includes(resolvedSlotType)) {
+    return res.status(400).json({
+      success: false,
+      message: 'Slot type must be normal, ev, disabled, or reserved',
+    });
+  }
+
+  const start = parseInt(numberFrom ?? startNumber, 10);
+  const end = parseInt(numberTo ?? endNumber, 10);
+
+  if (!Number.isFinite(start) || !Number.isFinite(end) || start <= 0 || end <= 0 || start > end) {
+    return res.status(400).json({
+      success: false,
+      message: 'Invalid slot number range. Start must be <= End and both must be >= 1.',
+    });
+  }
+
+  const parsePrefixes = () => {
+    if (Array.isArray(prefixes) && prefixes.length > 0) {
+      return prefixes
+        .map((item) => normalizePrefix(item))
+        .filter(Boolean);
+    }
+
+    if (typeof prefixes === 'string' && prefixes.trim()) {
+      return prefixes
+        .split(/[,;\s]+/)
+        .map((item) => normalizePrefix(item))
+        .filter(Boolean);
+    }
+
+    const from = normalizePrefix(prefixFrom);
+    const to = normalizePrefix(prefixTo);
+    if (from && to) {
+      if (!isSingleLetter(from) || !isSingleLetter(to)) {
+        return null;
+      }
+
+      const fromCode = from.charCodeAt(0);
+      const toCode = to.charCodeAt(0);
+      if (fromCode > toCode) {
+        return null;
+      }
+
+      const generated = [];
+      for (let code = fromCode; code <= toCode; code += 1) {
+        generated.push(String.fromCharCode(code));
+      }
+      return generated;
+    }
+
+    const legacy = normalizePrefix(floorPrefix);
+    if (legacy) return [legacy];
+
+    return null;
+  };
+
+  const prefixListRaw = parsePrefixes();
+  if (!prefixListRaw || prefixListRaw.length === 0) {
+    return res.status(400).json({
+      success: false,
+      message: 'Provide prefixes (list), prefixFrom/prefixTo (range), or floorPrefix (single prefix).',
+    });
+  }
+
+  const prefixList = Array.from(new Set(prefixListRaw));
+  const resolvedFloor = Number.isFinite(Number(floor)) && Number(floor) > 0 ? Number(floor) : 1;
+
+  const requestedCount = prefixList.length * (end - start + 1);
+  const MAX_BULK_SLOTS = 10000;
+  if (requestedCount > MAX_BULK_SLOTS) {
+    return res.status(400).json({
+      success: false,
+      message: `Cannot create more than ${MAX_BULK_SLOTS} slots at once. Please split into multiple requests.`,
+    });
+  }
+
+  const slotNumbers = [];
+  prefixList.forEach((prefix) => {
+    for (let i = start; i <= end; i += 1) {
+      slotNumbers.push(`${prefix}${i}`);
+    }
+  });
+
+  const existingSlots = await ParkingSlot.find({
+    locationId,
+    vehicleType: resolvedVehicleType,
+    slotNumber: { $in: slotNumbers },
+  })
+    .select('slotNumber')
+    .lean();
+
+  const existingSet = new Set(existingSlots.map((slot) => String(slot.slotNumber || '').toUpperCase()));
+
+  const slotsToCreate = [];
+  prefixList.forEach((prefix) => {
+    const derivedRow = isSingleLetter(prefix) ? prefix.charCodeAt(0) - 64 : 1; // A=1
+    for (let i = start; i <= end; i += 1) {
+      const slotNumber = `${prefix}${i}`;
+      if (existingSet.has(slotNumber.toUpperCase())) continue;
+
+      slotsToCreate.push({
+        locationId,
+        city: normalizeText(city),
+        pincode: normalizeText(pincode),
+        area: normalizeText(area),
+        location: normalizeText(location),
+        landmark: normalizeText(landmark),
+        vehicleType: resolvedVehicleType,
+        slotType: resolvedSlotType,
+        slotLocation: slotNumber,
+        slotNumber,
+        supportedVehicleTypes: [resolvedVehicleType],
+        floor: resolvedFloor,
+        row: derivedRow,
+        column: i,
+        price: Number(price),
+        isActive: true,
+        status: 'available',
+      });
+    }
+  });
+
+  if (slotsToCreate.length === 0) {
+    return res.status(200).json({
+      success: true,
+      message: 'No new slots were created (all requested slots already exist).',
+      data: {
+        requestedCount,
+        createdCount: 0,
+        skippedCount: requestedCount,
+        prefixes: prefixList,
+        range: { start, end },
+        floor: resolvedFloor,
+        vehicleType: resolvedVehicleType,
+        slotType: resolvedSlotType,
+      },
+    });
+  }
+
+  try {
+    const createdSlots = await ParkingSlot.insertMany(slotsToCreate, { ordered: false });
+
+    return res.status(201).json({
+      success: true,
+      message: `${createdSlots.length} slots created successfully`,
+      data: {
+        requestedCount,
+        createdCount: createdSlots.length,
+        skippedCount: requestedCount - createdSlots.length,
+        prefixes: prefixList,
+        range: { start, end },
+        floor: resolvedFloor,
+        vehicleType: resolvedVehicleType,
+        slotType: resolvedSlotType,
+      },
+    });
+  } catch (error) {
+    console.error('Create bulk slots error:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Error creating bulk slots',
+    });
+  }
+});
+
 module.exports = {
   getSlots,
   getSlot,
@@ -263,4 +495,5 @@ module.exports = {
   getAvailableSlots,
   getSlotStats,
   scheduleMaintenance,
+  createBulkSlots,
 };
