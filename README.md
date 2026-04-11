@@ -47,20 +47,11 @@ A full-stack Smart Parking System with separate Admin and User dashboards.
 ## Project Structure
 
 ```
-smart-parking-system/
-  client/          # React frontend
-    src/
-      admin/       # Admin dashboard code
-      user/        # User dashboard UI/UX
-      shared/      # Shared components
-      routes/
-      services/
-      context/
-      components/
-      pages/
-      assets/
-      utils/
-  server/          # Node.js backend
+Vedant-Smart-Parking/
+  admin-dashboard/ # React (Vite) Admin dashboard (port 3001)
+  user-dashboard/  # React (Vite) User dashboard (port 3000)
+  shared-auth/     # Shared auth/api client helpers
+  server/          # Node.js backend (port 5000)
     config/
     controllers/
     middleware/
@@ -85,7 +76,7 @@ smart-parking-system/
 
 1. Navigate to the server directory:
    ```bash
-   cd smart-parking-system/server
+   cd server
    ```
 
 2. Install dependencies:
@@ -93,15 +84,7 @@ smart-parking-system/
    npm install
    ```
 
-3. Create a `.env` file in the server directory with the following variables:
-   ```
-   NODE_ENV=development
-   PORT=5000
-   MONGO_URI=mongodb://localhost:27017/smart-parking
-   JWT_SECRET=your_jwt_secret_key_here
-   JWT_EXPIRE=30d
-   CLIENT_URL=http://localhost:3000
-   ```
+3. Create a `.env` file from `.env.example` (already present in this repo) and adjust values as needed.
 
 4. Start the MongoDB service (if using local MongoDB)
 
@@ -119,9 +102,10 @@ The backend will be running on `http://localhost:5000`
 
 ### Frontend Setup
 
-1. Navigate to the client directory:
+1. Navigate to the dashboard you want to run:
    ```bash
-   cd smart-parking-system/client
+   cd user-dashboard
+   # or: cd admin-dashboard
    ```
 
 2. Install dependencies:
@@ -129,12 +113,16 @@ The backend will be running on `http://localhost:5000`
    npm install
    ```
 
-3. Start the development server:
+3. Create a `.env` from `.env.example` (recommended) so `VITE_API_BASE_URL` is set and the dev console stays clean.
+
+4. Start the development server:
    ```bash
    npm run dev
    ```
 
-The frontend will be running on `http://localhost:5173`
+The dashboards run on:
+- User: `http://localhost:3000`
+- Admin: `http://localhost:3001`
 
 ### Default Admin Credentials
 

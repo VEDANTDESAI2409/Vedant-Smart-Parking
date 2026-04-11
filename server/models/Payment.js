@@ -29,11 +29,11 @@ const paymentSchema = new mongoose.Schema({
   paymentMethod: {
     type: String,
     required: [true, 'Payment method is required'],
-    enum: ['credit_card', 'debit_card', 'paypal', 'apple_pay', 'google_pay', 'bank_transfer', 'cash']
+    enum: ['credit_card', 'debit_card', 'paypal', 'apple_pay', 'google_pay', 'bank_transfer', 'cash', 'upi', 'card']
   },
   paymentGateway: {
     type: String,
-    enum: ['stripe', 'paypal', 'razorpay', 'square', 'manual'],
+    enum: ['stripe', 'paypal', 'razorpay', 'square', 'manual', 'upi_intent', 'simulation'],
     default: 'manual'
   },
   status: {
@@ -81,6 +81,32 @@ const paymentSchema = new mongoose.Schema({
   metadata: {
     type: mongoose.Schema.Types.Mixed,
     default: {}
+  },
+  verification: {
+    verifiedAt: {
+      type: Date,
+      default: null,
+    },
+    verifiedBy: {
+      type: String,
+      default: '',
+    },
+    webhookEventId: {
+      type: String,
+      default: '',
+    },
+    verificationReference: {
+      type: String,
+      default: '',
+    },
+  },
+  receiptSnapshot: {
+    bookingReference: { type: String, default: '' },
+    slotNumber: { type: String, default: '' },
+    locationName: { type: String, default: '' },
+    city: { type: String, default: '' },
+    area: { type: String, default: '' },
+    pincode: { type: String, default: '' },
   }
 }, {
   timestamps: true,
@@ -106,8 +132,8 @@ paymentSchema.index({ transactionId: 1 });
 paymentSchema.index({ paymentDate: 1 });
 paymentSchema.index({ status: 1, paymentDate: -1 });
 
-// Pre-save middleware to generate payment reference
-paymentSchema.pre('save', function(next) {
+// Generate payment reference before validation so required fields exist on create
+paymentSchema.pre('validate', function(next) {
   if (this.isNew && !this.paymentReference) {
     this.paymentReference = 'PAY' + Date.now() + Math.random().toString(36).substr(2, 5).toUpperCase();
   }
