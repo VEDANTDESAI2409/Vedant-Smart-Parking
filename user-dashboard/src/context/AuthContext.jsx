@@ -44,13 +44,12 @@ export const AuthProvider = ({ children }) => {
   const register = async (payload) => {
     try {
       const response = await authAPI.register(payload);
-      const { token, user: userData } = response.data.data;
-      authService.logout();
-      userAuthStorage.setToken(token);
-      userAuthStorage.setUser(userData);
-      setUser(userData);
-      setIsAuthenticated(true);
-      return { success: true };
+      const { user: userData } = response.data.data;
+      return {
+        success: true,
+        user: userData,
+        message: response.data?.message || 'Account created successfully. Please login to continue.',
+      };
     } catch (error) {
       return {
         success: false,

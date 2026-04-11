@@ -6,6 +6,18 @@ export default {
   ],
   darkMode: 'class',
   theme: {
+    container: {
+      center: true,
+      padding: {
+        DEFAULT: '1rem',
+        sm: '1.25rem',
+        lg: '1.75rem',
+        xl: '2rem',
+      },
+      screens: {
+        '2xl': '1440px',
+      },
+    },
     extend: {
       colors: {
         primary: {
@@ -20,6 +32,10 @@ export default {
           600: '#16a34a',
           700: '#15803d',
         },
+      },
+      maxWidth: {
+        app: '1440px',
+        content: '72rem',
       },
     },
   },
