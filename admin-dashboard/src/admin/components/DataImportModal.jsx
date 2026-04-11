@@ -207,18 +207,29 @@ const DataImportModal = ({ isOpen, onClose, onImported, type }) => {
   };
 
   const parsePincodeCsvFile = async (selectedFile) => {
-    const content = await selectedFile.text();
-
-    return content
-      .split(/\r?\n/)
-      .map((line) => line.trim())
-      .filter(Boolean)
-      .map((line) => line.split(',').map((value) => value.trim()))
-      .filter((row) => (row[0] || '').toLowerCase() !== 'pincode')
-      .map((row) => ({
-        pincode: row[0] || '',
-      }))
-      .filter((row) => row.pincode);
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          const content = event.target.result;
+          const result = content
+            .split(/\r?\n/)
+            .map((line) => line.trim())
+            .filter(Boolean)
+            .map((line) => line.split(',').map((value) => value.trim()))
+            .filter((row) => (row[0] || '').toLowerCase() !== 'pincode')
+            .map((row) => ({
+              pincode: row[0] || '',
+            }))
+            .filter((row) => row.pincode);
+          resolve(result);
+        } catch (error) {
+          reject(error);
+        }
+      };
+      reader.onerror = () => reject(new Error('Failed to read file'));
+      reader.readAsText(selectedFile);
+    });
   };
 
   const parseAreaCsvFile = async (selectedFile) => {

@@ -1,11 +1,12 @@
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
+const path = require('path');
 const { connectDB, checkConnection } = require('./config/database');
 const { errorHandler, notFound } = require('./middleware/errorHandler');
 
 // Load environment variables
-dotenv.config();
+dotenv.config({ path: path.join(__dirname, '.env') });
 
 // Connect to database
 connectDB();
@@ -17,7 +18,10 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // CORS configuration
-const allowedOrigins = (process.env.CLIENT_URL || 'http://localhost:3000')
+const defaultClientUrls =
+  'http://localhost:3000,http://localhost:3001,http://127.0.0.1:3000,http://127.0.0.1:3001';
+
+const allowedOrigins = (process.env.CLIENT_URL || defaultClientUrls)
   .split(',')
   .map((origin) => origin.trim())
   .filter(Boolean);
@@ -66,6 +70,7 @@ app.use('/api/users', require('./routes/users'));
 app.use('/api/slots', require('./routes/slots'));
 app.use('/api/parkingslots', require('./routes/slots')); // alias for backward compatibility
 app.use('/api/bookings', require('./routes/bookings'));
+app.use('/api/user/bookings', require('./routes/bookings'));
 app.use('/api/vehicles', require('./routes/vehicles'));
 app.use('/api/payments', require('./routes/payments'));
 app.use('/api/reports', require('./routes/reports'));
