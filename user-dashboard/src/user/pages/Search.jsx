@@ -10,6 +10,7 @@ import {
   Zap,
 } from 'lucide-react';
 import Modal from '../../components/Modal';
+import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { bookingsAPI, locationsAPI, paymentsAPI, vehiclesAPI } from '../../services/api';
 
@@ -37,98 +38,33 @@ const pdfEscape = (value) =>
     .replace(/\(/g, '\\(')
     .replace(/\)/g, '\\)');
 
-const formatCurrency = (value) =>
-  new Intl.NumberFormat('en-IN', {
-    style: 'currency',
-    currency: 'INR',
-  }).format(value || 0);
-
-const formatReceiptDate = (value) =>
-  new Date(value).toLocaleString('en-IN', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-
 const buildReceiptPdfBlob = (receipt) => {
-  const receiptDate = formatReceiptDate(receipt.dateTime);
-  const totalAmount = formatCurrency(receipt.amount);
-
-  const detailLines = [
-    [`Booking ID`, receipt.bookingId || 'N/A'],
-    [`Receipt No`, receipt.receiptNumber || 'N/A'],
-    [`Customer`, receipt.name || 'N/A'],
-    [`Slot`, receipt.slot || 'N/A'],
-    [`Location`, receipt.location || 'N/A'],
-    [`Date & Time`, receiptDate],
-    [`Duration`, `${receipt.duration || 0} hr`],
-    [`Status`, receipt.paymentStatus || 'N/A'],
+  const lines = [
+    'Smart Parking Receipt',
+    '',
+    `Booking: ${receipt.bookingId}`,
+    `Receipt: ${receipt.receiptNumber}`,
+    `Name: ${receipt.name}`,
+    `Slot: ${receipt.slot}`,
+    `Location: ${receipt.location}`,
+    `Date & Time: ${new Date(receipt.dateTime).toLocaleString()}`,
+    `Duration: ${receipt.duration} hr`,
+    `Amount: INR ${receipt.amount}`,
+    `Status: ${receipt.paymentStatus}`,
   ];
 
-  const content = [
-    'q',
-    '0.15 0.45 0.88 rg',
-    '0 700 595 142 re',
-    'f',
-    'Q',
-    'q',
-    '0.94 0.96 0.99 rg',
-    '40 500 515 180 re',
-    'f',
-    '0 0 0 RG',
-    '1 w',
-    '40 500 515 180 re',
-    'S',
-    'Q',
+  const stream = [
     'BT',
-    '1 1 1 rg',
-    '/F1 28 Tf',
-    '50 760 Td',
-    `(${pdfEscape('Smart Parking Receipt')}) Tj`,
+    '/F1 24 Tf',
+    '50 790 Td',
+    `(${pdfEscape(lines[0])}) Tj`,
     '/F1 12 Tf',
-    '0 -26 Td',
-    `(${pdfEscape(`Receipt No: ${receipt.receiptNumber || 'N/A'}`)}) Tj`,
-    '0 -18 Td',
-    `(${pdfEscape(`Date: ${receiptDate}`)}) Tj`,
+    ...lines.slice(2).flatMap((line, index) => [
+      index === 0 ? '0 -40 Td' : '0 -24 Td',
+      `(${pdfEscape(line)}) Tj`,
+    ]),
     'ET',
-    'BT',
-    '0 0 0 rg',
-    '/F1 12 Tf',
-    '55 660 Td',
-  ];
-
-  detailLines.forEach(([label, value], index) => {
-    content.push(`(${pdfEscape(`${label}:`)}) Tj`);
-    content.push('120 0 Td');
-    content.push(`(${pdfEscape(value)}) Tj`);
-    if (index !== detailLines.length - 1) {
-      content.push('-120 -22 Td');
-    }
-  });
-
-  content.push('ET');
-  content.push('q');
-  content.push('0.12 0.45 0.85 rg');
-  content.push('40 380 515 100 re');
-  content.push('f');
-  content.push('Q');
-  content.push('BT');
-  content.push('/F1 14 Tf');
-  content.push('55 450 Td');
-  content.push(`(${pdfEscape('Amount Paid')}) Tj`);
-  content.push('/F1 18 Tf');
-  content.push('0 -24 Td');
-  content.push(`(${pdfEscape(totalAmount)}) Tj`);
-  content.push('ET');
-  content.push('BT');
-  content.push('/F1 10 Tf');
-  content.push('55 420 Td');
-  content.push(`(${pdfEscape('Thank you for choosing Park N Go. Please keep this receipt for your records.')}) Tj`);
-  content.push('ET');
-
-  const stream = content.join('\n');
+  ].join('\n');
 
   const pdf = `%PDF-1.4
 1 0 obj
@@ -189,8 +125,10 @@ const getDisplayGeoText = (geo) => {
 };
 
 const Search = () => {
+  const [searchParams] = useSearchParams();
   const { user, isAuthenticated, login, register } = useAuth();
   const [error, setError] = useState('');
+  const [authMessage, setAuthMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const [authMode, setAuthMode] = useState('login');
   const [locationModal, setLocationModal] = useState(false);
@@ -406,7 +344,6 @@ const Search = () => {
       lat,
       lng,
       radiusKm: 10,
-      vehicleType,
       city: detectedLocation?.city,
       area: detectedLocation?.area,
       pincode: detectedLocation?.pincode,
@@ -419,7 +356,7 @@ const Search = () => {
       if (preserveSelection && current?.id) {
         return nextLocations.find((location) => location.id === current.id) || nextLocations[0];
       }
-      return nextLocations[0];
+      return null;
     });
   };
 
@@ -469,12 +406,45 @@ const Search = () => {
   }, [selectedLocation, vehicleType]);
 
   useEffect(() => {
-    if (!geo?.lat || !geo?.lng) return;
+    const parkingLotId = searchParams.get('parkingLot');
+    if (!parkingLotId) return;
 
-    fetchNearbyLocations(geo.lat, geo.lng, { preserveSelection: true, detectedLocation: geo }).catch(() => {
-      // ignore background refresh errors; blueprint call will surface issues if needed
-    });
-  }, [geo?.lat, geo?.lng, vehicleType]);
+    let cancelled = false;
+
+    const loadSelectedParkingLot = async () => {
+      try {
+        setLoading(true);
+        const response = await locationsAPI.getPublicById(parkingLotId);
+        const location = response?.data?.data;
+        if (!location || cancelled) return;
+
+        const normalizedLocation = {
+          ...location,
+          id: location.id || location._id,
+        };
+
+        setLocations((current) => {
+          const exists = current.some((item) => String(item.id || item._id) === String(normalizedLocation.id));
+          return exists ? current : [normalizedLocation, ...current];
+        });
+        setSelectedLocation(normalizedLocation);
+      } catch (e) {
+        if (!cancelled) {
+          setError(e.response?.data?.message || 'Unable to load the selected parking location.');
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadSelectedParkingLot();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [searchParams]);
 
   const loadNearby = async () => {
     setError('');
@@ -637,12 +607,24 @@ const Search = () => {
   const submitAuth = async (event) => {
     event.preventDefault();
     setLoading(true);
+    setError('');
+    setAuthMessage('');
 
     try {
-      const result =
-        authMode === 'login'
-          ? await login(authForm.loginEmail, authForm.loginPassword)
-          : await register({
+      if (authMode === 'login') {
+        const result = await login(authForm.loginEmail, authForm.loginPassword);
+
+        if (!result.success) {
+          setError(result.error);
+          return;
+        }
+
+        setAuthModal(false);
+        await createBooking();
+        return;
+      }
+
+      const result = await register({
               name: authForm.signupName,
               phone: authForm.signupPhone,
               email: authForm.signupEmail,
@@ -654,8 +636,13 @@ const Search = () => {
         return;
       }
 
-      setAuthModal(false);
-      await createBooking();
+      setAuthMode('login');
+      setAuthMessage(result.message || 'Account created successfully. Please login to continue booking.');
+      setAuthForm((state) => ({
+        ...state,
+        loginEmail: state.signupEmail,
+        loginPassword: '',
+      }));
     } finally {
       setLoading(false);
     }
@@ -713,18 +700,17 @@ const Search = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[linear-gradient(180deg,#f8fdf9_0%,#eef8f3_100%)] p-4 text-[var(--color-secondary)] sm:p-6">
+    <div className="min-h-screen bg-[linear-gradient(180deg,#f8fbff_0%,#eef7ff_100%)] p-4 text-[var(--color-secondary)] sm:p-6">
       <div className="mx-auto max-w-7xl space-y-6">
         <div className="rounded-[36px] border border-white/70 bg-white/90 p-6 shadow-[0_24px_70px_rgba(17,31,26,0.08)] sm:p-8">
           <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr] lg:items-start">
             <div>
-              <span className="inline-flex rounded-full bg-[rgba(176,228,204,0.18)] px-3 py-1 text-[11px] font-bold uppercase tracking-[0.2em] text-[var(--color-primary)]">
+              <span className="inline-flex rounded-full bg-[rgba(186,230,253,0.18)] px-3 py-1 text-[11px] font-bold uppercase tracking-[0.2em] text-[var(--color-primary)]">
                 Live Booking Desk
               </span>
-              <h1 className="mt-4 text-4xl font-semibold tracking-tight">Smart Parking Booking Flow</h1>
+              <h1 className="mt-4 text-4xl font-semibold tracking-tight">Book Parking Step by Step</h1>
               <p className="mt-3 max-w-3xl text-slate-600">
-                Find nearby parking, choose the right slot, confirm details, and finish payment from a
-                cleaner dashboard-style flow.
+                Enable location first, then choose a parking place, pick a slot, and only then continue with booking details and payment.
               </p>
 
               <div className="mt-6 flex flex-wrap gap-3">
@@ -738,16 +724,9 @@ const Search = () => {
                 <button
                   type="button"
                   onClick={loadNearby}
-                  className="rounded-full border border-[rgba(64,138,113,0.16)] px-5 py-3 text-sm font-semibold"
+                  className="rounded-full border border-[rgba(14,165,233,0.16)] px-5 py-3 text-sm font-semibold"
                 >
                   Refresh Nearby
-                </button>
-                <button
-                  type="button"
-                  onClick={startFlow}
-                  className="rounded-full border border-[rgba(64,138,113,0.16)] px-5 py-3 text-sm font-semibold"
-                >
-                  Proceed to Book
                 </button>
               </div>
 
@@ -779,10 +758,10 @@ const Search = () => {
               ].map((card) => (
                 <div
                   key={card.label}
-                  className="rounded-[28px] border border-[rgba(64,138,113,0.14)] bg-[linear-gradient(180deg,#ffffff_0%,#f5fbf8_100%)] p-4"
+                  className="rounded-[28px] border border-[rgba(14,165,233,0.14)] bg-[linear-gradient(180deg,#ffffff_0%,#f6fbff_100%)] p-4"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="rounded-2xl bg-[rgba(176,228,204,0.22)] p-3 text-[var(--color-primary)]">
+                    <div className="rounded-2xl bg-[rgba(186,230,253,0.22)] p-3 text-[var(--color-primary)]">
                       {card.icon}
                     </div>
                     <div>
@@ -806,17 +785,21 @@ const Search = () => {
 
         <div className="grid gap-6 xl:grid-cols-[0.82fr_1.18fr]">
           <div className="space-y-6">
-            <div className="rounded-[32px] border border-[rgba(64,138,113,0.14)] bg-white p-6 shadow-[0_18px_40px_rgba(17,31,26,0.04)]">
+            <div className="rounded-[32px] border border-[rgba(14,165,233,0.14)] bg-white p-6 shadow-[0_18px_40px_rgba(17,31,26,0.04)]">
               <StepTitle
                 step="Step 1"
-                title="Nearby Locations"
-                count={`${locations.length} found`}
-                caption="Live options from your current location."
+                title="Choose Location"
+                count={geo ? `${locations.length} found` : null}
+                caption={
+                  geo
+                    ? 'Location access is enabled. Select one nearby parking location to unlock slot selection.'
+                    : 'Enable location access first to load nearby parking options.'
+                }
               />
 
               <div className="mt-4 space-y-3">
                 {locations.length === 0 ? (
-                  <div className="rounded-2xl border border-dashed border-[rgba(64,138,113,0.18)] px-4 py-8 text-center text-sm text-slate-500">
+                  <div className="rounded-2xl border border-dashed border-[rgba(14,165,233,0.18)] px-4 py-8 text-center text-sm text-slate-500">
                     {geo
                       ? 'No nearby parking locations found. Add a Location and then create Slots for it from the admin dashboard.'
                       : 'Enable location to load nearby parking.'}
@@ -829,11 +812,14 @@ const Search = () => {
                       onClick={() => {
                         setSelectedLocation(location);
                         setSelectedSlot(null);
+                        setActiveBooking(null);
+                        setPaymentSession(null);
+                        setReceipt(null);
                       }}
                       className={`block w-full rounded-[26px] border px-4 py-4 text-left transition-all ${
                         selectedLocation?.id === location.id
-                          ? 'border-[var(--color-primary)] bg-[rgba(176,228,204,0.18)] shadow-[0_18px_36px_rgba(64,138,113,0.12)]'
-                          : 'border-[rgba(64,138,113,0.12)] hover:border-[rgba(64,138,113,0.3)] hover:bg-slate-50/70'
+                          ? 'border-[var(--color-primary)] bg-[rgba(186,230,253,0.18)] shadow-[0_18px_36px_rgba(14,165,233,0.12)]'
+                          : 'border-[rgba(14,165,233,0.12)] hover:border-[rgba(14,165,233,0.3)] hover:bg-slate-50/70'
                       }`}
                     >
                       <div className="flex items-start justify-between gap-3">
@@ -863,39 +849,17 @@ const Search = () => {
               </div>
             </div>
 
-            <div className="rounded-[32px] border border-[rgba(64,138,113,0.14)] bg-white p-6 shadow-[0_18px_40px_rgba(17,31,26,0.04)]">
+            {selectedSlot ? (
+              <div className="rounded-[32px] border border-[rgba(14,165,233,0.14)] bg-white p-6 shadow-[0_18px_40px_rgba(17,31,26,0.04)]">
               <StepTitle
-                step="Step 2"
+                step="Step 3"
                 title="Booking Details"
-                caption="Pick vehicle, date, payment method, and user details before lock creation."
+                caption="The slot is selected. Now add your timing, profile, and payment method before creating the booking."
               />
 
               <div className="mt-4 grid gap-4">
-                <div className="grid grid-cols-2 gap-3">
-                  {[
-                    { key: 'car', label: 'Car', marker: 'C' },
-                    { key: 'bike', label: 'Bike', marker: 'B' },
-                  ].map((item) => (
-                    <button
-                      key={item.key}
-                      type="button"
-                      onClick={() => setVehicleType(item.key)}
-                      className={`rounded-[26px] border px-4 py-4 ${
-                        vehicleType === item.key
-                          ? 'border-[var(--color-primary)] bg-[rgba(176,228,204,0.18)] shadow-[0_16px_30px_rgba(64,138,113,0.1)]'
-                          : 'border-[rgba(64,138,113,0.12)]'
-                      }`}
-                    >
-                      <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-[rgba(176,228,204,0.24)] text-lg font-bold text-[var(--color-primary)]">
-                        {item.marker}
-                      </div>
-                      <div className="mt-2 text-sm font-semibold">{item.label}</div>
-                    </button>
-                  ))}
-                </div>
-
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <label className="rounded-[26px] border border-[rgba(64,138,113,0.16)] px-4 py-3">
+                  <label className="rounded-[26px] border border-[rgba(14,165,233,0.16)] px-4 py-3">
                     <div className="mb-2 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">
                       <CalendarDays className="h-3.5 w-3.5" />
                       Date
@@ -908,7 +872,7 @@ const Search = () => {
                     />
                   </label>
 
-                  <label className="rounded-[26px] border border-[rgba(64,138,113,0.16)] px-4 py-3">
+                  <label className="rounded-[26px] border border-[rgba(14,165,233,0.16)] px-4 py-3">
                     <div className="mb-2 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">
                       <TimerReset className="h-3.5 w-3.5" />
                       Time
@@ -922,7 +886,7 @@ const Search = () => {
                   </label>
                 </div>
 
-                <label className="rounded-[26px] border border-[rgba(64,138,113,0.16)] px-4 py-3">
+                <label className="rounded-[26px] border border-[rgba(14,165,233,0.16)] px-4 py-3">
                   <div className="mb-2 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">
                     <TimerReset className="h-3.5 w-3.5" />
                     Duration
@@ -951,21 +915,21 @@ const Search = () => {
                     placeholder="Name"
                     value={userForm.name}
                     onChange={(e) => setUserForm((state) => ({ ...state, name: e.target.value }))}
-                    className="rounded-[26px] border border-[rgba(64,138,113,0.16)] px-4 py-3"
+                    className="rounded-[26px] border border-[rgba(14,165,233,0.16)] px-4 py-3"
                   />
                   <input
                     type="tel"
                     placeholder="Phone"
                     value={userForm.phone}
                     onChange={(e) => setUserForm((state) => ({ ...state, phone: e.target.value }))}
-                    className="rounded-[26px] border border-[rgba(64,138,113,0.16)] px-4 py-3"
+                    className="rounded-[26px] border border-[rgba(14,165,233,0.16)] px-4 py-3"
                   />
                   <input
                     type="email"
                     placeholder="Email"
                     value={userForm.email}
                     onChange={(e) => setUserForm((state) => ({ ...state, email: e.target.value }))}
-                    className="rounded-[26px] border border-[rgba(64,138,113,0.16)] px-4 py-3"
+                    className="rounded-[26px] border border-[rgba(14,165,233,0.16)] px-4 py-3"
                   />
                 </div>
 
@@ -997,8 +961,8 @@ const Search = () => {
                         }
                         className={`rounded-[26px] border px-4 py-4 ${
                           bookingForm.paymentMethod === item.key
-                            ? 'border-[var(--color-primary)] bg-[rgba(176,228,204,0.18)] shadow-[0_16px_30px_rgba(64,138,113,0.1)]'
-                            : 'border-[rgba(64,138,113,0.12)]'
+                            ? 'border-[var(--color-primary)] bg-[rgba(186,230,253,0.18)] shadow-[0_16px_30px_rgba(14,165,233,0.1)]'
+                            : 'border-[rgba(14,165,233,0.12)]'
                         }`}
                       >
                         {item.icon}
@@ -1008,27 +972,86 @@ const Search = () => {
                   </div>
                 </div>
 
-                <div className="rounded-[26px] border border-dashed border-[rgba(64,138,113,0.16)] bg-[rgba(176,228,204,0.08)] px-4 py-4 text-sm text-slate-600">
+                <div className="rounded-[26px] border border-dashed border-[rgba(14,165,233,0.16)] bg-[rgba(186,230,253,0.08)] px-4 py-4 text-sm text-slate-600">
                   {bookingForm.paymentMethod === 'upi'
                     ? 'UPI selected. After the slot is locked, choose your app from the payment panel once and complete the payment.'
                     : 'Card selected. After the slot is locked, continue in the payment panel and verify the card result there.'}
                 </div>
+
+                <div className="flex flex-wrap gap-3">
+                  <button
+                    type="button"
+                    onClick={startFlow}
+                    className="rounded-full bg-[var(--color-primary)] px-5 py-3 text-sm font-semibold text-white"
+                  >
+                    Continue to Payment
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedSlot(null)}
+                    className="rounded-full border border-[rgba(14,165,233,0.16)] px-5 py-3 text-sm font-semibold"
+                  >
+                    Change Slot
+                  </button>
+                </div>
               </div>
-            </div>
+              </div>
+            ) : null}
           </div>
 
           <div className="space-y-6">
-            <div className="rounded-[32px] border border-[rgba(64,138,113,0.14)] bg-white p-6 shadow-[0_18px_40px_rgba(17,31,26,0.04)]">
+            {selectedLocation ? (
+              <div className="rounded-[32px] border border-[rgba(14,165,233,0.14)] bg-white p-6 shadow-[0_18px_40px_rgba(17,31,26,0.04)]">
               <StepTitle
-                step="Step 3"
-                title={selectedLocation ? selectedLocation.name : 'Blueprint View'}
-                caption="Choose one available slot from the active floor."
+                step="Step 2"
+                title={selectedLocation.name}
+                caption="Choose one available slot from the active floor to unlock booking details."
               />
+
+              <div className="mt-4 rounded-[26px] border border-[rgba(14,165,233,0.12)] bg-[linear-gradient(135deg,#f8fbff_0%,#eefbf6_100%)] p-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">Vehicle Filter</p>
+                    <p className="mt-1 text-sm text-slate-600">
+                      Pick car or bike first so we show the right slot options.
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    {[
+                      { key: 'car', label: 'Car', marker: 'C' },
+                      { key: 'bike', label: 'Bike', marker: 'B' },
+                    ].map((item) => (
+                      <button
+                        key={item.key}
+                        type="button"
+                        onClick={() => {
+                          setVehicleType(item.key);
+                          setSelectedSlot(null);
+                          setActiveBooking(null);
+                          setPaymentSession(null);
+                          setReceipt(null);
+                        }}
+                        className={`rounded-[22px] border px-4 py-3 ${
+                          vehicleType === item.key
+                            ? 'border-[var(--color-primary)] bg-[rgba(186,230,253,0.18)] shadow-[0_16px_30px_rgba(14,165,233,0.1)]'
+                            : 'border-[rgba(14,165,233,0.12)] bg-white'
+                        }`}
+                      >
+                        <div className="mx-auto flex h-9 w-9 items-center justify-center rounded-full bg-[rgba(186,230,253,0.24)] text-sm font-bold text-[var(--color-primary)]">
+                          {item.marker}
+                        </div>
+                        <div className="mt-2 text-sm font-semibold">{item.label}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
 
               {loading ? <Loader2 className="mt-4 h-5 w-5 animate-spin text-[var(--color-primary)]" /> : null}
 
               {floors.length === 0 ? (
-                <div className="mt-4 rounded-2xl border border-dashed border-[rgba(64,138,113,0.18)] px-4 py-10 text-center text-sm text-slate-500">
+                <div className="mt-4 rounded-2xl border border-dashed border-[rgba(14,165,233,0.18)] px-4 py-10 text-center text-sm text-slate-500">
                   {selectedLocation
                     ? 'This location has no slots yet. Add parking slots for this location in the admin dashboard.'
                     : 'Select a nearby location to load slots.'}
@@ -1043,6 +1066,9 @@ const Search = () => {
                         onClick={() => {
                           setSelectedFloor(floor.floorNumber);
                           setSelectedSlot(null);
+                          setActiveBooking(null);
+                          setPaymentSession(null);
+                          setReceipt(null);
                         }}
                         className={`rounded-full px-4 py-2 text-sm font-semibold ${
                           selectedFloor === floor.floorNumber
@@ -1056,55 +1082,104 @@ const Search = () => {
                   </div>
 
                   <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                    {activeFloor?.slots?.map((slot) => (
+                    {activeFloor?.slots?.map((slot, index) => (
                       <button
                         key={slot.id}
                         type="button"
                         disabled={!slot.isBookable}
-                        onClick={() => setSelectedSlot(slot)}
-                        className={`rounded-[26px] border p-4 text-left transition-all ${
+                        onClick={() => {
+                          setSelectedSlot(slot);
+                          setActiveBooking(null);
+                          setPaymentSession(null);
+                          setReceipt(null);
+                        }}
+                        className={`group relative overflow-hidden rounded-[28px] border p-0 text-left transition-all ${
                           selectedSlot?.id === slot.id
-                            ? 'border-[var(--color-primary)] bg-[rgba(176,228,204,0.14)] shadow-[0_18px_34px_rgba(64,138,113,0.14)]'
-                            : 'border-[rgba(64,138,113,0.12)]'
+                            ? 'border-[var(--color-primary)] shadow-[0_18px_34px_rgba(14,165,233,0.14)]'
+                            : 'border-[rgba(14,165,233,0.12)]'
                         } ${
                           !slot.isBookable
                             ? 'cursor-not-allowed bg-slate-100 text-slate-400'
-                            : 'bg-white hover:border-[rgba(64,138,113,0.28)] hover:shadow-[0_12px_24px_rgba(17,31,26,0.06)]'
+                            : 'bg-white hover:-translate-y-1 hover:border-[rgba(14,165,233,0.28)] hover:shadow-[0_16px_32px_rgba(17,31,26,0.08)]'
                         }`}
                       >
-                        <div className="flex items-center justify-between">
-                          <span className="text-lg font-semibold">{slot.slotNumber}</span>
-                          {slot.slotType === 'ev' ? <Zap className="h-4 w-4" /> : null}
+                        <div className={`absolute inset-0 ${
+                          !slot.isBookable
+                            ? 'bg-[linear-gradient(135deg,#f1f5f9_0%,#e2e8f0_100%)]'
+                            : selectedSlot?.id === slot.id
+                              ? 'bg-[linear-gradient(135deg,#e0f2fe_0%,#ecfeff_48%,#ecfdf5_100%)]'
+                              : 'bg-[linear-gradient(135deg,#ffffff_0%,#f8fbff_55%,#f0fdf4_100%)]'
+                        }`} />
+                        <div className="relative p-4">
+                          <div className="flex items-center justify-between gap-3">
+                            <div>
+                              <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-400">
+                                Slot {String(index + 1).padStart(2, '0')}
+                              </div>
+                              <span className="mt-2 block text-xl font-semibold text-slate-900">{slot.slotNumber}</span>
+                            </div>
+                            <div className={`rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] ${
+                              slot.isBookable ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-500'
+                            }`}>
+                              {slot.isBookable ? 'Open' : 'Busy'}
+                            </div>
+                          </div>
+
+                          <div className="mt-4 rounded-[22px] border border-white/70 bg-white/80 p-3">
+                            <div className="flex items-center justify-between">
+                              <div className="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">
+                                {slot.slotType}
+                              </div>
+                              {slot.slotType === 'ev' ? <Zap className="h-4 w-4 text-amber-500" /> : null}
+                            </div>
+
+                            <div className="mt-3 grid grid-cols-3 gap-2">
+                              {[0, 1, 2].map((lane) => (
+                                <div
+                                  key={lane}
+                                  className={`h-8 rounded-2xl border ${
+                                    selectedSlot?.id === slot.id && slot.isBookable
+                                      ? 'border-sky-200 bg-sky-100/70'
+                                      : 'border-slate-200 bg-slate-50'
+                                  }`}
+                                />
+                              ))}
+                            </div>
+
+                            <div className="mt-3 flex items-center justify-between text-sm">
+                              <span className="capitalize text-slate-500">{slot.status}</span>
+                              <span className="font-semibold text-slate-900">
+                                {selectedSlot?.id === slot.id ? 'Selected' : slot.isBookable ? 'Tap to choose' : 'Unavailable'}
+                              </span>
+                            </div>
+                          </div>
                         </div>
-                        <div className="mt-3 inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">
-                          {slot.slotType}
-                        </div>
-                        <div className="mt-3 text-sm capitalize">{slot.status}</div>
                       </button>
                     ))}
                   </div>
                 </>
               )}
-            </div>
+              </div>
+            ) : null}
 
             {paymentSession ? (
-              <div className="rounded-[32px] border border-[rgba(64,138,113,0.14)] bg-white p-6 shadow-[0_18px_40px_rgba(17,31,26,0.04)]">
+              <div className="rounded-[32px] border border-[rgba(14,165,233,0.14)] bg-white p-6 shadow-[0_18px_40px_rgba(17,31,26,0.04)]">
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div>
-                    <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400">Step 4</p>
+                    <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400">Step 5</p>
                     <h2 className="mt-1 text-2xl font-semibold">Payment</h2>
                     <p className="mt-2 text-sm text-slate-600">
                       Lock expires at {new Date(paymentSession.expiresAt).toLocaleTimeString()}.
                     </p>
                   </div>
 
-                  <div className="rounded-full bg-[rgba(176,228,204,0.18)] px-3 py-1 text-xs font-semibold text-[var(--color-primary)]">
+                  <div className="rounded-full bg-[rgba(186,230,253,0.18)] px-3 py-1 text-xs font-semibold text-[var(--color-primary)]">
                     {bookingForm.paymentMethod === 'upi' ? 'UPI checkout' : 'Card checkout'}
                   </div>
                 </div>
 
                 {bookingForm.paymentMethod === 'upi' ? (
-                  <div className="mt-5 rounded-[28px] border border-[rgba(64,138,113,0.12)] bg-[linear-gradient(180deg,#ffffff_0%,#f6fbf8_100%)] p-5">
+                  <div className="mt-5 rounded-[28px] border border-[rgba(14,165,233,0.12)] bg-[linear-gradient(180deg,#ffffff_0%,#f7fbff_100%)] p-5">
                     <div className="flex items-center justify-between gap-3">
                       <div>
                         <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">
@@ -1130,8 +1205,8 @@ const Search = () => {
                           onClick={() => launchPaymentApp(app)}
                           className={`rounded-[24px] border px-4 py-4 text-left transition-all ${
                             bookingForm.upiApp === app
-                              ? 'border-[var(--color-primary)] bg-[rgba(176,228,204,0.14)]'
-                              : 'border-[rgba(64,138,113,0.12)] hover:border-[rgba(64,138,113,0.28)] hover:bg-slate-50'
+                              ? 'border-[var(--color-primary)] bg-[rgba(186,230,253,0.14)]'
+                              : 'border-[rgba(14,165,233,0.12)] hover:border-[rgba(14,165,233,0.28)] hover:bg-slate-50'
                           }`}
                         >
                           <div className="text-sm font-semibold">{label}</div>
@@ -1141,13 +1216,13 @@ const Search = () => {
                     </div>
 
                     {paymentMessage ? (
-                      <div className="mt-4 rounded-[22px] bg-[rgba(176,228,204,0.12)] px-4 py-3 text-sm text-slate-600">
+                      <div className="mt-4 rounded-[22px] bg-[rgba(186,230,253,0.12)] px-4 py-3 text-sm text-slate-600">
                         {paymentMessage}
                       </div>
                     ) : null}
                   </div>
                 ) : (
-                  <div className="mt-5 rounded-[28px] border border-[rgba(64,138,113,0.12)] bg-[linear-gradient(180deg,#ffffff_0%,#f6fbf8_100%)] p-5">
+                  <div className="mt-5 rounded-[28px] border border-[rgba(14,165,233,0.12)] bg-[linear-gradient(180deg,#ffffff_0%,#f7fbff_100%)] p-5">
                     <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">
                       Card Checkout
                     </p>
@@ -1190,7 +1265,7 @@ const Search = () => {
             ) : null}
 
             {receipt ? (
-              <div className="rounded-[32px] border border-[rgba(64,138,113,0.16)] bg-[linear-gradient(160deg,#0c1816_0%,#17322a_100%)] p-6 text-white shadow-[0_24px_70px_rgba(12,24,22,0.28)]">
+              <div className="rounded-[32px] border border-[rgba(14,165,233,0.16)] bg-[linear-gradient(160deg,#0f172a_0%,#0f3b67_100%)] p-6 text-white shadow-[0_24px_70px_rgba(12,24,22,0.28)]">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-white/45">
@@ -1254,7 +1329,11 @@ const Search = () => {
             <button
               key={mode}
               type="button"
-              onClick={() => setAuthMode(mode)}
+              onClick={() => {
+                setAuthMode(mode);
+                setError('');
+                setAuthMessage('');
+              }}
               className={`rounded-full px-4 py-2 text-sm font-semibold ${
                 authMode === mode ? 'bg-[var(--color-primary)] text-white' : 'bg-slate-100 text-slate-600'
               }`}
@@ -1264,6 +1343,18 @@ const Search = () => {
           ))}
         </div>
 
+        {authMessage ? (
+          <div className="mb-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+            {authMessage}
+          </div>
+        ) : null}
+
+        {error ? (
+          <div className="mb-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+            {error}
+          </div>
+        ) : null}
+
         <form onSubmit={submitAuth} className="grid gap-4">
           {authMode === 'login' ? (
             <>
@@ -1272,14 +1363,14 @@ const Search = () => {
                 placeholder="Email"
                 value={authForm.loginEmail}
                 onChange={(e) => setAuthForm((state) => ({ ...state, loginEmail: e.target.value }))}
-                className="rounded-2xl border border-[rgba(64,138,113,0.16)] px-4 py-3"
+                className="rounded-2xl border border-[rgba(14,165,233,0.16)] px-4 py-3"
               />
               <input
                 type="password"
                 placeholder="Password"
                 value={authForm.loginPassword}
                 onChange={(e) => setAuthForm((state) => ({ ...state, loginPassword: e.target.value }))}
-                className="rounded-2xl border border-[rgba(64,138,113,0.16)] px-4 py-3"
+                className="rounded-2xl border border-[rgba(14,165,233,0.16)] px-4 py-3"
               />
             </>
           ) : (
@@ -1289,28 +1380,28 @@ const Search = () => {
                 placeholder="Name"
                 value={authForm.signupName}
                 onChange={(e) => setAuthForm((state) => ({ ...state, signupName: e.target.value }))}
-                className="rounded-2xl border border-[rgba(64,138,113,0.16)] px-4 py-3"
+                className="rounded-2xl border border-[rgba(14,165,233,0.16)] px-4 py-3"
               />
               <input
                 type="tel"
                 placeholder="Phone"
                 value={authForm.signupPhone}
                 onChange={(e) => setAuthForm((state) => ({ ...state, signupPhone: e.target.value }))}
-                className="rounded-2xl border border-[rgba(64,138,113,0.16)] px-4 py-3"
+                className="rounded-2xl border border-[rgba(14,165,233,0.16)] px-4 py-3"
               />
               <input
                 type="email"
                 placeholder="Email"
                 value={authForm.signupEmail}
                 onChange={(e) => setAuthForm((state) => ({ ...state, signupEmail: e.target.value }))}
-                className="rounded-2xl border border-[rgba(64,138,113,0.16)] px-4 py-3"
+                className="rounded-2xl border border-[rgba(14,165,233,0.16)] px-4 py-3"
               />
               <input
                 type="password"
                 placeholder="Password"
                 value={authForm.signupPassword}
                 onChange={(e) => setAuthForm((state) => ({ ...state, signupPassword: e.target.value }))}
-                className="rounded-2xl border border-[rgba(64,138,113,0.16)] px-4 py-3"
+                className="rounded-2xl border border-[rgba(14,165,233,0.16)] px-4 py-3"
               />
             </>
           )}
@@ -1381,7 +1472,7 @@ const Search = () => {
                 <select
                   value={selectedVehicleId}
                   onChange={(e) => setSelectedVehicleId(e.target.value)}
-                  className="w-full rounded-2xl border border-[rgba(64,138,113,0.16)] bg-white px-4 py-3"
+                  className="w-full rounded-2xl border border-[rgba(14,165,233,0.16)] bg-white px-4 py-3"
                 >
                   <option value="">Select vehicle</option>
                   {compatibleVehicles.map((item) => (
@@ -1400,7 +1491,7 @@ const Search = () => {
                   <input
                     value={desiredVehicleType}
                     readOnly
-                    className="w-full rounded-2xl border border-[rgba(64,138,113,0.16)] bg-slate-50 px-4 py-3 uppercase"
+                    className="w-full rounded-2xl border border-[rgba(14,165,233,0.16)] bg-slate-50 px-4 py-3 uppercase"
                   />
                 </div>
                 <div>
@@ -1408,7 +1499,7 @@ const Search = () => {
                   <select
                     value={vehicleForm.fuelType}
                     onChange={(e) => setVehicleForm((state) => ({ ...state, fuelType: e.target.value }))}
-                    className="w-full rounded-2xl border border-[rgba(64,138,113,0.16)] bg-white px-4 py-3"
+                    className="w-full rounded-2xl border border-[rgba(14,165,233,0.16)] bg-white px-4 py-3"
                   >
                     {['petrol', 'diesel', 'cng', 'electric', 'hybrid', 'other'].map((fuel) => (
                       <option key={fuel} value={fuel}>
@@ -1425,14 +1516,14 @@ const Search = () => {
                   placeholder="License plate (e.g. GJ05AB1234)"
                   value={vehicleForm.licensePlate}
                   onChange={(e) => setVehicleForm((state) => ({ ...state, licensePlate: e.target.value }))}
-                  className="rounded-2xl border border-[rgba(64,138,113,0.16)] px-4 py-3 font-mono uppercase"
+                  className="rounded-2xl border border-[rgba(14,165,233,0.16)] px-4 py-3 font-mono uppercase"
                 />
                 <input
                   type="text"
                   placeholder="Color (e.g. Black)"
                   value={vehicleForm.color}
                   onChange={(e) => setVehicleForm((state) => ({ ...state, color: e.target.value }))}
-                  className="rounded-2xl border border-[rgba(64,138,113,0.16)] px-4 py-3"
+                  className="rounded-2xl border border-[rgba(14,165,233,0.16)] px-4 py-3"
                 />
               </div>
 
@@ -1442,14 +1533,14 @@ const Search = () => {
                   placeholder="Make (e.g. Honda)"
                   value={vehicleForm.make}
                   onChange={(e) => setVehicleForm((state) => ({ ...state, make: e.target.value }))}
-                  className="rounded-2xl border border-[rgba(64,138,113,0.16)] px-4 py-3"
+                  className="rounded-2xl border border-[rgba(14,165,233,0.16)] px-4 py-3"
                 />
                 <input
                   type="text"
                   placeholder="Model (e.g. City)"
                   value={vehicleForm.model}
                   onChange={(e) => setVehicleForm((state) => ({ ...state, model: e.target.value }))}
-                  className="rounded-2xl border border-[rgba(64,138,113,0.16)] px-4 py-3"
+                  className="rounded-2xl border border-[rgba(14,165,233,0.16)] px-4 py-3"
                 />
                 <input
                   type="number"
@@ -1458,7 +1549,7 @@ const Search = () => {
                   max={new Date().getFullYear() + 1}
                   value={vehicleForm.year}
                   onChange={(e) => setVehicleForm((state) => ({ ...state, year: e.target.value }))}
-                  className="rounded-2xl border border-[rgba(64,138,113,0.16)] px-4 py-3"
+                  className="rounded-2xl border border-[rgba(14,165,233,0.16)] px-4 py-3"
                 />
               </div>
 
@@ -1468,7 +1559,7 @@ const Search = () => {
                   type="date"
                   value={vehicleForm.registrationExpiry}
                   onChange={(e) => setVehicleForm((state) => ({ ...state, registrationExpiry: e.target.value }))}
-                  className="w-full rounded-2xl border border-[rgba(64,138,113,0.16)] bg-white px-4 py-3"
+                  className="w-full rounded-2xl border border-[rgba(14,165,233,0.16)] bg-white px-4 py-3"
                 />
               </div>
 
@@ -1498,3 +1589,4 @@ const Search = () => {
 };
 
 export default Search;
+
