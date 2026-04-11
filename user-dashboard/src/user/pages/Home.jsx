@@ -220,7 +220,7 @@ const Home = () => {
         Skip to content
       </a>
       <div className={showIntro ? 'page-shell page-shell-hidden' : 'page-shell page-shell-visible'}>
-      <header className="reveal-down sticky top-0 z-50 border-b border-[rgba(64,138,113,0.12)] bg-white/80 backdrop-blur-xl">
+      <header className="reveal-down sticky top-0 z-50 border-b border-[rgba(14,165,233,0.12)] bg-white/80 backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
           <Link to="/" className="flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--color-primary)] text-white shadow-[0_16px_36px_rgba(40,90,72,0.24)]">
@@ -251,7 +251,7 @@ const Home = () => {
           <div className="hidden items-center gap-3 lg:flex">
             <Link
               to="/search"
-              className="rounded-full border border-[rgba(64,138,113,0.16)] bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
+              className="rounded-full border border-[rgba(14,165,233,0.16)] bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
             >
               Book Now
             </Link>
@@ -266,7 +266,7 @@ const Home = () => {
           <button
             type="button"
             onClick={() => setMenuOpen((current) => !current)}
-            className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-[rgba(64,138,113,0.16)] text-slate-700 lg:hidden"
+            className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-[rgba(14,165,233,0.16)] text-slate-700 lg:hidden"
             aria-label="Toggle navigation"
             aria-expanded={menuOpen}
           >
@@ -284,7 +284,7 @@ const Home = () => {
                   onClick={() => setMenuOpen(false)}
                   className={`rounded-2xl px-4 py-3 text-sm font-medium transition ${
                     activeSection === item.href.slice(1)
-                      ? 'bg-[rgba(64,138,113,0.1)] text-[var(--color-secondary)]'
+                      ? 'bg-[rgba(14,165,233,0.1)] text-[var(--color-secondary)]'
                       : 'text-slate-700 hover:bg-slate-50 hover:text-[var(--color-primary)]'
                   }`}
                 >
@@ -312,36 +312,36 @@ const Home = () => {
 
       <main id="main-content">
         <section className="landing-grid relative overflow-hidden">
-          <div className="absolute inset-x-0 top-0 h-[620px] bg-[radial-gradient(circle_at_top_left,_rgba(176,228,204,0.4),_transparent_34%),radial-gradient(circle_at_top_right,_rgba(64,138,113,0.12),_transparent_30%)]" />
-          <div className="relative mx-auto grid max-w-7xl gap-10 px-4 py-12 sm:px-6 sm:py-16 lg:grid-cols-[minmax(0,1.02fr)_minmax(0,0.98fr)] lg:items-center lg:gap-12 lg:px-8 lg:py-20 xl:gap-16">
+          <div className="absolute inset-x-0 top-0 h-[500px] bg-[radial-gradient(circle_at_top_left,_rgba(186,230,253,0.4),_transparent_34%),radial-gradient(circle_at_top_right,_rgba(14,165,233,0.12),_transparent_30%)]" />
+          <div className="relative mx-auto grid max-w-7xl gap-6 px-4 py-6 sm:px-6 sm:py-8 lg:min-h-[calc(100vh-5.5rem)] lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:items-center lg:gap-6 lg:px-8 lg:py-6 xl:gap-8">
             <div className="flex flex-col justify-center">
-              <div className="reveal-up inline-flex w-fit items-center gap-2 rounded-full border border-[rgba(64,138,113,0.18)] bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm">
+              <div className="reveal-up inline-flex w-fit items-center gap-2 rounded-full border border-[rgba(14,165,233,0.18)] bg-white px-3 py-1.5 text-sm font-medium text-slate-700 shadow-sm">
                 <Sparkles className="h-4 w-4 text-[var(--color-primary)]" />
                 Built for cashless parking, access control, and live availability
               </div>
-              <h1 className="reveal-up reveal-delay-1 mt-5 max-w-[11ch] text-5xl font-semibold leading-[0.92] tracking-[-0.045em] text-[var(--color-secondary)] sm:text-6xl lg:text-[5rem]">
+              <h1 className="reveal-up reveal-delay-1 mt-3 max-w-[12ch] text-[2.9rem] font-semibold leading-[0.88] tracking-[-0.05em] text-[var(--color-secondary)] sm:text-[3.35rem] lg:max-w-[10.5ch] lg:text-[3.85rem]">
                 The Smarter Way to Park
               </h1>
-              <p className="reveal-up reveal-delay-2 mt-5 max-w-[36rem] text-lg leading-8 text-slate-600 sm:text-[1.15rem]">
+              <p className="reveal-up reveal-delay-2 mt-3 max-w-[40rem] text-[0.98rem] leading-6 text-slate-600 sm:text-[1.02rem]">
                 Deliver seamless, cashless parking with real-time discovery, faster gate access, and
                 session controls that keep drivers moving.
               </p>
-              <div className="reveal-up reveal-delay-3 mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+              <div className="reveal-up reveal-delay-3 mt-5 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
                 <Link
                   to="/search"
-                  className="inline-flex items-center justify-center gap-2 rounded-full bg-[var(--color-primary)] px-7 py-3.5 text-base font-semibold text-white shadow-[0_20px_40px_rgba(40,90,72,0.24)] transition hover:bg-[#1f4739]"
+                  className="inline-flex items-center justify-center gap-2 rounded-full bg-[var(--color-primary)] px-5 py-2.5 text-sm font-semibold text-white shadow-[0_20px_40px_rgba(40,90,72,0.24)] transition hover:bg-[#0369a1] sm:text-base"
                 >
                   Book Now
                   <ArrowRight className="h-4 w-4" />
                 </Link>
                 <Link
                   to={userLoginUrl}
-                  className="inline-flex items-center justify-center gap-2 rounded-full border border-[rgba(64,138,113,0.16)] bg-white px-7 py-3.5 text-base font-semibold text-slate-700 transition hover:border-[var(--color-secondary)] hover:text-[var(--color-secondary)]"
+                  className="inline-flex items-center justify-center gap-2 rounded-full border border-[rgba(14,165,233,0.16)] bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-[var(--color-secondary)] hover:text-[var(--color-secondary)] sm:text-base"
                 >
                   Login
                 </Link>
               </div>
-              <div className="reveal-up reveal-delay-4 mt-7 flex flex-wrap gap-3 text-sm text-slate-600">
+              <div className="reveal-up reveal-delay-4 mt-4 flex flex-wrap gap-2 text-sm text-slate-600">
                 {[
                   ['Live slot map', Search],
                   ['Secure payment flow', ShieldCheck],
@@ -349,29 +349,29 @@ const Home = () => {
                 ].map(([label, Icon]) => (
                   <div
                     key={label}
-                    className="inline-flex items-center gap-2 rounded-full border border-[rgba(64,138,113,0.14)] bg-white/80 px-4 py-2"
+                      className="inline-flex items-center gap-2 rounded-full border border-[rgba(14,165,233,0.14)] bg-white/80 px-3 py-1.5"
                   >
                     <Icon className="h-4 w-4 text-[var(--color-primary)]" />
                     {label}
                   </div>
                 ))}
               </div>
-              <div className="mt-8 grid gap-4 sm:grid-cols-3">
+              <div className="mt-5 grid gap-2.5 sm:grid-cols-3">
                 {[
                   ['98%', 'Successful gate pass-through'],
                   ['24/7', 'Live visibility on slot status'],
                   ['5 min', 'Average session start flow'],
                 ].map(([stat, label], index) => (
-                  <div key={label} className={`reveal-up reveal-delay-${Math.min(index + 2, 4)} hover-float rounded-3xl border border-white/80 bg-white/90 p-5 shadow-[0_14px_40px_rgba(17,31,26,0.07)]`}>
-                    <p className="text-2xl font-semibold text-[var(--color-secondary)]">{stat}</p>
-                    <p className="mt-1 text-sm leading-6 text-slate-500">{label}</p>
-                  </div>
-                ))}
+                    <div key={label} className={`reveal-up reveal-delay-${Math.min(index + 2, 4)} hover-float rounded-[24px] border border-white/80 bg-white/90 p-3.5 shadow-[0_14px_40px_rgba(17,31,26,0.07)]`}>
+                      <p className="text-lg font-semibold text-[var(--color-secondary)]">{stat}</p>
+                      <p className="mt-1 text-[13px] leading-5 text-slate-500">{label}</p>
+                    </div>
+                  ))}
               </div>
             </div>
 
             <div className="relative flex items-center justify-center lg:justify-end">
-              <div className="reveal-up reveal-delay-2 w-full max-w-[640px]">
+              <div className="reveal-up reveal-delay-2 w-full max-w-[520px] lg:max-w-[540px]">
                 <HeroParkingMap />
               </div>
             </div>
@@ -391,9 +391,9 @@ const Home = () => {
 
           <div className="mt-12 grid gap-6 lg:grid-cols-5">
             {processSteps.map((step, index) => (
-              <div key={step.title} className={`timeline-card reveal-up reveal-delay-${(index % 5)} hover-float relative rounded-[28px] border border-[rgba(64,138,113,0.14)] bg-white p-6 shadow-[0_18px_50px_rgba(17,31,26,0.05)]`}>
+              <div key={step.title} className={`timeline-card reveal-up reveal-delay-${(index % 5)} hover-float relative rounded-[28px] border border-[rgba(14,165,233,0.14)] bg-white p-6 shadow-[0_18px_50px_rgba(17,31,26,0.05)]`}>
                 <div className="flex items-center gap-4">
-                  <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[linear-gradient(145deg,#285A48_0%,#408A71_100%)] text-base font-semibold text-white shadow-[0_14px_30px_rgba(40,90,72,0.26)]">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[linear-gradient(145deg,#0ea5e9_0%,#06b6d4_100%)] text-base font-semibold text-white shadow-[0_14px_30px_rgba(40,90,72,0.26)]">
                     {step.number}
                   </div>
                   <p className="text-sm font-medium uppercase tracking-[0.24em] text-slate-400">
@@ -425,7 +425,7 @@ const Home = () => {
                     key={feature.title}
                     className="group reveal-up hover-float rounded-[30px] border border-white bg-white p-7 shadow-[0_18px_50px_rgba(17,31,26,0.05)] transition hover:shadow-[0_26px_60px_rgba(17,31,26,0.09)]"
                   >
-                    <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[rgba(64,138,113,0.12)] text-[var(--color-primary)]">
+                    <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[rgba(14,165,233,0.12)] text-[var(--color-primary)]">
                       <Icon className="h-6 w-6" />
                     </div>
                     <h3 className="mt-6 text-2xl font-semibold text-[var(--color-secondary)]">{feature.title}</h3>
@@ -456,8 +456,8 @@ const Home = () => {
                 key={card.name}
                 className={`reveal-up hover-float rounded-[30px] border p-8 shadow-[0_18px_50px_rgba(17,31,26,0.05)] ${
                   card.featured
-                    ? 'border-[rgba(64,138,113,0.3)] bg-[linear-gradient(180deg,#f2fbf6_0%,#ffffff_100%)]'
-                    : 'border-[rgba(64,138,113,0.14)] bg-white'
+                    ? 'border-[rgba(14,165,233,0.3)] bg-[linear-gradient(180deg,#f4f8fd_0%,#ffffff_100%)]'
+                    : 'border-[rgba(14,165,233,0.14)] bg-white'
                 }`}
               >
                 <p className="text-sm font-semibold uppercase tracking-[0.22em] text-slate-400">{card.name}</p>
@@ -478,8 +478,8 @@ const Home = () => {
                   to={userSignupUrl}
                   className={`mt-8 inline-flex w-full items-center justify-center rounded-full px-5 py-3 text-sm font-semibold transition ${
                     card.featured
-                      ? 'bg-[var(--color-primary)] text-white hover:bg-[#1f4739]'
-                      : 'border border-[rgba(64,138,113,0.14)] text-slate-700 hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]'
+                      ? 'bg-[var(--color-primary)] text-white hover:bg-[#0369a1]'
+                      : 'border border-[rgba(14,165,233,0.14)] text-slate-700 hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]'
                   }`}
                 >
                   Choose plan
@@ -499,9 +499,9 @@ const Home = () => {
               <p className="mt-4 text-lg leading-8 text-slate-600">
                 Keep the FAQ clean, lightweight, and easy to scan on mobile or desktop.
               </p>
-              <div className="mt-8 rounded-[28px] border border-[rgba(64,138,113,0.14)] bg-white p-6 shadow-[0_16px_40px_rgba(17,31,26,0.05)]">
+              <div className="mt-8 rounded-[28px] border border-[rgba(14,165,233,0.14)] bg-white p-6 shadow-[0_16px_40px_rgba(17,31,26,0.05)]">
                 <div className="flex items-start gap-4">
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[rgba(64,138,113,0.12)] text-[var(--color-primary)]">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[rgba(14,165,233,0.12)] text-[var(--color-primary)]">
                     <Headphones className="h-6 w-6" />
                   </div>
                   <div>
@@ -518,7 +518,7 @@ const Home = () => {
                       </Link>
                       <Link
                         to="/search"
-                        className="inline-flex items-center justify-center rounded-full border border-[rgba(64,138,113,0.14)] px-5 py-3 text-sm font-semibold text-slate-700 transition hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
+                        className="inline-flex items-center justify-center rounded-full border border-[rgba(14,165,233,0.14)] px-5 py-3 text-sm font-semibold text-slate-700 transition hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
                       >
                         Explore booking
                       </Link>
@@ -535,7 +535,7 @@ const Home = () => {
                 return (
                   <article
                     key={faq.question}
-                    className="reveal-up overflow-hidden rounded-[24px] border border-[rgba(64,138,113,0.14)] bg-white shadow-[0_12px_40px_rgba(17,31,26,0.05)]"
+                    className="reveal-up overflow-hidden rounded-[24px] border border-[rgba(14,165,233,0.14)] bg-white shadow-[0_12px_40px_rgba(17,31,26,0.05)]"
                   >
                     <button
                       type="button"
@@ -563,7 +563,7 @@ const Home = () => {
         </section>
 
         <section className="px-4 pb-20 sm:px-6 lg:px-8">
-          <div className="reveal-up mx-auto max-w-7xl rounded-[36px] border border-[rgba(64,138,113,0.16)] bg-[linear-gradient(135deg,#0d1c1a_0%,#17342d_100%)] px-6 py-10 text-white shadow-[0_26px_70px_rgba(9,20,19,0.18)] sm:px-10 lg:flex lg:items-center lg:justify-between">
+          <div className="reveal-up mx-auto max-w-7xl rounded-[36px] border border-[rgba(14,165,233,0.16)] bg-[linear-gradient(135deg,#0f172a_0%,#0f3b67_100%)] px-6 py-10 text-white shadow-[0_26px_70px_rgba(9,20,19,0.18)] sm:px-10 lg:flex lg:items-center lg:justify-between">
             <div className="max-w-2xl">
               <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[var(--color-accent)]">
                 Ready to start
@@ -667,7 +667,7 @@ const Home = () => {
       </footer>
 
       <div className="mobile-cta-bar fixed inset-x-0 bottom-4 z-40 px-4 lg:hidden">
-        <div className="mx-auto flex max-w-md items-center gap-3 rounded-[24px] border border-[rgba(64,138,113,0.16)] bg-white/92 p-3 shadow-[0_18px_40px_rgba(17,31,26,0.12)] backdrop-blur-xl">
+        <div className="mx-auto flex max-w-md items-center gap-3 rounded-[24px] border border-[rgba(14,165,233,0.16)] bg-white/92 p-3 shadow-[0_18px_40px_rgba(17,31,26,0.12)] backdrop-blur-xl">
           <Link
             to="/search"
             className="flex-1 rounded-[18px] bg-[var(--color-primary)] px-4 py-3 text-center text-sm font-semibold text-white"
@@ -676,7 +676,7 @@ const Home = () => {
           </Link>
           <Link
             to={userLoginUrl}
-            className="flex-1 rounded-[18px] border border-[rgba(64,138,113,0.14)] px-4 py-3 text-center text-sm font-semibold text-[var(--color-secondary)]"
+            className="flex-1 rounded-[18px] border border-[rgba(14,165,233,0.14)] px-4 py-3 text-center text-sm font-semibold text-[var(--color-secondary)]"
           >
             Login
           </Link>
@@ -688,3 +688,4 @@ const Home = () => {
 };
 
 export default Home;
+

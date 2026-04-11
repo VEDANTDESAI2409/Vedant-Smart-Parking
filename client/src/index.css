@@ -27,7 +27,14 @@
 }
 
 html {
+  font-size: 14px;
   scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+}
+
+html,
+body {
+  min-height: 100%;
 }
 
 body {
@@ -40,6 +47,8 @@ body {
     linear-gradient(180deg, #ffffff 0%, #f7fcf9 100%);
   color: var(--color-ink);
   font-family: var(--font-body);
+  font-size: 1rem;
+  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
@@ -144,6 +153,35 @@ select:focus {
 
 #root {
   min-height: 100vh;
+}
+
+.page-container {
+  width: 100%;
+  max-width: 1440px;
+  margin: 0 auto;
+  padding-left: clamp(0.875rem, 1.8vw, 1.5rem);
+  padding-right: clamp(0.875rem, 1.8vw, 1.5rem);
+}
+
+.page-container-narrow {
+  width: 100%;
+  max-width: 72rem;
+  margin: 0 auto;
+}
+
+.full-page-view {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-top: clamp(0.75rem, 2vw, 1.5rem);
+  padding-bottom: clamp(0.75rem, 2vw, 1.5rem);
+}
+
+.section-spacing {
+  padding-top: clamp(2.5rem, 6vw, 5rem);
+  padding-bottom: clamp(2.5rem, 6vw, 5rem);
 }
 
 .page-shell {
@@ -838,6 +876,10 @@ select:focus {
 }
 
 @media (max-width: 768px) {
+  html {
+    font-size: 13px;
+  }
+
   body {
     overflow-x: hidden;
   }

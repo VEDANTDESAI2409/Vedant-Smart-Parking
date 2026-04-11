@@ -17,17 +17,24 @@
   --theme-text: #0f172a;
   --theme-text-soft: #475569;
   --theme-ring: rgba(20, 184, 166, 0.22);
-  --color-primary: #285a48;
-  --color-secondary: #091413;
-  --color-tertiary: #408a71;
-  --color-accent: #b0e4cc;
-  --color-surface: #fcfffd;
-  --color-muted-surface: #f2fbf6;
-  --color-ink: #0f241f;
+  --color-primary: #0ea5e9;
+  --color-secondary: #0f172a;
+  --color-tertiary: #06b6d4;
+  --color-accent: #bae6fd;
+  --color-surface: #f8fbff;
+  --color-muted-surface: #f4f8fd;
+  --color-ink: #0f172a;
 }
 
 html {
+  font-size: 14px;
   scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+}
+
+html,
+body {
+  min-height: 100%;
 }
 
 body {
@@ -40,6 +47,8 @@ body {
     linear-gradient(180deg, #ffffff 0%, #f7fcf9 100%);
   color: var(--color-ink);
   font-family: var(--font-body);
+  font-size: 1rem;
+  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
@@ -146,6 +155,83 @@ select:focus {
   min-height: 100vh;
 }
 
+.page-container {
+  width: 100%;
+  max-width: 1440px;
+  margin: 0 auto;
+  padding-left: clamp(0.875rem, 1.8vw, 1.5rem);
+  padding-right: clamp(0.875rem, 1.8vw, 1.5rem);
+}
+
+.page-container-narrow {
+  width: 100%;
+  max-width: 72rem;
+  margin: 0 auto;
+}
+
+.full-page-view {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-top: clamp(0.75rem, 2vw, 1.5rem);
+  padding-bottom: clamp(0.75rem, 2vw, 1.5rem);
+}
+
+.section-spacing {
+  padding-top: clamp(2.5rem, 6vw, 5rem);
+  padding-bottom: clamp(2.5rem, 6vw, 5rem);
+}
+
+.hero-leaflet-map .leaflet-container,
+.hero-leaflet-map {
+  height: 100%;
+  width: 100%;
+}
+
+.leaflet-div-icon {
+  background: transparent;
+  border: 0;
+}
+
+.leaflet-parking-marker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.leaflet-parking-marker span {
+  display: flex;
+  height: 38px;
+  width: 38px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  border: 3px solid rgba(255, 255, 255, 0.96);
+  background: linear-gradient(180deg, #ff6469 0%, #d83e45 100%);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 800;
+  box-shadow: 0 16px 30px rgba(71, 34, 36, 0.26);
+}
+
+.leaflet-user-marker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.leaflet-user-marker span {
+  display: block;
+  height: 18px;
+  width: 18px;
+  border-radius: 9999px;
+  border: 3px solid rgba(255, 255, 255, 0.96);
+  background: #38bdf8;
+  box-shadow: 0 0 0 8px rgba(56, 189, 248, 0.18);
+}
+
 .page-shell {
   transition:
     opacity 700ms cubic-bezier(0.2, 0.8, 0.2, 1),
@@ -174,7 +260,7 @@ select:focus {
   background:
     radial-gradient(circle at top left, rgba(176, 228, 204, 0.42), transparent 30%),
     radial-gradient(circle at bottom right, rgba(64, 138, 113, 0.18), transparent 28%),
-    linear-gradient(180deg, #f8fdf9 0%, #eef8f3 100%);
+    linear-gradient(180deg, #f8fbff 0%, #eef7ff 100%);
   transition:
     opacity 700ms ease,
     visibility 700ms ease;
@@ -756,6 +842,10 @@ select:focus {
 }
 
 @media (max-width: 768px) {
+  html {
+    font-size: 13px;
+  }
+
   body {
     overflow-x: hidden;
   }
@@ -781,3 +871,4 @@ select:focus {
     display: none;
   }
 }
+
