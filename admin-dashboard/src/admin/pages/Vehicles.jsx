@@ -1,9 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { FaPlus, FaEdit, FaTrash, FaCar, FaMotorcycle, FaTruck, FaTimes, FaSearch } from 'react-icons/fa';
 import Swal from 'sweetalert2';
 import { vehiclesAPI } from '../../services/api';
 import SearchableSelect from '../../components/SearchableSelect';
-import { showError, showSuccess } from '../../utils/toastService';
+import Button from '../../components/Button';
+import Table from '../../components/Table';
+import { shouldConfirmBulkDelete } from '../../utils/adminPreferences';
+import { showError, showSuccess, showWarning } from '../../utils/toastService';
 
 const Vehicles = () => {
   const [vehicles, setVehicles] = useState([]);
@@ -11,6 +14,7 @@ const Vehicles = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState(null); 
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedVehicleIds, setSelectedVehicleIds] = useState([]);
 
   const [formData, setFormData] = useState({
     licensePlate: '',
@@ -29,6 +33,10 @@ const Vehicles = () => {
     const interval = setInterval(fetchVehicles, 30000);
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    setSelectedVehicleIds((prev) => prev.filter((id) => vehicles.some((vehicle) => (vehicle._id || vehicle.id) === id)));
+  }, [vehicles]);
 
   const fetchVehicles = async () => {
     setLoading(true);
@@ -99,11 +107,11 @@ const Vehicles = () => {
 
     try {
       await vehiclesAPI.delete(id);
-      setVehicles(prev => prev.filter(v => (v._id || v.id) !== id));
+      await fetchVehicles();
       showSuccess('Vehicle deleted successfully');
     } catch (error) {
       console.error('Delete error details:', error.response?.data);
-      showError(error.response?.data?.message || "Failed to delete vehicle");
+      showError(error.response?.data?.message || 'Failed to delete vehicle');
     }
   };
 
@@ -140,6 +148,79 @@ const Vehicles = () => {
   const formatIndianPlate = (plate) => {
     if (!plate) return '';
     return plate.toUpperCase().replace(/\s/g, '');
+  };
+
+  const filteredVehicles = useMemo(() => {
+    const query = searchTerm.trim().toLowerCase();
+
+    if (!query) {
+      return vehicles;
+    }
+
+    return vehicles.filter((vehicle) =>
+      [vehicle.licensePlate, vehicle.make, vehicle.model]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(query))
+    );
+  }, [vehicles, searchTerm]);
+
+  const handleVehicleSelect = (id, checked) => {
+    setSelectedVehicleIds((prev) =>
+      checked ? [...new Set([...prev, id])] : prev.filter((selectedId) => selectedId !== id)
+    );
+  };
+
+  const handleSelectAllVehicles = (checked) => {
+    setSelectedVehicleIds(checked ? filteredVehicles.map((vehicle) => vehicle._id || vehicle.id).filter(Boolean) : []);
+  };
+
+  const handleBulkDelete = async () => {
+    if (!selectedVehicleIds.length) {
+      showWarning('Please select at least one vehicle');
+      return;
+    }
+
+    if (shouldConfirmBulkDelete()) {
+      const result = await Swal.fire({
+        title: 'Delete Selected Vehicles?',
+        text: `Delete ${selectedVehicleIds.length} selected vehicles? This action cannot be undone.`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, Delete Selected',
+        cancelButtonText: 'Cancel',
+        confirmButtonColor: '#dc2626',
+        cancelButtonColor: '#64748b',
+        background: '#ffffff',
+        color: '#0f172a',
+        borderRadius: '12px',
+      });
+
+      if (!result.isConfirmed) {
+        return;
+      }
+    }
+
+    try {
+      const results = await Promise.allSettled(selectedVehicleIds.map((id) => vehiclesAPI.delete(id)));
+      const successCount = results.filter((item) => item.status === 'fulfilled').length;
+      const failureCount = results.length - successCount;
+
+      await fetchVehicles();
+      setSelectedVehicleIds([]);
+
+      if (successCount) {
+        showSuccess(
+          failureCount
+            ? `${successCount} vehicles deleted, ${failureCount} failed`
+            : `${successCount} vehicles deleted successfully`
+        );
+      } else {
+        showError('Failed to delete selected vehicles');
+      }
+    } catch (error) {
+      console.error('Bulk delete vehicles error:', error);
+      showError('Failed to delete selected vehicles');
+    }
   };
 
   const columns = [
@@ -247,11 +328,18 @@ const Vehicles = () => {
             <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
             <input 
               type="text" 
+              value={searchTerm}
               placeholder="Search plate or model..." 
               className="w-full pl-12 pr-4 py-3 bg-white dark:bg-[#1E293B] border-none shadow-sm ring-1 ring-slate-200 dark:ring-slate-700 rounded-2xl outline-none transition-all text-sm dark:text-white"
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
+          {selectedVehicleIds.length > 0 && (
+            <Button variant="danger" onClick={handleBulkDelete}>
+              <FaTrash className="mr-2" />
+              {`Delete Selected (${selectedVehicleIds.length})`}
+            </Button>
+          )}
           <button 
             onClick={() => setIsModalOpen(true)}
             className="flex items-center gap-2 px-6 py-3.5 bg-blue-600 text-white rounded-2xl shadow-lg hover:bg-blue-700 transition-all active:scale-95 font-bold text-sm"
@@ -262,37 +350,18 @@ const Vehicles = () => {
       </div>
 
       <div className="bg-white dark:bg-[#1E293B] rounded-[2rem] shadow-xl overflow-hidden border border-slate-100 dark:border-slate-800">
-        <table className="w-full text-left border-collapse">
-          <thead className="bg-slate-50 dark:bg-slate-800/50">
-            <tr>
-              {columns.map((col, i) => (
-                <th key={i} className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">{col.header}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-            {loading ? (
-              <tr><td colSpan={5} className="p-10 text-center text-slate-400">Loading fleet...</td></tr>
-            ) : (
-              vehicles
-                .filter(v => (
-                  v.licensePlate?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                  v.make?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                  v.model?.toLowerCase().includes(searchTerm.toLowerCase())
-                ))
-                .map((row, i) => (
-                  <tr key={row._id || row.id || i} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
-                    {columns.map((col, j) => (
-                      <td key={j} className="px-6 py-4">{col.render(row)}</td>
-                    ))}
-                  </tr>
-                ))
-            )}
-            {!loading && vehicles.length === 0 && (
-              <tr><td colSpan={5} className="p-10 text-center text-slate-400 font-medium">No vehicles found. Click "Add Vehicle" to start.</td></tr>
-            )}
-          </tbody>
-        </table>
+        <Table
+          columns={columns}
+          data={filteredVehicles}
+          loading={loading}
+          emptyMessage={searchTerm.trim() ? `No vehicles found matching "${searchTerm}"` : 'No vehicles found. Click "Add Vehicle" to start.'}
+          selectable
+          selectedRowIds={selectedVehicleIds}
+          onRowSelect={handleVehicleSelect}
+          onSelectAll={handleSelectAllVehicles}
+          getRowId={(row) => row._id || row.id}
+          className="rounded-[2rem] border-0 bg-transparent shadow-none dark:bg-transparent"
+        />
       </div>
 
       {isModalOpen && (

@@ -6,6 +6,7 @@ import Button from '../../components/Button';
 import Modal from '../../components/Modal';
 import Table from '../../components/Table';
 import Card from '../../components/Card';
+import ListSearchInput from '../../components/ListSearchInput';
 import SearchableSelect from '../../components/SearchableSelect';
 import DataImportModal from '../components/DataImportModal';
 import { areasAPI, citiesAPI, pincodesAPI } from '../../services/api';
@@ -27,6 +28,7 @@ const AreaPage = () => {
   const [cities, setCities] = useState([]);
   const [pincodes, setPincodes] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [importModalOpen, setImportModalOpen] = useState(false);
   const [editingArea, setEditingArea] = useState(null);
@@ -98,6 +100,20 @@ const AreaPage = () => {
       })),
     [filteredPincodes]
   );
+
+  const filteredAreas = useMemo(() => {
+    const query = searchTerm.trim().toLowerCase();
+
+    if (!query) {
+      return areas;
+    }
+
+    return areas.filter((item) =>
+      [getCityName(item), getPincodeValue(item), item.name, item.status ? 'active' : 'inactive']
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(query))
+    );
+  }, [areas, searchTerm]);
 
   const resetForm = () => {
     setEditingArea(null);
@@ -194,7 +210,7 @@ const AreaPage = () => {
   };
 
   const handleSelectAllAreas = (checked) => {
-    setSelectedAreaIds(checked ? areas.map((item) => item._id).filter(Boolean) : []);
+    setSelectedAreaIds(checked ? filteredAreas.map((item) => item._id).filter(Boolean) : []);
   };
 
   const handleBulkDelete = async () => {
@@ -341,11 +357,18 @@ const AreaPage = () => {
       </div>
 
       <Card>
+        <div className="mb-4">
+          <ListSearchInput
+            value={searchTerm}
+            onChange={setSearchTerm}
+            placeholder="Search city, pincode, area, or status..."
+          />
+        </div>
         <Table
           columns={columns}
-          data={areas}
+          data={filteredAreas}
           loading={loading}
-          emptyMessage="No areas found"
+          emptyMessage={searchTerm.trim() ? `No areas found matching "${searchTerm}"` : 'No areas found'}
           selectable
           selectedRowIds={selectedAreaIds}
           onRowSelect={handleAreaSelect}
