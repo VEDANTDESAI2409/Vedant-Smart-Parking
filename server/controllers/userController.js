@@ -92,7 +92,7 @@ exports.getUser = async (req, res) => {
     }
 
     // Check if user can access this profile
-    if (req.user.role !== 'admin' && req.user.id !== req.params.id) {
+    if (!['admin', 'superadmin'].includes(req.user.role) && req.user.id !== req.params.id) {
       return res.status(403).json({
         success: false,
         message: 'Access denied'
@@ -127,7 +127,7 @@ exports.updateUser = async (req, res) => {
     }
 
     // Check if user can update this profile
-    if (req.user.role !== 'admin' && req.user.id !== req.params.id) {
+    if (!['admin', 'superadmin'].includes(req.user.role) && req.user.id !== req.params.id) {
       return res.status(403).json({
         success: false,
         message: 'Access denied'
@@ -248,7 +248,7 @@ exports.deleteUser = async (req, res) => {
 exports.getUserStats = async (req, res) => {
   try {
     // Check if user can access this data
-    if (req.user.role !== 'admin' && req.user.id !== req.params.id) {
+    if (!['admin', 'superadmin'].includes(req.user.role) && req.user.id !== req.params.id) {
       return res.status(403).json({
         success: false,
         message: 'Access denied'
