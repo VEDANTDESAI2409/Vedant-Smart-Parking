@@ -24,6 +24,7 @@ const activityLogSchema = new mongoose.Schema({
       'user_vehicle_added',
       'user_vehicle_updated',
       'user_vehicle_deleted',
+      'admin_vehicle_deleted',
 
       // Booking actions
       'booking_created',

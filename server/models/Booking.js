@@ -120,7 +120,7 @@ const bookingSchema = new mongoose.Schema({
     },
     reason: {
       type: String,
-      enum: ['user_cancelled', 'system_cancelled', 'no_show', 'payment_failed']
+      enum: ['user_cancelled', 'admin_cancelled', 'system_cancelled', 'no_show', 'payment_failed']
     },
     refundAmount: { type: Number, default: 0 }
   },

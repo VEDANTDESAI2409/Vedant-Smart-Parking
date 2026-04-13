@@ -19,7 +19,7 @@ const Users = () => {
 
   useEffect(() => {
     fetchUsers();
-    // Refresh data every 5 seconds for real-time login status updates.
+    // Refresh data every 5 seconds for real-time login status updates
     const interval = setInterval(fetchUsers, 5000);
     return () => clearInterval(interval);
   }, []);
