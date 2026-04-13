@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { FaFileCsv, FaSearch, FaTrash, FaPhone, FaEdit, FaEnvelope } from 'react-icons/fa';
+import { FaFileCsv, FaSearch, FaTrash, FaPhone, FaEdit, FaEnvelope, FaCalendarAlt } from 'react-icons/fa';
 import Swal from 'sweetalert2';
 import Table from '../../components/Table';
 import { usersAPI } from '../../services/api';
@@ -48,7 +48,8 @@ const Users = () => {
         u.name?.toLowerCase().includes(lowerSearch) ||
         u.email?.toLowerCase().includes(lowerSearch) ||
         u.phone?.toString().includes(lowerSearch) ||
-        u.customId?.toLowerCase().includes(lowerSearch)
+        u.customId?.toLowerCase().includes(lowerSearch) ||
+        u.joinDate?.toLowerCase().includes(lowerSearch)
       );
     });
   }, [users, searchTerm]);
@@ -79,13 +80,14 @@ const Users = () => {
   };
 
   const handleExportCSV = () => {
-    const headers = ["User ID,Name,Email,Phone,Status"];
+    const headers = ["User ID,Name,Email,Phone,Status,Joined Date"];
     const rows = filteredUsers.map(u => [
       u.customId,
       `"${u.name}"`,
       u.email,
       u.phone,
-      u.isActive ? 'Active' : 'Inactive'
+      u.isActive ? 'Active' : 'Inactive',
+      u.joinDate
     ].join(","));
 
     const csvContent = [headers, ...rows].join("\n");
@@ -125,6 +127,15 @@ const Users = () => {
         <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
           <FaEnvelope size={12} className="opacity-70" />
           {row.email || '---'}
+        </div>
+      ) 
+    },
+    { 
+      header: 'JOINED DATE', 
+      render: (row) => (
+        <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
+          <FaCalendarAlt size={12} className="opacity-70" />
+          {row.joinDate}
         </div>
       ) 
     },
@@ -192,7 +203,7 @@ const Users = () => {
             <input 
               type="text" 
               value={searchTerm}
-              placeholder="Search name, email, or phone..." 
+              placeholder="Search name, email, phone, or date..." 
               className="w-full pl-12 pr-4 py-3 bg-white dark:bg-[#1E293B] border-none shadow-sm ring-1 ring-slate-200 dark:ring-slate-700 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none text-sm dark:text-white transition-all"
               onChange={(e) => setSearchTerm(e.target.value)}
             />
