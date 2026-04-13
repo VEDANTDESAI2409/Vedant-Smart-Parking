@@ -33,6 +33,11 @@ export const authAPI = {
   register: (payload) => api.post('/auth/signup', payload),
   logout: () => api.post('/auth/logout'),
   getProfile: () => api.get('/auth/profile'),
+  sendOtp: (payload) => api.post('/auth/send-otp', payload),
+  resendOtp: (payload) => api.post('/auth/resend-otp', payload),
+  verifyOtp: (payload) => api.post('/auth/verify-otp', payload),
+  createFirebaseSession: (payload) => api.post('/auth/firebase/session', payload),
+  getAuthProfile: () => api.get('/auth/me'),
 };
 
 export const locationsAPI = {
