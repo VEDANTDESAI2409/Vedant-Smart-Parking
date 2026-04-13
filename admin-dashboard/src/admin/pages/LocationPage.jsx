@@ -6,6 +6,7 @@ import Button from '../../components/Button';
 import Modal from '../../components/Modal';
 import Table from '../../components/Table';
 import Card from '../../components/Card';
+import ListSearchInput from '../../components/ListSearchInput';
 import SearchableSelect from '../../components/SearchableSelect';
 import DataImportModal from '../components/DataImportModal';
 import { areasAPI, citiesAPI, locationsAPI, pincodesAPI } from '../../services/api';
@@ -38,6 +39,7 @@ const LocationPage = () => {
   const [pincodes, setPincodes] = useState([]);
   const [areas, setAreas] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [importModalOpen, setImportModalOpen] = useState(false);
   const [editingLocation, setEditingLocation] = useState(null);
@@ -137,6 +139,26 @@ const LocationPage = () => {
       })),
     [filteredAreas]
   );
+
+  const filteredLocations = useMemo(() => {
+    const query = searchTerm.trim().toLowerCase();
+
+    if (!query) {
+      return locations;
+    }
+
+    return locations.filter((item) =>
+      [
+        getCityName(item),
+        getPincodeValue(item),
+        getAreaValue(item),
+        item.name,
+        item.status ? 'active' : 'inactive',
+      ]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(query))
+    );
+  }, [locations, searchTerm]);
 
   const resetForm = () => {
     setEditingLocation(null);
@@ -239,7 +261,7 @@ const LocationPage = () => {
   };
 
   const handleSelectAllLocations = (checked) => {
-    setSelectedLocationIds(checked ? locations.map((item) => item._id).filter(Boolean) : []);
+    setSelectedLocationIds(checked ? filteredLocations.map((item) => item._id).filter(Boolean) : []);
   };
 
   const handleBulkDelete = async () => {
@@ -390,11 +412,18 @@ const LocationPage = () => {
       </div>
 
       <Card>
+        <div className="mb-4">
+          <ListSearchInput
+            value={searchTerm}
+            onChange={setSearchTerm}
+            placeholder="Search city, pincode, area, or location..."
+          />
+        </div>
         <Table
           columns={columns}
-          data={locations}
+          data={filteredLocations}
           loading={loading}
-          emptyMessage="No locations found"
+          emptyMessage={searchTerm.trim() ? `No locations found matching "${searchTerm}"` : 'No locations found'}
           selectable
           selectedRowIds={selectedLocationIds}
           onRowSelect={handleLocationSelect}
