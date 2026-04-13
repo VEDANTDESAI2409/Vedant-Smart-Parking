@@ -41,10 +41,35 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const establishSession = ({ token, user: userData }) => {
+    userAuthStorage.setToken(token);
+    userAuthStorage.setUser(userData);
+    setUser(userData);
+    setIsAuthenticated(true);
+  };
+
+  const loginWithPhoneOtp = async (payload) => {
+    const response = await authAPI.verifyOtp(payload);
+    establishSession(response.data);
+    return response.data;
+  };
+
+  const loginWithFirebaseSession = async (payload) => {
+    const response = await authAPI.createFirebaseSession(payload);
+    establishSession(response.data);
+    return response.data;
+  };
+
   const register = async (payload) => {
     try {
       const response = await authAPI.register(payload);
-      const { user: userData } = response.data.data;
+      const { token, user: userData } = response.data.data;
+
+      if (token && userData) {
+        authService.logout();
+        establishSession({ token, user: userData });
+      }
+
       return {
         success: true,
         user: userData,
@@ -88,9 +113,12 @@ export const AuthProvider = ({ children }) => {
       loading,
       isAuthenticated,
       login,
+      loginWithPhoneOtp,
+      loginWithFirebaseSession,
       register,
       logout,
       updateUserData,
+      establishSession,
     }),
     [user, loading, isAuthenticated],
   );
