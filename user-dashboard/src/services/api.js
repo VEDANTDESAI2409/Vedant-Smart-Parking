@@ -76,4 +76,8 @@ export const paymentsAPI = {
   getAll: (params) => api.get('/payments', { params }),
 };
 
+export const usersAPI = {
+  updateProfile: (id, data) => api.put(`/users/${id}`, data),
+};
+
 export default api;
