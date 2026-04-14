@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { FaFileCsv, FaSearch, FaTrash, FaPhone, FaEdit, FaCalendarAlt, FaTicketAlt } from 'react-icons/fa';
+import { FaFileCsv, FaSearch, FaTrash, FaPhone, FaEdit, FaEnvelope, FaTicketAlt } from 'react-icons/fa';
 import Swal from 'sweetalert2';
 import Table from '../../components/Table';
 import { usersAPI } from '../../services/api';
@@ -23,8 +23,6 @@ const Users = () => {
       const formatted = rawData.map((u, index) => ({
         ...u,
         customId: `U${String(index + 1).padStart(3, '0')}`,
-        // Formatting the date
-        joinDate: u.createdAt ? new Date(u.createdAt).toLocaleDateString('en-GB') : 'N/A',
         // Counting slots (assuming u.bookedSlots is an array from your API)
         slotCount: u.bookedSlots ? u.bookedSlots.length : (u.slotCount || 0)
       }));
@@ -33,8 +31,8 @@ const Users = () => {
       console.error('Error fetching users:', error);
       // Fallback Dummy Data with new fields
       setUsers([
-        { _id: 1, customId: 'U001', name: 'John Doe', email: 'john@example.com', phone: '+91 98765 43210', isActive: true, joinDate: '15/01/2024', slotCount: 5 },
-        { _id: 2, customId: 'U002', name: 'Jane Smith', email: 'jane@example.com', phone: '+91 91234 56789', isActive: false, joinDate: '14/01/2024', slotCount: 2 },
+        { _id: 1, customId: 'U001', name: 'John Doe', email: 'john@example.com', phone: '+91 98765 43210', isActive: true, slotCount: 5 },
+        { _id: 2, customId: 'U002', name: 'Jane Smith', email: 'jane@example.com', phone: '+91 91234 56789', isActive: false, slotCount: 2 },
       ]);
     } finally {
       setLoading(false);
@@ -50,8 +48,7 @@ const Users = () => {
         u.name?.toLowerCase().includes(lowerSearch) ||
         u.email?.toLowerCase().includes(lowerSearch) ||
         u.phone?.toString().includes(lowerSearch) ||
-        u.customId?.toLowerCase().includes(lowerSearch) ||
-        u.joinDate?.includes(lowerSearch) // Now searches by date too
+        u.customId?.toLowerCase().includes(lowerSearch)
       );
     });
   }, [users, searchTerm]);
@@ -82,15 +79,14 @@ const Users = () => {
   };
 
   const handleExportCSV = () => {
-    const headers = ["User ID,Name,Email,Phone,Slots,Status,Joined Date"];
+    const headers = ["User ID,Name,Email,Phone,Slots,Status"];
     const rows = filteredUsers.map(u => [
       u.customId,
       `"${u.name}"`,
       u.email,
       u.phone,
       u.slotCount,
-      u.isActive ? 'Active' : 'Inactive',
-      u.joinDate
+      u.isActive ? 'Active' : 'Inactive'
     ].join(","));
 
     const csvContent = [headers, ...rows].join("\n");
@@ -125,11 +121,11 @@ const Users = () => {
       ) 
     },
     { 
-      header: 'JOINED DATE', 
+      header: 'EMAIL', 
       render: (row) => (
         <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
-          <FaCalendarAlt size={12} className="opacity-70" />
-          {row.joinDate}
+          <FaEnvelope size={12} className="opacity-70" />
+          {row.email || '---'}
         </div>
       ) 
     },
@@ -185,7 +181,7 @@ const Users = () => {
             <input 
               type="text" 
               value={searchTerm}
-              placeholder="Search name, phone, or date..." 
+              placeholder="Search name, email, or phone..." 
               className="w-full pl-12 pr-4 py-3 bg-white dark:bg-[#1E293B] border-none shadow-sm ring-1 ring-slate-200 dark:ring-slate-700 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none text-sm dark:text-white transition-all"
               onChange={(e) => setSearchTerm(e.target.value)}
             />
