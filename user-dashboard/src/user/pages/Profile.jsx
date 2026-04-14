@@ -1,12 +1,17 @@
 import React, { useState } from 'react';
 import { FaBell, FaCar, FaCreditCard, FaSave, FaUser } from 'react-icons/fa';
+import { useAuth } from '../../context/AuthContext';
+import { usersAPI } from '../../services/api';
+import { showSuccess, showError } from '../../utils/toastService';
 
 const Profile = () => {
+  const { user, updateUserData } = useContext(AuthContext);
+  
   const [profile, setProfile] = useState({
-    name: 'John Doe',
-    email: 'john.doe@example.com',
-    phone: '+1 (555) 123-4567',
-    address: '123 Main St, City, State 12345',
+    name: user?.name || '',
+    email: user?.email || '',
+    phone: user?.phone || '',
+    address: user?.address || '',
   });
 
   const [vehicles] = useState([
@@ -19,9 +24,22 @@ const Profile = () => {
     { id: 2, type: 'PayPal', email: 'john.doe@example.com' },
   ]);
 
-  const handleProfileUpdate = (event) => {
+  const handleProfileUpdate = async (event) => {
     event.preventDefault();
-    console.log('Profile updated:', profile);
+    try {
+      const response = await usersAPI.updateProfile(user._id, {
+        name: profile.name,
+        phone: profile.phone,
+        address: profile.address,
+      });
+      
+      // Update the user data in context
+      updateUserData(response.data.data.user);
+      showSuccess('Profile updated successfully');
+    } catch (error) {
+      console.error('Profile update error:', error);
+      showError(error?.response?.data?.message || 'Failed to update profile');
+    }
   };
 
   return (
