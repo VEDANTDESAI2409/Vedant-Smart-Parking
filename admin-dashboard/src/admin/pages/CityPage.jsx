@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { FaEdit, FaFileImport, FaPlus, FaTrash } from 'react-icons/fa';
 import Swal from 'sweetalert2';
 
@@ -6,6 +6,7 @@ import Button from '../../components/Button';
 import Modal from '../../components/Modal';
 import Table from '../../components/Table';
 import Card from '../../components/Card';
+import ListSearchInput from '../../components/ListSearchInput';
 import DataImportModal from '../components/DataImportModal';
 import { citiesAPI } from '../../services/api';
 import { shouldConfirmBulkDelete } from '../../utils/adminPreferences';
@@ -17,6 +18,7 @@ const CityPage = () => {
   const [cities, setCities] = useState([]);
   const [selectedCityIds, setSelectedCityIds] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [importModalOpen, setImportModalOpen] = useState(false);
   const [editingCity, setEditingCity] = useState(null);
@@ -135,7 +137,7 @@ const CityPage = () => {
   };
 
   const handleSelectAllCities = (checked) => {
-    setSelectedCityIds(checked ? cities.map((city) => city._id).filter(Boolean) : []);
+    setSelectedCityIds(checked ? filteredCities.map((city) => city._id).filter(Boolean) : []);
   };
 
   const handleBulkDelete = async () => {
@@ -185,6 +187,20 @@ const CityPage = () => {
     }
   };
 
+  const handleStatusToggle = async (city) => {
+    try {
+      await citiesAPI.update(city._id, {
+        name: city.name,
+        state: city.state,
+        status: !city.status,
+      });
+      await fetchCities();
+    } catch (error) {
+      console.error('Error updating city status:', error);
+      showError(error?.response?.data?.message || 'Failed to update city status');
+    }
+  };
+
   const columns = [
     { header: 'NAME', key: 'name', render: (row) => <span className="capitalize">{row.name}</span> },
     { header: 'STATE', key: 'state', render: (row) => <span className="capitalize">{row.state}</span> },
@@ -192,15 +208,30 @@ const CityPage = () => {
       header: 'STATUS',
       key: 'status',
       render: (row) => (
-        <span
-          className={`px-3 py-1 text-xs rounded-full font-semibold ${
+        <button
+          type="button"
+          role="switch"
+          aria-checked={row.status}
+          onClick={() => handleStatusToggle(row)}
+          className={`inline-flex items-center gap-3 rounded-full px-3 py-1.5 text-xs font-semibold ${
             row.status
               ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
               : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
           }`}
         >
+          <span
+            className={`relative inline-flex h-5 w-9 items-center rounded-full ${
+              row.status ? 'bg-green-600' : 'bg-gray-400 dark:bg-gray-600'
+            }`}
+          >
+            <span
+              className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
+                row.status ? 'translate-x-5' : 'translate-x-0.5'
+              }`}
+            />
+          </span>
           {row.status ? 'Active' : 'Inactive'}
-        </span>
+        </button>
       ),
     },
     {
@@ -218,6 +249,20 @@ const CityPage = () => {
       ),
     },
   ];
+
+  const filteredCities = useMemo(() => {
+    const query = searchTerm.trim().toLowerCase();
+
+    if (!query) {
+      return cities;
+    }
+
+    return cities.filter((city) =>
+      [city.name, city.state, city.status ? 'active' : 'inactive']
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(query))
+    );
+  }, [cities, searchTerm]);
 
   return (
     <div className="space-y-6">
@@ -251,11 +296,18 @@ const CityPage = () => {
       </div>
 
       <Card>
+        <div className="mb-4">
+          <ListSearchInput
+            value={searchTerm}
+            onChange={setSearchTerm}
+            placeholder="Search city, state, or status..."
+          />
+        </div>
         <Table
           columns={columns}
-          data={cities}
+          data={filteredCities}
           loading={loading}
-          emptyMessage="No cities found"
+          emptyMessage={searchTerm.trim() ? `No cities found matching "${searchTerm}"` : 'No cities found'}
           selectable
           selectedRowIds={selectedCityIds}
           onRowSelect={handleCitySelect}
