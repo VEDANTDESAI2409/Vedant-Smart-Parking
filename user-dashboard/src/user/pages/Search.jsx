@@ -13,8 +13,10 @@ import Modal from '../../components/Modal';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { bookingsAPI, locationsAPI, paymentsAPI, vehiclesAPI } from '../../services/api';
+import ParkingLotSlotMap from '../components/ParkingLotSlotMap';
 
 const durations = [30, 60, 120, 180, 240, 480, 1440];
+const USE_NEW_SLOT_STEP_MAP = true;
 
 const toDateInputValue = (value) => {
   if (!value) return '';
@@ -164,8 +166,10 @@ const Search = () => {
   const [vehicleModal, setVehicleModal] = useState(false);
   const [useExistingVehicle, setUseExistingVehicle] = useState(true);
   const [selectedVehicleId, setSelectedVehicleId] = useState('');
+  const [slotMapModalOpen, setSlotMapModalOpen] = useState(false);
   const [vehicleError, setVehicleError] = useState('');
   const [pendingBooking, setPendingBooking] = useState(false);
+  const [paymentModal, setPaymentModal] = useState(false);
   const [vehicleForm, setVehicleForm] = useState({
     licensePlate: '',
     make: '',
@@ -198,6 +202,12 @@ const Search = () => {
       signupEmail: user.email || '',
     }));
   }, [user]);
+
+  useEffect(() => {
+    if (paymentSession) {
+      setPaymentModal(true);
+    }
+  }, [paymentSession]);
 
   useEffect(() => {
     let cancelled = false;
@@ -505,6 +515,7 @@ const Search = () => {
 
       setPaymentSession(paymentResponse.data.data.session);
       setPaymentMessage('');
+      setPaymentModal(true);
     } catch (e) {
       setError(e.response?.data?.message || 'Unable to continue booking');
     } finally {
@@ -663,6 +674,8 @@ const Search = () => {
 
       if (status === 'success') {
         setReceipt(response.data.data.receipt);
+        setPaymentModal(false);
+        setPaymentSession(null);
       } else {
         setReceipt(null);
       }
@@ -699,40 +712,84 @@ const Search = () => {
     URL.revokeObjectURL(url);
   };
 
+  if (slotMapModalOpen) {
+    return (
+      <div className="bg-slate-50 min-h-screen py-6">
+        <div className="w-full max-w-6xl mx-auto px-4">
+          <ParkingLotSlotMap
+            floors={floors}
+            activeFloorNumber={selectedFloor}
+            onSelectFloorNumber={(floorNumber) => {
+              setSelectedFloor(floorNumber);
+              setSelectedSlot(null);
+              setActiveBooking(null);
+              setPaymentSession(null);
+              setReceipt(null);
+            }}
+            slots={activeFloor?.slots || []}
+            vehicleType={vehicleType}
+            selectedSlotId={selectedSlot?.id}
+            onSelectSlot={(slot) => {
+              setSelectedSlot(slot);
+              setActiveBooking(null);
+              setPaymentSession(null);
+              setReceipt(null);
+            }}
+            title="Parking Blueprint"
+            entryLabel="ENTRY"
+            variant="blueprint"
+            onBack={() => setSlotMapModalOpen(false)}
+            onNext={() => {
+              if (!selectedSlot) return;
+              setSlotMapModalOpen(false);
+              setTimeout(() => {
+                document
+                  .getElementById('booking-details')
+                  ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }, 50);
+            }}
+            nextDisabled={!selectedSlot}
+            nextLabel={selectedSlot ? 'Done' : 'Select a slot'}
+          />
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-[linear-gradient(180deg,#f8fbff_0%,#eef7ff_100%)] p-4 text-[var(--color-secondary)] sm:p-6">
+    <div className="min-h-screen bg-white p-4 text-slate-900 sm:p-6">
       <div className="mx-auto max-w-7xl space-y-6">
-        <div className="rounded-[36px] border border-white/70 bg-white/90 p-6 shadow-[0_24px_70px_rgba(17,31,26,0.08)] sm:p-8">
+        <div className="rounded-[32px] border border-slate-100 bg-white p-6 shadow-sm sm:p-8">
           <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr] lg:items-start">
             <div>
-              <span className="inline-flex rounded-full bg-[rgba(186,230,253,0.18)] px-3 py-1 text-[11px] font-bold uppercase tracking-[0.2em] text-[var(--color-primary)]">
-                Live Booking Desk
+              <span className="inline-flex rounded-full bg-blue-100 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.2em] text-blue-700 border border-blue-200">
+                Smart Booking
               </span>
-              <h1 className="mt-4 text-4xl font-semibold tracking-tight">Book Parking Step by Step</h1>
+              <h1 className="mt-4 text-4xl font-bold tracking-tight text-slate-900">Book Parking in Steps</h1>
               <p className="mt-3 max-w-3xl text-slate-600">
-                Enable location first, then choose a parking place, pick a slot, and only then continue with booking details and payment.
+                Enable location first, then choose a parking place, pick a slot, and complete your booking with payment.
               </p>
 
               <div className="mt-6 flex flex-wrap gap-3">
                 <button
                   type="button"
                   onClick={() => setLocationModal(true)}
-                  className="rounded-full bg-[var(--color-primary)] px-5 py-3 text-sm font-semibold text-white"
+                  className="rounded-full bg-blue-600 px-5 py-3 text-sm font-semibold text-white hover:bg-blue-700 transition-colors duration-200 shadow-sm"
                 >
                   Enable Location Access
                 </button>
                 <button
                   type="button"
                   onClick={loadNearby}
-                  className="rounded-full border border-[rgba(14,165,233,0.16)] px-5 py-3 text-sm font-semibold"
+                  className="rounded-full border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-900 hover:bg-slate-50 transition-colors duration-200"
                 >
                   Refresh Nearby
                 </button>
               </div>
 
               {geo ? (
-                <p className="mt-4 flex items-center gap-2 text-sm text-slate-500">
-                  <MapPin className="h-4 w-4 text-[var(--color-primary)]" />
+                <p className="mt-4 flex items-center gap-2 text-sm text-slate-600">
+                  <MapPin className="h-4 w-4 text-blue-600" />
                   Near {getDisplayGeoText(geo)}
                 </p>
               ) : null}
@@ -758,17 +815,17 @@ const Search = () => {
               ].map((card) => (
                 <div
                   key={card.label}
-                  className="rounded-[28px] border border-[rgba(14,165,233,0.14)] bg-[linear-gradient(180deg,#ffffff_0%,#f6fbff_100%)] p-4"
+                  className="rounded-[20px] border border-slate-100 bg-white p-4 shadow-sm hover:shadow-md transition-shadow duration-200"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="rounded-2xl bg-[rgba(186,230,253,0.22)] p-3 text-[var(--color-primary)]">
+                    <div className="rounded-2xl bg-blue-50 p-3 text-blue-600">
                       {card.icon}
                     </div>
                     <div>
-                      <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400">
+                      <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">
                         {card.label}
                       </p>
-                      <p className="mt-1 font-semibold">{card.value}</p>
+                      <p className="mt-1 font-semibold text-slate-900">{card.value}</p>
                     </div>
                   </div>
                 </div>
@@ -785,7 +842,7 @@ const Search = () => {
 
         <div className="grid gap-6 xl:grid-cols-[0.82fr_1.18fr]">
           <div className="space-y-6">
-            <div className="rounded-[32px] border border-[rgba(14,165,233,0.14)] bg-white p-6 shadow-[0_18px_40px_rgba(17,31,26,0.04)]">
+            <div className="rounded-[28px] border border-slate-100 bg-white p-6 shadow-sm">
               <StepTitle
                 step="Step 1"
                 title="Choose Location"
@@ -799,7 +856,7 @@ const Search = () => {
 
               <div className="mt-4 space-y-3">
                 {locations.length === 0 ? (
-                  <div className="rounded-2xl border border-dashed border-[rgba(14,165,233,0.18)] px-4 py-8 text-center text-sm text-slate-500">
+                  <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm text-slate-600">
                     {geo
                       ? 'No nearby parking locations found. Add a Location and then create Slots for it from the admin dashboard.'
                       : 'Enable location to load nearby parking.'}
@@ -816,25 +873,25 @@ const Search = () => {
                         setPaymentSession(null);
                         setReceipt(null);
                       }}
-                      className={`block w-full rounded-[26px] border px-4 py-4 text-left transition-all ${
+                      className={`block w-full rounded-[20px] border px-4 py-4 text-left transition-all duration-200 ${
                         selectedLocation?.id === location.id
-                          ? 'border-[var(--color-primary)] bg-[rgba(186,230,253,0.18)] shadow-[0_18px_36px_rgba(14,165,233,0.12)]'
-                          : 'border-[rgba(14,165,233,0.12)] hover:border-[rgba(14,165,233,0.3)] hover:bg-slate-50/70'
+                          ? 'border-blue-400 bg-blue-50 shadow-md'
+                          : 'border-slate-100 bg-white hover:border-blue-200 hover:bg-slate-50/50 hover:shadow-sm'
                       }`}
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div>
-                          <div className="font-semibold">{location.name}</div>
-                          <div className="mt-1 text-sm text-slate-500">
+                          <div className="font-semibold text-slate-900">{location.name}</div>
+                          <div className="mt-1 text-sm text-slate-600">
                             {location.area}, {location.city} {location.pincode}
                           </div>
                         </div>
-                        <div className="rounded-full bg-white/80 px-3 py-1 text-[11px] font-bold text-[var(--color-primary)] shadow-sm">
+                        <div className="rounded-full bg-blue-100 px-3 py-1 text-[11px] font-bold text-blue-700 border border-blue-200">
                           {location.availableSlots} free
                         </div>
                       </div>
-                      <div className="mt-3 flex items-center gap-2 text-xs text-slate-500">
-                        <MapPin className="h-3.5 w-3.5" />
+                      <div className="mt-3 flex items-center gap-2 text-xs text-slate-600">
+                        <MapPin className="h-3.5 w-3.5 text-blue-600" />
                         {location.distanceKm !== null
                           ? `${location.distanceKm} km away`
                           : location.matchType === 'pincode'
@@ -850,7 +907,7 @@ const Search = () => {
             </div>
 
             {selectedSlot ? (
-              <div className="rounded-[32px] border border-[rgba(14,165,233,0.14)] bg-white p-6 shadow-[0_18px_40px_rgba(17,31,26,0.04)]">
+              <div id="booking-details" className="rounded-[28px] border border-slate-100 bg-white p-6 shadow-sm">
               <StepTitle
                 step="Step 3"
                 title="Booking Details"
@@ -859,36 +916,36 @@ const Search = () => {
 
               <div className="mt-4 grid gap-4">
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <label className="rounded-[26px] border border-[rgba(14,165,233,0.16)] px-4 py-3">
-                    <div className="mb-2 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">
-                      <CalendarDays className="h-3.5 w-3.5" />
+                  <label className="rounded-[20px] border border-slate-100 bg-white px-4 py-3 hover:bg-slate-50 transition-colors duration-200">
+                    <div className="mb-2 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">
+                      <CalendarDays className="h-3.5 w-3.5 text-blue-600" />
                       Date
                     </div>
                     <input
                       type="date"
                       value={bookingForm.date}
                       onChange={(e) => setBookingForm((state) => ({ ...state, date: e.target.value }))}
-                      className="w-full bg-transparent outline-none"
+                      className="w-full bg-transparent outline-none text-slate-900 font-semibold"
                     />
                   </label>
 
-                  <label className="rounded-[26px] border border-[rgba(14,165,233,0.16)] px-4 py-3">
-                    <div className="mb-2 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">
-                      <TimerReset className="h-3.5 w-3.5" />
+                  <label className="rounded-[20px] border border-slate-100 bg-white px-4 py-3 hover:bg-slate-50 transition-colors duration-200">
+                    <div className="mb-2 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">
+                      <TimerReset className="h-3.5 w-3.5 text-blue-600" />
                       Time
                     </div>
                     <input
                       type="time"
                       value={bookingForm.time}
                       onChange={(e) => setBookingForm((state) => ({ ...state, time: e.target.value }))}
-                      className="w-full bg-transparent outline-none"
+                      className="w-full bg-transparent outline-none text-slate-900 font-semibold"
                     />
                   </label>
                 </div>
 
-                <label className="rounded-[26px] border border-[rgba(14,165,233,0.16)] px-4 py-3">
-                  <div className="mb-2 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">
-                    <TimerReset className="h-3.5 w-3.5" />
+                <label className="rounded-[20px] border border-slate-100 bg-white px-4 py-3 hover:bg-slate-50 transition-colors duration-200">
+                  <div className="mb-2 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">
+                    <TimerReset className="h-3.5 w-3.5 text-blue-600" />
                     Duration
                   </div>
                   <select
@@ -899,7 +956,7 @@ const Search = () => {
                         durationMinutes: Number(e.target.value),
                       }))
                     }
-                    className="w-full bg-transparent outline-none"
+                    className="w-full bg-transparent outline-none text-slate-900 font-semibold"
                   >
                     {durations.map((value) => (
                       <option key={value} value={value}>
@@ -915,26 +972,26 @@ const Search = () => {
                     placeholder="Name"
                     value={userForm.name}
                     onChange={(e) => setUserForm((state) => ({ ...state, name: e.target.value }))}
-                    className="rounded-[26px] border border-[rgba(14,165,233,0.16)] px-4 py-3"
+                    className="rounded-[20px] border border-slate-100 bg-white px-4 py-3 placeholder-slate-500 text-slate-900 hover:bg-slate-50 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-300/60"
                   />
                   <input
                     type="tel"
                     placeholder="Phone"
                     value={userForm.phone}
                     onChange={(e) => setUserForm((state) => ({ ...state, phone: e.target.value }))}
-                    className="rounded-[26px] border border-[rgba(14,165,233,0.16)] px-4 py-3"
+                    className="rounded-[20px] border border-slate-100 bg-white px-4 py-3 placeholder-slate-500 text-slate-900 hover:bg-slate-50 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-300/60"
                   />
                   <input
                     type="email"
                     placeholder="Email"
                     value={userForm.email}
                     onChange={(e) => setUserForm((state) => ({ ...state, email: e.target.value }))}
-                    className="rounded-[26px] border border-[rgba(14,165,233,0.16)] px-4 py-3"
+                    className="rounded-[20px] border border-slate-100 bg-white px-4 py-3 placeholder-slate-500 text-slate-900 hover:bg-slate-50 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-300/60"
                   />
                 </div>
 
                 <div>
-                  <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">
+                  <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">
                     Payment Method
                   </p>
                   <div className="grid grid-cols-2 gap-3">
@@ -942,12 +999,12 @@ const Search = () => {
                       {
                         key: 'upi',
                         label: 'UPI',
-                        icon: <Smartphone className="mx-auto h-5 w-5 text-[var(--color-primary)]" />,
+                        icon: <Smartphone className="mx-auto h-5 w-5 text-blue-600" />,
                       },
                       {
                         key: 'card',
                         label: 'Card',
-                        icon: <CreditCard className="mx-auto h-5 w-5 text-[var(--color-primary)]" />,
+                        icon: <CreditCard className="mx-auto h-5 w-5 text-blue-600" />,
                       },
                     ].map((item) => (
                       <button
@@ -959,20 +1016,20 @@ const Search = () => {
                             paymentMethod: item.key,
                           }))
                         }
-                        className={`rounded-[26px] border px-4 py-4 ${
+                        className={`rounded-[20px] border px-4 py-4 transition-all duration-200 ${
                           bookingForm.paymentMethod === item.key
-                            ? 'border-[var(--color-primary)] bg-[rgba(186,230,253,0.18)] shadow-[0_16px_30px_rgba(14,165,233,0.1)]'
-                            : 'border-[rgba(14,165,233,0.12)]'
+                            ? 'border-blue-400 bg-blue-50 shadow-sm'
+                            : 'border-slate-100 bg-white hover:border-blue-200 hover:bg-slate-50'
                         }`}
                       >
                         {item.icon}
-                        <div className="mt-2 text-sm font-semibold">{item.label}</div>
+                        <div className="mt-2 text-sm font-semibold text-slate-900">{item.label}</div>
                       </button>
                     ))}
                   </div>
                 </div>
 
-                <div className="rounded-[26px] border border-dashed border-[rgba(14,165,233,0.16)] bg-[rgba(186,230,253,0.08)] px-4 py-4 text-sm text-slate-600">
+                <div className="rounded-[20px] border border-blue-100 bg-blue-50 px-4 py-4 text-sm text-blue-700">
                   {bookingForm.paymentMethod === 'upi'
                     ? 'UPI selected. After the slot is locked, choose your app from the payment panel once and complete the payment.'
                     : 'Card selected. After the slot is locked, continue in the payment panel and verify the card result there.'}
@@ -982,14 +1039,14 @@ const Search = () => {
                   <button
                     type="button"
                     onClick={startFlow}
-                    className="rounded-full bg-[var(--color-primary)] px-5 py-3 text-sm font-semibold text-white"
+                    className="rounded-full bg-blue-600 px-5 py-3 text-sm font-semibold text-white hover:bg-blue-700 transition-colors duration-200 shadow-sm"
                   >
                     Continue to Payment
                   </button>
                   <button
                     type="button"
                     onClick={() => setSelectedSlot(null)}
-                    className="rounded-full border border-[rgba(14,165,233,0.16)] px-5 py-3 text-sm font-semibold"
+                    className="rounded-full border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-900 hover:bg-slate-50 transition-colors duration-200"
                   >
                     Change Slot
                   </button>
@@ -1001,17 +1058,17 @@ const Search = () => {
 
           <div className="space-y-6">
             {selectedLocation ? (
-              <div className="rounded-[32px] border border-[rgba(14,165,233,0.14)] bg-white p-6 shadow-[0_18px_40px_rgba(17,31,26,0.04)]">
+              <div className="rounded-[28px] border border-slate-100 bg-white p-6 shadow-sm">
               <StepTitle
                 step="Step 2"
                 title={selectedLocation.name}
                 caption="Choose one available slot from the active floor to unlock booking details."
               />
 
-              <div className="mt-4 rounded-[26px] border border-[rgba(14,165,233,0.12)] bg-[linear-gradient(135deg,#f8fbff_0%,#eefbf6_100%)] p-4">
+              <div className="mt-4 rounded-[20px] border border-slate-100 bg-white p-4 shadow-sm">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
-                    <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">Vehicle Filter</p>
+                    <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Vehicle Filter</p>
                     <p className="mt-1 text-sm text-slate-600">
                       Pick car or bike first so we show the right slot options.
                     </p>
@@ -1032,13 +1089,13 @@ const Search = () => {
                           setPaymentSession(null);
                           setReceipt(null);
                         }}
-                        className={`rounded-[22px] border px-4 py-3 ${
+                        className={`rounded-[18px] border px-4 py-3 transition-all duration-200 ${
                           vehicleType === item.key
-                            ? 'border-[var(--color-primary)] bg-[rgba(186,230,253,0.18)] shadow-[0_16px_30px_rgba(14,165,233,0.1)]'
-                            : 'border-[rgba(14,165,233,0.12)] bg-white'
+                            ? 'border-blue-400 bg-blue-100 text-blue-700 shadow-sm'
+                            : 'border-slate-200 bg-white text-slate-600 hover:border-blue-200 hover:bg-blue-50/40'
                         }`}
                       >
-                        <div className="mx-auto flex h-9 w-9 items-center justify-center rounded-full bg-[rgba(186,230,253,0.24)] text-sm font-bold text-[var(--color-primary)]">
+                        <div className="mx-auto flex h-8 w-8 items-center justify-center rounded-full bg-white/60 text-sm font-bold text-slate-700">
                           {item.marker}
                         </div>
                         <div className="mt-2 text-sm font-semibold">{item.label}</div>
@@ -1048,17 +1105,39 @@ const Search = () => {
                 </div>
               </div>
 
-              {loading ? <Loader2 className="mt-4 h-5 w-5 animate-spin text-[var(--color-primary)]" /> : null}
+              {loading ? <Loader2 className="mt-4 h-5 w-5 animate-spin text-blue-600" /> : null}
 
-              {floors.length === 0 ? (
-                <div className="mt-4 rounded-2xl border border-dashed border-[rgba(14,165,233,0.18)] px-4 py-10 text-center text-sm text-slate-500">
-                  {selectedLocation
-                    ? 'This location has no slots yet. Add parking slots for this location in the admin dashboard.'
-                    : 'Select a nearby location to load slots.'}
-                </div>
-              ) : (
-                <>
-                  <div className="mt-4 flex flex-wrap gap-2">
+	              {floors.length === 0 ? (
+	                <div className="mt-4 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-10 text-center text-sm text-slate-600">
+	                  {selectedLocation
+	                    ? 'This location has no slots yet. Add parking slots for this location in the admin dashboard.'
+	                    : 'Select a nearby location to load slots.'}
+	                </div>
+	              ) : (
+	                USE_NEW_SLOT_STEP_MAP ? (
+	                  <div className="mt-4 space-y-3">
+	                    <div className="rounded-[24px] border border-[rgba(14,165,233,0.14)] bg-[var(--color-muted-surface)] p-4">
+	                      <div className="flex flex-wrap items-center justify-between gap-3">
+	                        <div>
+	                          <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Slot map</div>
+	                          <div className="mt-1 text-sm font-semibold text-slate-800">
+	                            {selectedSlot ? `Selected: ${selectedSlot.slotNumber}` : 'No slot selected yet'}
+	                          </div>
+	                        </div>
+	                        <button
+	                          type="button"
+	                          onClick={() => setSlotMapModalOpen(true)}
+	                          className="rounded-full bg-[var(--color-primary)] px-5 py-3 text-sm font-semibold text-white shadow-sm hover:bg-[#0369a1]"
+	                        >
+	                          Open full screen map
+	                        </button>
+	                      </div>
+	                    </div>
+
+	                  </div>
+	                ) : (
+	                <>
+	                  <div className="mt-4 flex flex-wrap gap-2">
                     {floors.map((floor) => (
                       <button
                         key={floor.floorNumber}
@@ -1070,10 +1149,10 @@ const Search = () => {
                           setPaymentSession(null);
                           setReceipt(null);
                         }}
-                        className={`rounded-full px-4 py-2 text-sm font-semibold ${
+                        className={`rounded-full px-4 py-2 text-sm font-semibold transition-all duration-200 ${
                           selectedFloor === floor.floorNumber
-                            ? 'bg-[var(--color-primary)] text-white'
-                            : 'bg-slate-100 text-slate-600'
+                            ? 'bg-blue-600 text-white shadow-sm'
+                            : 'bg-white border border-slate-200 text-slate-600 hover:border-blue-200 hover:bg-blue-50/40'
                         }`}
                       >
                         {floor.label}
@@ -1081,209 +1160,234 @@ const Search = () => {
                     ))}
                   </div>
 
-                  <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                    {activeFloor?.slots?.map((slot, index) => (
-                      <button
-                        key={slot.id}
-                        type="button"
-                        disabled={!slot.isBookable}
-                        onClick={() => {
-                          setSelectedSlot(slot);
-                          setActiveBooking(null);
-                          setPaymentSession(null);
-                          setReceipt(null);
-                        }}
-                        className={`group relative overflow-hidden rounded-[28px] border p-0 text-left transition-all ${
-                          selectedSlot?.id === slot.id
-                            ? 'border-[var(--color-primary)] shadow-[0_18px_34px_rgba(14,165,233,0.14)]'
-                            : 'border-[rgba(14,165,233,0.12)]'
-                        } ${
-                          !slot.isBookable
-                            ? 'cursor-not-allowed bg-slate-100 text-slate-400'
-                            : 'bg-white hover:-translate-y-1 hover:border-[rgba(14,165,233,0.28)] hover:shadow-[0_16px_32px_rgba(17,31,26,0.08)]'
-                        }`}
-                      >
-                        <div className={`absolute inset-0 ${
-                          !slot.isBookable
-                            ? 'bg-[linear-gradient(135deg,#f1f5f9_0%,#e2e8f0_100%)]'
-                            : selectedSlot?.id === slot.id
-                              ? 'bg-[linear-gradient(135deg,#e0f2fe_0%,#ecfeff_48%,#ecfdf5_100%)]'
-                              : 'bg-[linear-gradient(135deg,#ffffff_0%,#f8fbff_55%,#f0fdf4_100%)]'
-                        }`} />
-                        <div className="relative p-4">
-                          <div className="flex items-center justify-between gap-3">
-                            <div>
-                              <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-400">
-                                Slot {String(index + 1).padStart(2, '0')}
-                              </div>
-                              <span className="mt-2 block text-xl font-semibold text-slate-900">{slot.slotNumber}</span>
-                            </div>
-                            <div className={`rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] ${
-                              slot.isBookable ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-500'
-                            }`}>
-                              {slot.isBookable ? 'Open' : 'Busy'}
-                            </div>
-                          </div>
+                  <div className="mt-5 overflow-hidden rounded-[28px] border border-slate-100 bg-white shadow-sm">
+                    {(() => {
+                      const collator = new Intl.Collator(undefined, {
+                        numeric: true,
+                        sensitivity: 'base',
+                      });
 
-                          <div className="mt-4 rounded-[22px] border border-white/70 bg-white/80 p-3">
-                            <div className="flex items-center justify-between">
-                              <div className="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">
-                                {slot.slotType}
-                              </div>
-                              {slot.slotType === 'ev' ? <Zap className="h-4 w-4 text-amber-500" /> : null}
+                      const slotsSorted = (activeFloor?.slots || [])
+                        .slice()
+                        .sort((a, b) => collator.compare(String(a?.slotNumber || ''), String(b?.slotNumber || '')));
+
+                      const openCount = slotsSorted.filter((slot) => slot?.isBookable).length;
+                      const busyCount = slotsSorted.length - openCount;
+                      const evCount = slotsSorted.filter((slot) => slot?.slotType === 'ev').length;
+
+                      const previewOpen = slotsSorted.filter((slot) => slot?.isBookable).slice(0, 4);
+                      const previewBusy = slotsSorted.filter((slot) => !slot?.isBookable).slice(0, 4);
+                      const previewEv = slotsSorted.filter((slot) => slot?.slotType === 'ev').slice(0, 4);
+
+                      return (
+                        <>
+                          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-4 py-4">
+                            <div className="text-[11px] font-bold uppercase tracking-[0.24em] text-slate-500">
+                              SLOT BLUEPRINT
                             </div>
 
-                            <div className="mt-3 grid grid-cols-3 gap-2">
-                              {[0, 1, 2].map((lane) => (
-                                <div
-                                  key={lane}
-                                  className={`h-8 rounded-2xl border ${
-                                    selectedSlot?.id === slot.id && slot.isBookable
-                                      ? 'border-sky-200 bg-sky-100/70'
-                                      : 'border-slate-200 bg-slate-50'
-                                  }`}
-                                />
-                              ))}
-                            </div>
-
-                            <div className="mt-3 flex items-center justify-between text-sm">
-                              <span className="capitalize text-slate-500">{slot.status}</span>
-                              <span className="font-semibold text-slate-900">
-                                {selectedSlot?.id === slot.id ? 'Selected' : slot.isBookable ? 'Tap to choose' : 'Unavailable'}
+                            <div className="flex flex-wrap items-center gap-2 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-600">
+                              <span className="rounded-full bg-blue-50 px-3 py-1 text-blue-700 border border-blue-200">
+                                Open {openCount}
                               </span>
+                              <span className="rounded-full bg-slate-50 px-3 py-1 text-slate-700 border border-slate-200">
+                                Busy {busyCount}
+                              </span>
+                              <span className="rounded-full bg-blue-100 px-3 py-1 text-blue-700">
+                                EV {evCount}
+                              </span>
+                              {selectedSlot ? (
+                                <span className="rounded-full bg-slate-100 px-3 py-1 text-slate-700">
+                                  Selected: {selectedSlot.slotNumber}
+                                </span>
+                              ) : null}
                             </div>
                           </div>
-                        </div>
-                      </button>
-                    ))}
+
+                          <div className="relative p-4 md:p-6 bg-white border border-slate-200 shadow-md rounded-[24px]">
+                            <div className="relative grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                              {slotsSorted.map((slot, index) => {
+                                const isOpen = !!slot.isBookable;
+                                const isSelected = selectedSlot?.id === slot.id;
+                                const isEv = slot.slotType === 'ev';
+
+                                return (
+                                  <button
+                                    key={slot.id}
+                                    type="button"
+                                    disabled={!slot.isBookable}
+                                    onClick={() => {
+                                      setSelectedSlot(slot);
+                                      setActiveBooking(null);
+                                      setPaymentSession(null);
+                                      setReceipt(null);
+                                    }}
+                                    className={`group relative flex h-28 flex-col justify-between overflow-hidden rounded-3xl border px-6 py-5 text-left transition-all duration-200 ease-out focus:outline-none focus:ring-2 focus:ring-blue-300/60 ${
+                                      isSelected
+                                        ? 'border-blue-400 bg-blue-50 ring-2 ring-blue-200 shadow-sm'
+                                        : isOpen
+                                          ? 'border-blue-100 bg-white hover:border-blue-300 hover:bg-blue-50/40 hover:shadow-sm'
+                                          : 'border-slate-100 bg-slate-50'
+                                    } ${!slot.isBookable ? 'cursor-not-allowed' : 'hover:scale-[1.01] active:scale-[0.99] active:shadow-none'}`}
+                                    title={`${slot.slotNumber} • ${isOpen ? 'Open' : 'Busy'} • ${slot.slotType}`}
+                                  >
+                                    <div className="flex items-start justify-between gap-2">
+                                      <div className="min-w-0">
+                                        <div className="text-xs font-bold uppercase tracking-[0.26em] text-slate-400">
+                                          SLOT {String(index + 1).padStart(2, '0')}
+                                        </div>
+                                        <div className={`mt-1 truncate text-lg font-semibold leading-tight tracking-tight ${
+                                          isSelected ? 'text-blue-700' : isOpen ? 'text-slate-900' : 'text-slate-600'
+                                        }`}>
+                                          {slot.slotNumber}
+                                        </div>
+                                      </div>
+
+                                      <div className="flex items-center gap-2">
+                                        {isEv ? (
+                                          <span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-bold uppercase tracking-[0.18em] text-blue-700 border border-blue-200">
+                                            EV <Zap className="ml-1 h-3 w-3" />
+                                          </span>
+                                        ) : null}
+                                        <span
+                                          className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-bold uppercase tracking-[0.18em] border ${
+                                            isOpen
+                                              ? 'bg-blue-50 text-blue-700 border-blue-200'
+                                              : 'bg-slate-50 text-slate-600 border-slate-200'
+                                          }`}
+                                        >
+                                          {isOpen ? 'OPEN' : 'BUSY'}
+                                        </span>
+                                      </div>
+                                    </div>
+
+                                    <div className="flex items-center justify-between">
+                                      <div className="flex items-center gap-2">
+                                        <span
+                                          className={`h-2.5 w-2.5 rounded-full ${
+                                            isOpen ? 'bg-blue-500' : 'bg-slate-300'
+                                          } shadow-sm`}
+                                        />
+                                        <span className={`text-sm font-semibold ${
+                                          isSelected ? 'text-blue-600' : isOpen ? 'text-slate-600' : 'text-slate-500'
+                                        }`}>
+                                          {isOpen ? 'Free' : 'Occupied'}
+                                        </span>
+                                      </div>
+                                      <span className={`text-sm font-semibold ${
+                                        isSelected ? 'text-blue-700 font-bold' : isOpen ? 'text-slate-500' : 'text-slate-400'
+                                      }`}>
+                                        {isSelected ? '✓ Selected' : isOpen ? 'Select' : '—'}
+                                      </span>
+                                    </div>
+                                  </button>
+                                );
+                              })}
+                            </div>
+
+                            <div className="relative mt-5 grid gap-3 lg:grid-cols-3">
+                              <div className="rounded-[20px] border border-slate-200 bg-white p-5 shadow-md hover:shadow-lg transition-shadow duration-200">
+                                <div className="flex items-center justify-between gap-3 mb-4">
+                                  <div className="text-sm font-bold text-slate-900">Available</div>
+                                  <span className="rounded-full bg-blue-100 px-2.5 py-1 text-[10px] font-bold text-blue-700 border border-blue-200">
+                                    {openCount} free
+                                  </span>
+                                </div>
+                                <div className="grid grid-cols-4 gap-2">
+                                  {previewOpen.map((slot) => (
+                                    <div
+                                      key={slot.id}
+                                      className="flex h-10 items-center justify-center rounded-lg border border-blue-200 bg-blue-50 text-[11px] font-semibold text-blue-700 hover:bg-blue-100 transition-colors duration-150"
+                                    >
+                                      {slot.slotNumber}
+                                    </div>
+                                  ))}
+                                  {previewOpen.length === 0 ? (
+                                    <div className="col-span-4 text-xs font-medium text-slate-500 py-2">
+                                      No free slots
+                                    </div>
+                                  ) : null}
+                                </div>
+                              </div>
+
+                              <div className="rounded-[20px] border border-slate-200 bg-white p-5 shadow-md hover:shadow-lg transition-shadow duration-200">
+                                <div className="flex items-center justify-between gap-3 mb-4">
+                                  <div className="text-sm font-bold text-slate-900">Occupied</div>
+                                  <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-bold text-slate-600 border border-slate-200">
+                                    {busyCount} busy
+                                  </span>
+                                </div>
+                                <div className="grid grid-cols-4 gap-2">
+                                  {previewBusy.map((slot) => (
+                                    <div
+                                      key={slot.id}
+                                      className="flex h-10 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-[11px] font-semibold text-slate-600 opacity-70"
+                                    >
+                                      {slot.slotNumber}
+                                    </div>
+                                  ))}
+                                  {previewBusy.length === 0 ? (
+                                    <div className="col-span-4 text-xs font-medium text-slate-500 py-2">
+                                      No occupied slots
+                                    </div>
+                                  ) : null}
+                                </div>
+                              </div>
+
+                              <div className="rounded-[20px] border border-slate-200 bg-white p-5 shadow-md hover:shadow-lg transition-shadow duration-200">
+                                <div className="flex items-center justify-between gap-3 mb-4">
+                                  <div className="text-sm font-bold text-slate-900">EV Charging</div>
+                                  <span className="rounded-full bg-blue-100 px-2.5 py-1 text-[10px] font-bold text-blue-700 border border-blue-200">
+                                    {evCount}
+                                  </span>
+                                </div>
+                                <div className="grid grid-cols-4 gap-2">
+                                  {previewEv.map((slot) => (
+                                    <div
+                                      key={slot.id}
+                                      className="flex h-10 items-center justify-center rounded-lg border border-blue-200 bg-blue-50 text-[11px] font-semibold text-blue-700 hover:bg-blue-100 transition-colors duration-150"
+                                    >
+                                      {slot.slotNumber}
+                                    </div>
+                                  ))}
+                                  {previewEv.length === 0 ? (
+                                    <div className="col-span-4 text-xs font-medium text-slate-500 py-2">
+                                      No EV slots
+                                    </div>
+                                  ) : null}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </>
+                      );
+                    })()}
                   </div>
                 </>
+                )
               )}
               </div>
             ) : null}
 
-            {paymentSession ? (
-              <div className="rounded-[32px] border border-[rgba(14,165,233,0.14)] bg-white p-6 shadow-[0_18px_40px_rgba(17,31,26,0.04)]">
-                <div className="flex flex-wrap items-start justify-between gap-4">
-                  <div>
-                    <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400">Step 5</p>
-                    <h2 className="mt-1 text-2xl font-semibold">Payment</h2>
-                    <p className="mt-2 text-sm text-slate-600">
-                      Lock expires at {new Date(paymentSession.expiresAt).toLocaleTimeString()}.
-                    </p>
-                  </div>
-
-                  <div className="rounded-full bg-[rgba(186,230,253,0.18)] px-3 py-1 text-xs font-semibold text-[var(--color-primary)]">
-                    {bookingForm.paymentMethod === 'upi' ? 'UPI checkout' : 'Card checkout'}
-                  </div>
-                </div>
-
-                {bookingForm.paymentMethod === 'upi' ? (
-                  <div className="mt-5 rounded-[28px] border border-[rgba(14,165,233,0.12)] bg-[linear-gradient(180deg,#ffffff_0%,#f7fbff_100%)] p-5">
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">
-                          UPI Apps
-                        </p>
-                        <h3 className="mt-1 text-lg font-semibold">Choose one app to continue</h3>
-                      </div>
-                      <div className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-500 shadow-sm">
-                        One-time choice
-                      </div>
-                    </div>
-
-                    <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                      {[
-                        ['generic', 'Any UPI'],
-                        ['gpay', 'Google Pay'],
-                        ['phonepe', 'PhonePe'],
-                        ['paytm', 'Paytm'],
-                      ].map(([app, label]) => (
-                        <button
-                          key={app}
-                          type="button"
-                          onClick={() => launchPaymentApp(app)}
-                          className={`rounded-[24px] border px-4 py-4 text-left transition-all ${
-                            bookingForm.upiApp === app
-                              ? 'border-[var(--color-primary)] bg-[rgba(186,230,253,0.14)]'
-                              : 'border-[rgba(14,165,233,0.12)] hover:border-[rgba(14,165,233,0.28)] hover:bg-slate-50'
-                          }`}
-                        >
-                          <div className="text-sm font-semibold">{label}</div>
-                          <div className="mt-1 text-xs text-slate-500">Tap to open and pay</div>
-                        </button>
-                      ))}
-                    </div>
-
-                    {paymentMessage ? (
-                      <div className="mt-4 rounded-[22px] bg-[rgba(186,230,253,0.12)] px-4 py-3 text-sm text-slate-600">
-                        {paymentMessage}
-                      </div>
-                    ) : null}
-                  </div>
-                ) : (
-                  <div className="mt-5 rounded-[28px] border border-[rgba(14,165,233,0.12)] bg-[linear-gradient(180deg,#ffffff_0%,#f7fbff_100%)] p-5">
-                    <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">
-                      Card Checkout
-                    </p>
-                    <h3 className="mt-1 text-lg font-semibold">Card payment ready</h3>
-                    <p className="mt-2 text-sm text-slate-600">
-                      Use the verification controls below to confirm the card transaction result.
-                    </p>
-                  </div>
-                )}
-
-                <div className="mt-5">
-                  <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">
-                    Verification Result
-                  </p>
-                  <div className="flex flex-wrap gap-3">
-                    <button
-                      type="button"
-                      onClick={() => verifyPayment('success')}
-                      className="rounded-full bg-[var(--color-primary)] px-5 py-3 text-sm font-semibold text-white"
-                    >
-                      Success
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => verifyPayment('pending')}
-                      className="rounded-full border px-5 py-3 text-sm font-semibold"
-                    >
-                      Pending
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => verifyPayment('failed')}
-                      className="rounded-full border border-red-200 px-5 py-3 text-sm font-semibold text-red-600"
-                    >
-                      Failed
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ) : null}
-
             {receipt ? (
-              <div className="rounded-[32px] border border-[rgba(14,165,233,0.16)] bg-[linear-gradient(160deg,#0f172a_0%,#0f3b67_100%)] p-6 text-white shadow-[0_24px_70px_rgba(12,24,22,0.28)]">
-                <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="rounded-[28px] border border-slate-100 bg-white p-6 shadow-sm">
+                <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
                   <div>
-                    <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-white/45">
-                      Booking Complete
-                    </p>
-                    <h2 className="mt-1 text-2xl font-semibold">Receipt</h2>
+                    <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Booking complete</p>
+                    <h2 className="mt-2 text-2xl font-bold text-slate-900">Receipt</h2>
                   </div>
                   <button
                     type="button"
                     onClick={downloadReceiptPdf}
-                    className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-[var(--color-secondary)]"
+                    className="rounded-full bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 transition-colors duration-200 shadow-sm"
                   >
                     Download PDF
                   </button>
                 </div>
 
-                <div className="mt-5 overflow-hidden rounded-3xl border border-white/10 bg-white/5">
-                  <div className="grid grid-cols-1 divide-y divide-white/10 sm:grid-cols-2 sm:divide-x sm:divide-y-0">
+                <div className="mt-5 overflow-hidden rounded-[20px] border border-slate-100 bg-gradient-to-br from-blue-50 to-white">
+                  <div className="grid grid-cols-1 divide-y divide-slate-100 sm:grid-cols-2 sm:divide-x sm:divide-y-0">
+
                     {[
                       ['Booking ID', receipt.bookingId],
                       ['Receipt No', receipt.receiptNumber],
@@ -1294,11 +1398,11 @@ const Search = () => {
                       ['Duration', `${receipt.duration} hr`],
                       ['Status', receipt.paymentStatus],
                     ].map(([label, value]) => (
-                      <div key={label} className="px-5 py-4">
-                        <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-white/45">
+                      <div key={label} className="px-6 py-4">
+                        <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">
                           {label}
                         </div>
-                        <div className="mt-2 text-xl font-semibold">{value}</div>
+                        <div className="mt-2 text-lg font-semibold text-slate-900">{value}</div>
                       </div>
                     ))}
                   </div>
@@ -1308,6 +1412,110 @@ const Search = () => {
           </div>
         </div>
       </div>
+
+      <Modal isOpen={paymentModal} onClose={() => setPaymentModal(false)} title="Payment" size="full">
+        {paymentSession && (
+          <div>
+            <div className="flex flex-wrap items-start justify-between gap-4 mb-4">
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Step 5</p>
+                <h2 className="mt-1 text-2xl font-bold text-slate-900">Payment</h2>
+                <p className="mt-2 text-sm text-slate-600">
+                  Lock expires at {new Date(paymentSession.expiresAt).toLocaleTimeString()}.
+                </p>
+              </div>
+
+              <div className="rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-700 border border-blue-200">
+                {bookingForm.paymentMethod === 'upi' ? 'UPI checkout' : 'Card checkout'}
+              </div>
+            </div>
+
+            {bookingForm.paymentMethod === 'upi' ? (
+              <div className="mt-5 rounded-[24px] border border-slate-100 bg-white p-5 shadow-sm">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">
+                      UPI Apps
+                    </p>
+                    <h3 className="mt-1 text-lg font-semibold text-slate-900">Choose one app to continue</h3>
+                  </div>
+                  <div className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600 border border-slate-200">
+                    One-time choice
+                  </div>
+                </div>
+
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  {[
+                    ['generic', 'Any UPI'],
+                    ['gpay', 'Google Pay'],
+                    ['phonepe', 'PhonePe'],
+                    ['paytm', 'Paytm'],
+                  ].map(([app, label]) => (
+                    <button
+                      key={app}
+                      type="button"
+                      onClick={() => launchPaymentApp(app)}
+                      className={`rounded-[20px] border px-4 py-4 text-left transition-all duration-200 ${
+                        bookingForm.upiApp === app
+                          ? 'border-blue-400 bg-blue-50 shadow-sm'
+                          : 'border-slate-100 bg-white hover:border-blue-200 hover:bg-slate-50'
+                      }`}
+                    >
+                      <div className="text-sm font-semibold text-slate-900">{label}</div>
+                      <div className="mt-1 text-xs text-slate-600">Tap to open and pay</div>
+                    </button>
+                  ))}
+                </div>
+
+                {paymentMessage ? (
+                  <div className="mt-4 rounded-[22px] bg-[rgba(186,230,253,0.12)] px-4 py-3 text-sm text-slate-600">
+                    {paymentMessage}
+                  </div>
+                ) : null}
+              </div>
+            ) : (
+              <div className="mt-5 rounded-[24px] border border-slate-100 bg-white p-5 shadow-sm">
+                <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">
+                  Card Checkout
+                </p>
+                <h3 className="mt-1 text-lg font-semibold text-slate-900">Card payment ready</h3>
+                <p className="mt-2 text-sm text-slate-600">
+                  Use the verification controls below to confirm the card transaction result.
+                </p>
+              </div>
+            )}
+
+            <div className="mt-5">
+              <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">
+                Verification Result
+              </p>
+              <div className="flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  onClick={() => verifyPayment('success')}
+                  className="rounded-full bg-blue-600 px-5 py-3 text-sm font-semibold text-white hover:bg-blue-700 transition-colors duration-200 shadow-sm"
+                >
+                  Success
+                </button>
+                <button
+                  type="button"
+                  onClick={() => verifyPayment('pending')}
+                  className="rounded-full border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-900 hover:bg-slate-50 transition-colors duration-200"
+                >
+                  Pending
+                </button>
+                <button
+                  type="button"
+                  onClick={() => verifyPayment('failed')}
+                  className="rounded-full border border-red-100 bg-red-50 px-5 py-3 text-sm font-semibold text-red-700 hover:bg-red-100 transition-colors duration-200"
+                >
+                  Failed
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </Modal>
 
       <Modal isOpen={locationModal} onClose={() => setLocationModal(false)} title="Enable Location Access">
         <p className="text-sm leading-7 text-slate-600">
@@ -1334,8 +1542,8 @@ const Search = () => {
                 setError('');
                 setAuthMessage('');
               }}
-              className={`rounded-full px-4 py-2 text-sm font-semibold ${
-                authMode === mode ? 'bg-[var(--color-primary)] text-white' : 'bg-slate-100 text-slate-600'
+              className={`rounded-full px-4 py-2 text-sm font-semibold transition-colors duration-200 ${
+                authMode === mode ? 'bg-blue-600 text-white' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
               }`}
             >
               {mode}
@@ -1344,7 +1552,7 @@ const Search = () => {
         </div>
 
         {authMessage ? (
-          <div className="mb-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+          <div className="mb-4 rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700">
             {authMessage}
           </div>
         ) : null}
@@ -1363,14 +1571,14 @@ const Search = () => {
                 placeholder="Email"
                 value={authForm.loginEmail}
                 onChange={(e) => setAuthForm((state) => ({ ...state, loginEmail: e.target.value }))}
-                className="rounded-2xl border border-[rgba(14,165,233,0.16)] px-4 py-3"
+                className="rounded-[16px] border border-slate-100 bg-white px-4 py-3 placeholder-slate-500 text-slate-900 hover:bg-slate-50 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-300/60"
               />
               <input
                 type="password"
                 placeholder="Password"
                 value={authForm.loginPassword}
                 onChange={(e) => setAuthForm((state) => ({ ...state, loginPassword: e.target.value }))}
-                className="rounded-2xl border border-[rgba(14,165,233,0.16)] px-4 py-3"
+                className="rounded-[16px] border border-slate-100 bg-white px-4 py-3 placeholder-slate-500 text-slate-900 hover:bg-slate-50 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-300/60"
               />
             </>
           ) : (
@@ -1380,28 +1588,28 @@ const Search = () => {
                 placeholder="Name"
                 value={authForm.signupName}
                 onChange={(e) => setAuthForm((state) => ({ ...state, signupName: e.target.value }))}
-                className="rounded-2xl border border-[rgba(14,165,233,0.16)] px-4 py-3"
+                className="rounded-[16px] border border-slate-100 bg-white px-4 py-3 placeholder-slate-500 text-slate-900 hover:bg-slate-50 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-300/60"
               />
               <input
                 type="tel"
                 placeholder="Phone"
                 value={authForm.signupPhone}
                 onChange={(e) => setAuthForm((state) => ({ ...state, signupPhone: e.target.value }))}
-                className="rounded-2xl border border-[rgba(14,165,233,0.16)] px-4 py-3"
+                className="rounded-[16px] border border-slate-100 bg-white px-4 py-3 placeholder-slate-500 text-slate-900 hover:bg-slate-50 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-300/60"
               />
               <input
                 type="email"
                 placeholder="Email"
                 value={authForm.signupEmail}
                 onChange={(e) => setAuthForm((state) => ({ ...state, signupEmail: e.target.value }))}
-                className="rounded-2xl border border-[rgba(14,165,233,0.16)] px-4 py-3"
+                className="rounded-[16px] border border-slate-100 bg-white px-4 py-3 placeholder-slate-500 text-slate-900 hover:bg-slate-50 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-300/60"
               />
               <input
                 type="password"
                 placeholder="Password"
                 value={authForm.signupPassword}
                 onChange={(e) => setAuthForm((state) => ({ ...state, signupPassword: e.target.value }))}
-                className="rounded-2xl border border-[rgba(14,165,233,0.16)] px-4 py-3"
+                className="rounded-[16px] border border-slate-100 bg-white px-4 py-3 placeholder-slate-500 text-slate-900 hover:bg-slate-50 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-300/60"
               />
             </>
           )}
@@ -1446,10 +1654,10 @@ const Search = () => {
                 key={item.key}
                 type="button"
                 onClick={() => setUseExistingVehicle(item.key === 'existing')}
-                className={`rounded-full px-4 py-2 text-sm font-semibold ${
+                className={`rounded-full px-4 py-2 text-sm font-semibold transition-colors duration-200 ${
                   useExistingVehicle === (item.key === 'existing')
-                    ? 'bg-[var(--color-primary)] text-white'
-                    : 'bg-slate-100 text-slate-600'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
                 }`}
               >
                 {item.label}
@@ -1468,11 +1676,11 @@ const Search = () => {
           {useExistingVehicle && compatibleVehicles.length ? (
             <>
               <div>
-                <div className="mb-2 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">Saved vehicles</div>
+                <div className="mb-2 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Saved vehicles</div>
                 <select
                   value={selectedVehicleId}
                   onChange={(e) => setSelectedVehicleId(e.target.value)}
-                  className="w-full rounded-2xl border border-[rgba(14,165,233,0.16)] bg-white px-4 py-3"
+                  className="w-full rounded-[16px] border border-slate-100 bg-white px-4 py-3 text-slate-900 hover:bg-slate-50 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-300/60"
                 >
                   <option value="">Select vehicle</option>
                   {compatibleVehicles.map((item) => (
@@ -1487,19 +1695,19 @@ const Search = () => {
             <>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
-                  <div className="mb-2 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">Vehicle type</div>
+                  <div className="mb-2 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Vehicle type</div>
                   <input
                     value={desiredVehicleType}
                     readOnly
-                    className="w-full rounded-2xl border border-[rgba(14,165,233,0.16)] bg-slate-50 px-4 py-3 uppercase"
+                    className="w-full rounded-[16px] border border-slate-100 bg-slate-50 px-4 py-3 uppercase text-slate-600"
                   />
                 </div>
                 <div>
-                  <div className="mb-2 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">Fuel type</div>
+                  <div className="mb-2 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Fuel type</div>
                   <select
                     value={vehicleForm.fuelType}
                     onChange={(e) => setVehicleForm((state) => ({ ...state, fuelType: e.target.value }))}
-                    className="w-full rounded-2xl border border-[rgba(14,165,233,0.16)] bg-white px-4 py-3"
+                    className="w-full rounded-[16px] border border-slate-100 bg-white px-4 py-3 text-slate-900 hover:bg-slate-50 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-300/60"
                   >
                     {['petrol', 'diesel', 'cng', 'electric', 'hybrid', 'other'].map((fuel) => (
                       <option key={fuel} value={fuel}>
@@ -1516,14 +1724,14 @@ const Search = () => {
                   placeholder="License plate (e.g. GJ05AB1234)"
                   value={vehicleForm.licensePlate}
                   onChange={(e) => setVehicleForm((state) => ({ ...state, licensePlate: e.target.value }))}
-                  className="rounded-2xl border border-[rgba(14,165,233,0.16)] px-4 py-3 font-mono uppercase"
+                  className="rounded-[16px] border border-slate-100 bg-white px-4 py-3 font-mono uppercase placeholder-slate-500 text-slate-900 hover:bg-slate-50 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-300/60"
                 />
                 <input
                   type="text"
                   placeholder="Color (e.g. Black)"
                   value={vehicleForm.color}
                   onChange={(e) => setVehicleForm((state) => ({ ...state, color: e.target.value }))}
-                  className="rounded-2xl border border-[rgba(14,165,233,0.16)] px-4 py-3"
+                  className="rounded-[16px] border border-slate-100 bg-white px-4 py-3 placeholder-slate-500 text-slate-900 hover:bg-slate-50 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-300/60"
                 />
               </div>
 
@@ -1533,14 +1741,14 @@ const Search = () => {
                   placeholder="Make (e.g. Honda)"
                   value={vehicleForm.make}
                   onChange={(e) => setVehicleForm((state) => ({ ...state, make: e.target.value }))}
-                  className="rounded-2xl border border-[rgba(14,165,233,0.16)] px-4 py-3"
+                  className="rounded-[16px] border border-slate-100 bg-white px-4 py-3 placeholder-slate-500 text-slate-900 hover:bg-slate-50 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-300/60"
                 />
                 <input
                   type="text"
                   placeholder="Model (e.g. City)"
                   value={vehicleForm.model}
                   onChange={(e) => setVehicleForm((state) => ({ ...state, model: e.target.value }))}
-                  className="rounded-2xl border border-[rgba(14,165,233,0.16)] px-4 py-3"
+                  className="rounded-[16px] border border-slate-100 bg-white px-4 py-3 placeholder-slate-500 text-slate-900 hover:bg-slate-50 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-300/60"
                 />
                 <input
                   type="number"
@@ -1549,26 +1757,26 @@ const Search = () => {
                   max={new Date().getFullYear() + 1}
                   value={vehicleForm.year}
                   onChange={(e) => setVehicleForm((state) => ({ ...state, year: e.target.value }))}
-                  className="rounded-2xl border border-[rgba(14,165,233,0.16)] px-4 py-3"
+                  className="rounded-[16px] border border-slate-100 bg-white px-4 py-3 placeholder-slate-500 text-slate-900 hover:bg-slate-50 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-300/60"
                 />
               </div>
 
               <div>
-                <div className="mb-2 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">Registration expiry</div>
+                <div className="mb-2 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Registration expiry</div>
                 <input
                   type="date"
                   value={vehicleForm.registrationExpiry}
                   onChange={(e) => setVehicleForm((state) => ({ ...state, registrationExpiry: e.target.value }))}
-                  className="w-full rounded-2xl border border-[rgba(14,165,233,0.16)] bg-white px-4 py-3"
+                  className="w-full rounded-[16px] border border-slate-100 bg-white px-4 py-3 text-slate-900 hover:bg-slate-50 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-300/60"
                 />
               </div>
 
-              <label className="flex items-center gap-3 text-sm font-semibold text-slate-600">
+              <label className="flex items-center gap-3 text-sm font-semibold text-slate-700">
                 <input
                   type="checkbox"
                   checked={vehicleForm.isDefault}
                   onChange={(e) => setVehicleForm((state) => ({ ...state, isDefault: e.target.checked }))}
-                  className="h-4 w-4"
+                  className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                 />
                 Set as my default vehicle
               </label>
