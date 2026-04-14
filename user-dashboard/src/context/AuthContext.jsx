@@ -1,12 +1,14 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { createAuthService } from '../../../shared-auth/authService';
 import api, { authAPI } from '../services/api';
+import { userAuthStorage } from '../services/api';
 
 const AuthContext = createContext(null);
 
 const authService = createAuthService({
   apiClient: api,
   loginEndpoint: '/auth/login',
+  storage: userAuthStorage,
 });
 
 export const AuthProvider = ({ children }) => {
@@ -39,16 +41,40 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const establishSession = ({ token, user: userData }) => {
+    userAuthStorage.setToken(token);
+    userAuthStorage.setUser(userData);
+    setUser(userData);
+    setIsAuthenticated(true);
+  };
+
+  const loginWithPhoneOtp = async (payload) => {
+    const response = await authAPI.verifyOtp(payload);
+    establishSession(response.data);
+    return response.data;
+  };
+
+  const loginWithFirebaseSession = async (payload) => {
+    const response = await authAPI.createFirebaseSession(payload);
+    establishSession(response.data);
+    return response.data;
+  };
+
   const register = async (payload) => {
     try {
       const response = await authAPI.register(payload);
       const { token, user: userData } = response.data.data;
-      authService.logout();
-      localStorage.setItem('token', token);
-      localStorage.setItem('user', JSON.stringify(userData));
-      setUser(userData);
-      setIsAuthenticated(true);
-      return { success: true };
+
+      if (token && userData) {
+        authService.logout();
+        establishSession({ token, user: userData });
+      }
+
+      return {
+        success: true,
+        user: userData,
+        message: response.data?.message || 'Account created successfully. Please login to continue.',
+      };
     } catch (error) {
       return {
         success: false,
@@ -87,9 +113,12 @@ export const AuthProvider = ({ children }) => {
       loading,
       isAuthenticated,
       login,
+      loginWithPhoneOtp,
+      loginWithFirebaseSession,
       register,
       logout,
       updateUserData,
+      establishSession,
     }),
     [user, loading, isAuthenticated],
   );

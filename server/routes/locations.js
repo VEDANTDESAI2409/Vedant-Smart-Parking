@@ -1,5 +1,5 @@
 const express = require('express');
-const { body, param } = require('express-validator');
+const { body, param, query } = require('express-validator');
 const {
   getPublicLocations,
   getPublicLocation,
@@ -8,6 +8,8 @@ const {
   createLocation,
   updateLocation,
   deleteLocation,
+  getNearbyLocations,
+  getLocationBlueprint,
 } = require('../controllers/locationController');
 
 const { protect, authorize } = require('../middleware/auth');
@@ -22,8 +24,8 @@ const createLocationValidation = [
     .trim()
     .isLength({ min: 1, max: 100 })
     .withMessage('Location name must be between 1 and 100 characters'),
-  body('lat').isFloat().withMessage('Latitude must be a valid number'),
-  body('lng').isFloat().withMessage('Longitude must be a valid number'),
+  body('lat').optional({ nullable: true, checkFalsy: true }).isFloat().withMessage('Latitude must be a valid number'),
+  body('lng').optional({ nullable: true, checkFalsy: true }).isFloat().withMessage('Longitude must be a valid number'),
   body('status').optional().isBoolean().withMessage('Status must be a boolean'),
 ];
 
@@ -42,6 +44,18 @@ const updateLocationValidation = [
 ];
 
 const locationIdValidation = [param('id').isMongoId().withMessage('Invalid location ID')];
+const nearbyLocationsValidation = [
+  query('lat').isFloat().withMessage('Latitude is required'),
+  query('lng').isFloat().withMessage('Longitude is required'),
+  query('radiusKm').optional().isFloat({ min: 1, max: 25 }).withMessage('Radius must be between 1 and 25 km'),
+  query('vehicleType')
+    .optional()
+    .isIn(['car', 'bike'])
+    .withMessage('Vehicle type must be car or bike'),
+];
+
+router.get('/nearby', nearbyLocationsValidation, getNearbyLocations);
+router.get('/:id/slots', locationIdValidation, getLocationBlueprint);
 
 router.get('/public', getPublicLocations);
 router.get('/public/:id', locationIdValidation, getPublicLocation);

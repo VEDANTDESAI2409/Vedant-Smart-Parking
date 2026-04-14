@@ -8,13 +8,15 @@ const {
   deleteSlot,
   getAvailableSlots,
   getSlotStats,
-  scheduleMaintenance
+  scheduleMaintenance,
+  createBulkSlots
 } = require('../controllers/slotController');
 
 const { protect, authorize } = require('../middleware/auth');
 const router = express.Router();
 
 const createSlotValidation = [
+  body('locationId').isMongoId().withMessage('Valid locationId is required'),
   body('city').notEmpty().withMessage('City is required'),
   body('pincode')
     .notEmpty()
@@ -28,8 +30,8 @@ const createSlotValidation = [
     .isIn(['car', 'bike'])
     .withMessage('Vehicle type must be car or bike'),
   body('slotType')
-    .isIn(['normal', 'ev', 'disabled'])
-    .withMessage('Slot type must be normal, ev, or disabled'),
+    .isIn(['normal', 'ev', 'disabled', 'reserved'])
+    .withMessage('Slot type must be normal, ev, disabled, or reserved'),
   body('slotLocation').notEmpty().withMessage('Slot location is required'),
   body('price')
     .isFloat({ min: 0 })
@@ -37,6 +39,7 @@ const createSlotValidation = [
 ];
 
 const updateSlotValidation = [
+  body('locationId').optional().isMongoId().withMessage('Valid locationId is required'),
   body('city').optional().notEmpty().withMessage('City cannot be empty'),
   body('pincode')
     .optional()
@@ -51,8 +54,8 @@ const updateSlotValidation = [
     .withMessage('Vehicle type must be car or bike'),
   body('slotType')
     .optional()
-    .isIn(['normal', 'ev', 'disabled'])
-    .withMessage('Slot type must be normal, ev, or disabled'),
+    .isIn(['normal', 'ev', 'disabled', 'reserved'])
+    .withMessage('Slot type must be normal, ev, disabled, or reserved'),
   body('slotLocation')
     .optional()
     .notEmpty()
@@ -85,6 +88,8 @@ router.get('/:id', slotIdValidation, getSlot);
 router.use(protect);
 router.use(authorize('admin', 'superadmin'));
 
+router.post('/bulk', createBulkSlots);
+router.post('/bulk/create', createBulkSlots); // legacy alias
 router.post('/', createSlotValidation, createSlot);
 router.put('/:id', slotIdValidation, updateSlotValidation, updateSlot);
 router.delete('/:id', slotIdValidation, deleteSlot);

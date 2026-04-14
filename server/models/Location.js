@@ -10,11 +10,11 @@ const locationSchema = new mongoose.Schema(
     },
     lat: {
       type: Number,
-      required: [true, 'Latitude is required'],
+      default: 0,
     },
     lng: {
       type: Number,
-      required: [true, 'Longitude is required'],
+      default: 0,
     },
     areaId: {
       type: mongoose.Schema.Types.ObjectId,
@@ -35,6 +35,39 @@ const locationSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    address: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    description: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    contactNumber: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    radiusKm: {
+      type: Number,
+      default: 10,
+      min: 1,
+      max: 50,
+    },
+    floors: [
+      {
+        floorNumber: { type: Number, required: true },
+        label: { type: String, required: true, trim: true },
+        vehicleTypes: {
+          type: [String],
+          enum: ['car', 'bike'],
+          default: ['car'],
+        },
+        totalSlots: { type: Number, default: 0 },
+      },
+    ],
   },
   {
     timestamps: true,
@@ -42,5 +75,6 @@ const locationSchema = new mongoose.Schema(
 );
 
 locationSchema.index({ name: 1, areaId: 1, pincodeId: 1, cityId: 1 }, { unique: true });
+locationSchema.index({ lat: 1, lng: 1 });
 
 module.exports = mongoose.model('Location', locationSchema);

@@ -59,7 +59,7 @@ const AppShell = () => {
   React.useEffect(() => subscribeToAdminPreferences(setAdminPreferences), []);
 
   return (
-    <BrowserRouter>
+    <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <Routes>
         <Route path="/" element={<Navigate to="/admin/login" replace />} />
         <Route path="/admin/login" element={<Login />} />
