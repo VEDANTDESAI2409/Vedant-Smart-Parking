@@ -1,9 +1,9 @@
 import { authStorage } from './authStorage';
 
-export const createAuthService = ({ apiClient, loginEndpoint }) => ({
+export const createAuthService = ({ apiClient, loginEndpoint, storage = authStorage }) => ({
   restoreSession() {
-    const token = authStorage.getToken();
-    const user = authStorage.getUser();
+    const token = storage.getToken();
+    const user = storage.getUser();
 
     if (!token || !user) {
       return { token: null, user: null, isAuthenticated: false };
@@ -16,32 +16,32 @@ export const createAuthService = ({ apiClient, loginEndpoint }) => ({
     const response = await apiClient.post(loginEndpoint, credentials);
     const { token, user } = response.data;
 
-    authStorage.setToken(token);
-    authStorage.setUser(user);
+    storage.setToken(token);
+    storage.setUser(user);
 
     return { token, user };
   },
 
   logout() {
-    authStorage.clear();
+    storage.clear();
   },
 
   updateStoredUser(nextUserData) {
-    const currentUser = authStorage.getUser() || {};
+    const currentUser = storage.getUser() || {};
     const updatedUser = { ...currentUser, ...nextUserData };
-    authStorage.setUser(updatedUser);
+    storage.setUser(updatedUser);
     return updatedUser;
   },
 
   getToken() {
-    return authStorage.getToken();
+    return storage.getToken();
   },
 
   getUser() {
-    return authStorage.getUser();
+    return storage.getUser();
   },
 
   isAuthenticated() {
-    return !!authStorage.getToken();
+    return !!storage.getToken();
   },
 });

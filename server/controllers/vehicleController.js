@@ -3,6 +3,8 @@ const { validationResult } = require('express-validator');
 const Vehicle = require('../models/Vehicle');
 const ActivityLog = require('../models/ActivityLog');
 
+const isAdminRole = (role) => role === 'admin' || role === 'superadmin';
+
 // @desc    Get all vehicles for a user
 // @route   GET /api/vehicles
 // @access  Private
@@ -70,11 +72,11 @@ exports.getVehicles = async (req, res) => {
 // @access  Private/Owner
 exports.getVehicle = async (req, res) => {
   try {
-    const vehicle = await Vehicle.findOne({
-      _id: req.params.id,
-      owner: req.user.id,
-      isActive: true
-    });
+    const filter = isAdminRole(req.user.role)
+      ? { _id: req.params.id, isActive: true }
+      : { _id: req.params.id, owner: req.user.id, isActive: true };
+
+    const vehicle = await Vehicle.findOne(filter);
 
     if (!vehicle) {
       return res.status(404).json({
@@ -168,11 +170,11 @@ exports.updateVehicle = async (req, res) => {
       });
     }
 
-    const vehicle = await Vehicle.findOneAndUpdate(
-      { _id: req.params.id, owner: req.user.id, isActive: true },
-      req.body,
-      { new: true, runValidators: true }
-    );
+    const filter = isAdminRole(req.user.role)
+      ? { _id: req.params.id, isActive: true }
+      : { _id: req.params.id, owner: req.user.id, isActive: true };
+
+    const vehicle = await Vehicle.findOneAndUpdate(filter, req.body, { new: true, runValidators: true });
 
     if (!vehicle) {
       return res.status(404).json({
@@ -212,11 +214,11 @@ exports.updateVehicle = async (req, res) => {
 // @access  Private/Owner
 exports.deleteVehicle = async (req, res) => {
   try {
-    const vehicle = await Vehicle.findOne({
-      _id: req.params.id,
-      owner: req.user.id,
-      isActive: true
-    });
+    const filter = isAdminRole(req.user.role)
+      ? { _id: req.params.id, isActive: true }
+      : { _id: req.params.id, owner: req.user.id, isActive: true };
+
+    const vehicle = await Vehicle.findOne(filter);
 
     if (!vehicle) {
       return res.status(404).json({
@@ -245,7 +247,8 @@ exports.deleteVehicle = async (req, res) => {
     // Log activity
     await ActivityLog.logActivity({
       user: req.user.id,
-      action: 'user_vehicle_deleted',
+      admin: isAdminRole(req.user.role) ? req.user.id : null,
+      action: isAdminRole(req.user.role) ? 'admin_vehicle_deleted' : 'user_vehicle_deleted',
       resource: 'vehicle',
       resourceId: vehicle._id,
       description: `Vehicle deleted: ${vehicle.make} ${vehicle.model} (${vehicle.licensePlate})`,

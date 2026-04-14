@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { FaEdit, FaFileImport, FaPlus, FaTrash } from 'react-icons/fa';
 import Swal from 'sweetalert2';
 
@@ -6,6 +6,7 @@ import Button from '../../components/Button';
 import Modal from '../../components/Modal';
 import Table from '../../components/Table';
 import Card from '../../components/Card';
+import ListSearchInput from '../../components/ListSearchInput';
 import SearchableSelect from '../../components/SearchableSelect';
 import DataImportModal from '../components/DataImportModal';
 import { citiesAPI, pincodesAPI } from '../../services/api';
@@ -24,6 +25,7 @@ const PincodePage = () => {
   const [selectedPincodeIds, setSelectedPincodeIds] = useState([]);
   const [cities, setCities] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [importModalOpen, setImportModalOpen] = useState(false);
   const [editingPincode, setEditingPincode] = useState(null);
@@ -71,6 +73,20 @@ const PincodePage = () => {
     value: city._id,
     label: `${city.name} (${city.state})`,
   }));
+
+  const filteredPincodes = useMemo(() => {
+    const query = searchTerm.trim().toLowerCase();
+
+    if (!query) {
+      return pincodes;
+    }
+
+    return pincodes.filter((item) =>
+      [getCityName(item), item.pincode, item.status ? 'active' : 'inactive']
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(query))
+    );
+  }, [pincodes, searchTerm]);
 
   const handleInputChange = (field, value) => {
     setFormData((prev) => ({
@@ -165,7 +181,7 @@ const PincodePage = () => {
   };
 
   const handleSelectAllPincodes = (checked) => {
-    setSelectedPincodeIds(checked ? pincodes.map((item) => item._id).filter(Boolean) : []);
+    setSelectedPincodeIds(checked ? filteredPincodes.map((item) => item._id).filter(Boolean) : []);
   };
 
   const handleBulkDelete = async () => {
@@ -215,6 +231,20 @@ const PincodePage = () => {
     }
   };
 
+  const handleStatusToggle = async (item) => {
+    try {
+      await pincodesAPI.update(item._id, {
+        cityId: getCityId(item),
+        pincode: item.pincode,
+        status: !item.status,
+      });
+      await fetchPincodes();
+    } catch (error) {
+      console.error('Error updating pincode status:', error);
+      showError(error?.response?.data?.message || 'Failed to update pincode status');
+    }
+  };
+
   const columns = [
     { header: 'CITY', key: 'cityId', render: (row) => <span className="capitalize">{getCityName(row)}</span> },
     { header: 'PINCODE', key: 'pincode' },
@@ -222,15 +252,30 @@ const PincodePage = () => {
       header: 'STATUS',
       key: 'status',
       render: (row) => (
-        <span
-          className={`px-3 py-1 text-xs rounded-full font-semibold ${
+        <button
+          type="button"
+          role="switch"
+          aria-checked={row.status}
+          onClick={() => handleStatusToggle(row)}
+          className={`inline-flex items-center gap-3 rounded-full px-3 py-1.5 text-xs font-semibold ${
             row.status
               ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
               : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
           }`}
         >
+          <span
+            className={`relative inline-flex h-5 w-9 items-center rounded-full ${
+              row.status ? 'bg-green-600' : 'bg-gray-400 dark:bg-gray-600'
+            }`}
+          >
+            <span
+              className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
+                row.status ? 'translate-x-5' : 'translate-x-0.5'
+              }`}
+            />
+          </span>
           {row.status ? 'Active' : 'Inactive'}
-        </span>
+        </button>
       ),
     },
     {
@@ -281,11 +326,18 @@ const PincodePage = () => {
       </div>
 
       <Card>
+        <div className="mb-4">
+          <ListSearchInput
+            value={searchTerm}
+            onChange={setSearchTerm}
+            placeholder="Search city, pincode, or status..."
+          />
+        </div>
         <Table
           columns={columns}
-          data={pincodes}
+          data={filteredPincodes}
           loading={loading}
-          emptyMessage="No pincodes found"
+          emptyMessage={searchTerm.trim() ? `No pincodes found matching "${searchTerm}"` : 'No pincodes found'}
           selectable
           selectedRowIds={selectedPincodeIds}
           onRowSelect={handlePincodeSelect}

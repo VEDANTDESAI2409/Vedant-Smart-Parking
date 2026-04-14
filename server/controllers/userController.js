@@ -92,7 +92,7 @@ exports.getUser = async (req, res) => {
     }
 
     // Check if user can access this profile
-    if (req.user.role !== 'admin' && req.user.id !== req.params.id) {
+    if (!['admin', 'superadmin'].includes(req.user.role) && req.user.id !== req.params.id) {
       return res.status(403).json({
         success: false,
         message: 'Access denied'
@@ -127,18 +127,19 @@ exports.updateUser = async (req, res) => {
     }
 
     // Check if user can update this profile
-    if (req.user.role !== 'admin' && req.user.id !== req.params.id) {
+    if (!['admin', 'superadmin'].includes(req.user.role) && req.user.id !== req.params.id) {
       return res.status(403).json({
         success: false,
         message: 'Access denied'
       });
     }
 
-    const { name, phone, isActive, preferences } = req.body;
+    const { name, phone, address, isActive, preferences } = req.body;
 
     const updateData = {};
     if (name) updateData.name = name;
     if (phone) updateData.phone = phone;
+    if (address !== undefined) updateData.address = address;
     if (preferences) updateData.preferences = preferences;
 
     // Only admin can change isActive status
@@ -248,7 +249,7 @@ exports.deleteUser = async (req, res) => {
 exports.getUserStats = async (req, res) => {
   try {
     // Check if user can access this data
-    if (req.user.role !== 'admin' && req.user.id !== req.params.id) {
+    if (!['admin', 'superadmin'].includes(req.user.role) && req.user.id !== req.params.id) {
       return res.status(403).json({
         success: false,
         message: 'Access denied'

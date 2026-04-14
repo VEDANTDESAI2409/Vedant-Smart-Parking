@@ -65,6 +65,35 @@ const bookingSchema = new mongoose.Schema({
     ref: 'Payment',
     default: null
   },
+  locationSnapshot: {
+    locationId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Location',
+      default: null,
+    },
+    locationName: { type: String, default: '' },
+    city: { type: String, default: '' },
+    area: { type: String, default: '' },
+    pincode: { type: String, default: '' },
+    floor: { type: Number, default: 1 },
+    slotNumber: { type: String, default: '' },
+    slotType: { type: String, default: 'normal' },
+    vehicleType: { type: String, default: 'car' },
+  },
+  paymentStatus: {
+    type: String,
+    enum: ['pending', 'processing', 'paid', 'failed', 'refunded'],
+    default: 'pending',
+  },
+  receiptNumber: {
+    type: String,
+    default: null,
+  },
+  paymentLock: {
+    lockToken: { type: String, default: null },
+    lockedAt: { type: Date, default: null },
+    expiresAt: { type: Date, default: null },
+  },
   specialRequests: {
     type: String,
     maxlength: [500, 'Special requests cannot exceed 500 characters']
@@ -91,7 +120,7 @@ const bookingSchema = new mongoose.Schema({
     },
     reason: {
       type: String,
-      enum: ['user_cancelled', 'system_cancelled', 'no_show', 'payment_failed']
+      enum: ['user_cancelled', 'admin_cancelled', 'system_cancelled', 'no_show', 'payment_failed']
     },
     refundAmount: { type: Number, default: 0 }
   },
@@ -135,13 +164,18 @@ bookingSchema.virtual('isExpired').get(function() {
 bookingSchema.index({ user: 1, status: 1 });
 bookingSchema.index({ parkingSlot: 1, startTime: 1, endTime: 1 });
 bookingSchema.index({ bookingReference: 1 });
+bookingSchema.index({ receiptNumber: 1 });
 bookingSchema.index({ startTime: 1, endTime: 1 });
 bookingSchema.index({ status: 1, startTime: 1 });
 
-// Pre-save middleware to generate booking reference
-bookingSchema.pre('save', function(next) {
+// Generate booking metadata before validation so required fields exist on create
+bookingSchema.pre('validate', function(next) {
   if (this.isNew && !this.bookingReference) {
     this.bookingReference = 'BK' + Date.now() + Math.random().toString(36).substr(2, 5).toUpperCase();
+  }
+
+  if (this.isNew && !this.receiptNumber) {
+    this.receiptNumber = 'RCP' + Date.now() + Math.random().toString(36).substr(2, 4).toUpperCase();
   }
 
   // Generate check-in and check-out codes
