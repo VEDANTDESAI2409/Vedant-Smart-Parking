@@ -32,7 +32,18 @@ exports.register = async (req, res) => {
     if (existingUser) {
       return res.status(400).json({ success: false, message: 'User already exists with this email or phone number' });
     }
-    const user = await User.create({ name, email: email.toLowerCase(), password, phone });
+    const user = await User.create({
+      name,
+      email: email.toLowerCase(),
+      password,
+      phone,
+      authProviders: {
+        password: true,
+        phone: false,
+        google: false,
+        firebaseEmail: false,
+      },
+    });
     await ActivityLog.logActivity({
       user: user._id,
       action: 'user_registered',

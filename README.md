@@ -24,6 +24,9 @@ A full-stack Smart Parking System with separate Admin and User dashboards.
 - Booking History
 - Profile and Vehicles
 - Notifications
+- Twilio Verify phone OTP auth
+- Firebase Google sign-in
+- Firebase email/password auth with verification enforcement
 
 ## Tech Stack
 
@@ -43,6 +46,8 @@ A full-stack Smart Parking System with separate Admin and User dashboards.
 - JWT for authentication
 - bcryptjs for password hashing
 - CORS for cross-origin requests
+- Firebase Admin SDK for token verification and Firestore sync
+- Twilio Verify API for SMS OTP
 
 ## Project Structure
 
@@ -63,6 +68,7 @@ Vedant-Smart-Parking/
     admin-uiux.md
     user-uiux.md
     api-docs.md
+    auth-setup.md
 ```
 
 ## Setup Instructions
@@ -85,6 +91,7 @@ Vedant-Smart-Parking/
    ```
 
 3. Create a `.env` file from `.env.example` (already present in this repo) and adjust values as needed.
+   The auth system needs Twilio Verify credentials plus Firebase Admin credentials.
 
 4. Start the MongoDB service (if using local MongoDB)
 
@@ -114,6 +121,7 @@ The backend will be running on `http://localhost:5000`
    ```
 
 3. Create a `.env` from `.env.example` (recommended) so `VITE_API_BASE_URL` is set and the dev console stays clean.
+   The auth UI also needs the Firebase web config values from your Firebase project settings.
 
 4. Start the development server:
    ```bash
@@ -133,6 +141,16 @@ After running the seed script, you can login with:
 ## API Documentation
 
 See `docs/api-docs.md` for complete API documentation.
+
+## Authentication Setup
+
+The user auth system now supports:
+- `POST /api/auth/send-otp`
+- `POST /api/auth/resend-otp`
+- `POST /api/auth/verify-otp`
+- `POST /api/auth/firebase/session`
+
+See [docs/auth-setup.md](/c:/Users/virti/OneDrive/Desktop/park-n-go/Vedant-Smart-Parking/docs/auth-setup.md) for full setup steps, environment variables, and provider flow details.
 
 ## UI/UX Guidelines
 
