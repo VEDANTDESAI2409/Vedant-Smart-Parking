@@ -1,18 +1,71 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { Navigate } from 'react-router-dom';
 import { FaBell, FaCar, FaCreditCard, FaSave, FaUser } from 'react-icons/fa';
 import { useAuth } from '../../context/AuthContext';
 import { usersAPI } from '../../services/api';
 import { showSuccess, showError } from '../../utils/toastService';
 
 const Profile = () => {
-  const { user, updateUserData } = useContext(AuthContext);
-  
+  const { user, isAuthenticated, loading, updateUserData, refreshProfile, logout } = useAuth();
   const [profile, setProfile] = useState({
-    name: user?.name || '',
-    email: user?.email || '',
-    phone: user?.phone || '',
-    address: user?.address || '',
+    name: '',
+    email: '',
+    phone: '',
+    address: '',
   });
+  const [profileLoading, setProfileLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadProfile = async () => {
+      if (!isAuthenticated) {
+        setProfileLoading(false);
+        return;
+      }
+
+      try {
+        const profileUser = await refreshProfile();
+
+        if (!cancelled && profileUser) {
+          setProfile({
+            name: profileUser.name || '',
+            email: profileUser.email || '',
+            phone: profileUser.phone || '',
+            address: profileUser.address || '',
+          });
+        }
+      } catch (error) {
+        if (!cancelled) {
+          showError(error?.response?.data?.message || 'Failed to load profile');
+        }
+      } finally {
+        if (!cancelled) {
+          setProfileLoading(false);
+        }
+      }
+    };
+
+    loadProfile();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated, refreshProfile]);
+
+  useEffect(() => {
+    if (!user) {
+      return;
+    }
+
+    setProfile((current) => ({
+      ...current,
+      name: user.name || current.name,
+      email: user.email || current.email,
+      phone: user.phone || current.phone,
+      address: user.address || current.address,
+    }));
+  }, [user]);
 
   const [vehicles] = useState([
     { id: 1, make: 'Toyota', model: 'Camry', year: '2020', licensePlate: 'ABC-123', color: 'Blue' },
@@ -24,22 +77,30 @@ const Profile = () => {
     { id: 2, type: 'PayPal', email: 'john.doe@example.com' },
   ]);
 
+  if (!loading && !isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
   const handleProfileUpdate = async (event) => {
     event.preventDefault();
+
     try {
-      const response = await usersAPI.updateProfile(user._id, {
+      const targetUserId = user?.id || user?._id;
+      const response = await usersAPI.updateProfile(targetUserId, {
         name: profile.name,
         phone: profile.phone,
         address: profile.address,
       });
-      
-      // Update the user data in context
+
       updateUserData(response.data.data.user);
       showSuccess('Profile updated successfully');
     } catch (error) {
-      console.error('Profile update error:', error);
       showError(error?.response?.data?.message || 'Failed to update profile');
     }
+  };
+
+  const handleLogout = () => {
+    logout();
   };
 
   return (
@@ -55,7 +116,10 @@ const Profile = () => {
               </p>
             </div>
 
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[rgba(14,165,233,0.12)] text-[var(--color-primary)]">
+            <div
+              onDoubleClick={handleLogout}
+              className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[rgba(14,165,233,0.12)] text-[var(--color-primary)]"
+            >
               <FaUser className="h-6 w-6" />
             </div>
           </div>
@@ -111,6 +175,7 @@ const Profile = () => {
               <div className="flex justify-end">
                 <button
                   type="submit"
+                  disabled={profileLoading}
                   className="inline-flex items-center justify-center gap-2 rounded-full bg-[var(--color-primary)] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[#0369a1]"
                 >
                   <FaSave className="h-4 w-4" />
@@ -212,4 +277,3 @@ const Profile = () => {
 };
 
 export default Profile;
-

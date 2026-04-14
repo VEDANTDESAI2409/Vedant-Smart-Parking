@@ -1,15 +1,33 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { createAuthService } from '../../../shared-auth/authService';
-import api, { authAPI } from '../services/api';
-import { userAuthStorage } from '../services/api';
+import api, { authAPI, userAuthStorage, usersAPI } from '../services/api';
 
 const AuthContext = createContext(null);
+const PENDING_BOOKING_KEY = 'user-dashboard:pending-booking';
 
 const authService = createAuthService({
   apiClient: api,
   loginEndpoint: '/auth/login',
   storage: userAuthStorage,
 });
+
+const notifyOtpFallback = (payload) => {
+  if (!payload?.fallback || !payload?.otp) {
+    return;
+  }
+
+  const message = `Development OTP: ${payload.otp}`;
+
+  // eslint-disable-next-line no-console
+  console.info(message);
+
+  if (typeof window !== 'undefined' && typeof window.alert === 'function') {
+    window.alert(message);
+  }
+};
+
+const extractUserPayload = (response) =>
+  response?.data?.data?.user || response?.data?.user || response?.user || null;
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -27,20 +45,6 @@ export const AuthProvider = ({ children }) => {
     setLoading(false);
   }, []);
 
-  const login = async (email, password) => {
-    try {
-      const { user: userData } = await authService.login({ email, password });
-      setUser(userData);
-      setIsAuthenticated(true);
-      return { success: true };
-    } catch (error) {
-      return {
-        success: false,
-        error: error.response?.data?.message || 'Login failed',
-      };
-    }
-  };
-
   const establishSession = ({ token, user: userData }) => {
     userAuthStorage.setToken(token);
     userAuthStorage.setUser(userData);
@@ -48,51 +52,70 @@ export const AuthProvider = ({ children }) => {
     setIsAuthenticated(true);
   };
 
-  const loginWithPhoneOtp = async (payload) => {
-    const response = await authAPI.verifyOtp(payload);
-    establishSession(response.data);
-    return response.data;
-  };
+  const refreshProfile = async () => {
+    const response = await usersAPI.getProfile();
+    const profileUser = extractUserPayload(response);
 
-  const loginWithFirebaseSession = async (payload) => {
-    const response = await authAPI.createFirebaseSession(payload);
-    establishSession(response.data);
-    return response.data;
-  };
-
-  const register = async (payload) => {
-    try {
-      const response = await authAPI.register(payload);
-      const { token, user: userData } = response.data.data;
-
-      if (token && userData) {
-        authService.logout();
-        establishSession({ token, user: userData });
-      }
-
-      return {
-        success: true,
-        user: userData,
-        message: response.data?.message || 'Account created successfully. Please login to continue.',
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error:
-          error.response?.data?.message ||
-          error.response?.data?.errors?.[0]?.msg ||
-          'Registration failed',
-      };
+    if (profileUser) {
+      userAuthStorage.setUser(profileUser);
+      setUser(profileUser);
+      setIsAuthenticated(true);
     }
+
+    return profileUser;
+  };
+
+  const sendOtp = async (payload) => {
+    const response = await authAPI.sendOtp(payload);
+    notifyOtpFallback(response.data);
+    return response.data;
+  };
+
+  const verifyOtp = async (payload) => {
+    const response = await authAPI.verifyOtp(payload);
+    return response.data;
+  };
+
+  const signup = async (payload) => {
+    const response = await authAPI.register(payload);
+    const session = response.data;
+
+    if (session?.token && session?.user) {
+      establishSession(session);
+    }
+
+    return session;
+  };
+
+  const login = async (payload) => {
+    const response = await authAPI.login(payload);
+    notifyOtpFallback(response.data);
+    return response.data;
+  };
+
+  const verifyLogin = async (payload) => {
+    const response = await authAPI.verifyLoginOtp(payload);
+    const session = response.data;
+
+    if (session?.token && session?.user) {
+      establishSession(session);
+    }
+
+    return session;
+  };
+
+  const loginWithGoogle = async (payload) => {
+    const response = await authAPI.googleLogin(payload);
+    const session = response.data;
+
+    if (session?.token && session?.user) {
+      establishSession(session);
+    }
+
+    return session;
   };
 
   const logout = async () => {
-    try {
-      await authAPI.logout();
-    } catch (error) {
-      // Ignore logout API failures and still clear local session.
-    }
-
     authService.logout();
     setUser(null);
     setIsAuthenticated(false);
@@ -107,18 +130,58 @@ export const AuthProvider = ({ children }) => {
     setUser(updatedUser);
   };
 
+  const savePendingBooking = (payload) => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    window.localStorage.setItem(PENDING_BOOKING_KEY, JSON.stringify(payload));
+  };
+
+  const getPendingBooking = () => {
+    if (typeof window === 'undefined') {
+      return null;
+    }
+
+    const raw = window.localStorage.getItem(PENDING_BOOKING_KEY);
+
+    if (!raw) {
+      return null;
+    }
+
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return null;
+    }
+  };
+
+  const clearPendingBooking = () => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    window.localStorage.removeItem(PENDING_BOOKING_KEY);
+  };
+
   const value = useMemo(
     () => ({
       user,
       loading,
       isAuthenticated,
+      sendOtp,
+      verifyOtp,
+      signup,
       login,
-      loginWithPhoneOtp,
-      loginWithFirebaseSession,
-      register,
+      verifyLogin,
+      loginWithGoogle,
       logout,
       updateUserData,
       establishSession,
+      refreshProfile,
+      savePendingBooking,
+      getPendingBooking,
+      clearPendingBooking,
     }),
     [user, loading, isAuthenticated],
   );

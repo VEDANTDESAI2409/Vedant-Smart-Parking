@@ -75,6 +75,14 @@ exports.login = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Validation failed', errors: errors.array() });
     }
     const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email and password are required for email login',
+      });
+    }
+
     const user = await User.findOne({ email: email.toLowerCase() }).select('+password');
     if (!user || !(await user.comparePassword(password))) {
       return res.status(401).json({ success: false, message: 'Invalid email or password' });
@@ -83,7 +91,9 @@ exports.login = async (req, res) => {
       return res.status(401).json({ success: false, message: 'Account is deactivated. Please contact support.' });
     }
     await user.updateLastLogin();
-    await ActivityLog.logActivity({
+    
+    // Log activity asynchronously to avoid blocking login
+    ActivityLog.logActivity({
       user: user._id,
       action: 'user_login',
       resource: 'user',
@@ -91,7 +101,10 @@ exports.login = async (req, res) => {
       description: `User logged in: ${user.name}`,
       ipAddress: req.ip,
       userAgent: req.get('User-Agent')
+    }).catch(error => {
+      console.error('Failed to log user login activity:', error.message);
     });
+    
     const token = generateToken(user._id);
     res.json({
       success: true,

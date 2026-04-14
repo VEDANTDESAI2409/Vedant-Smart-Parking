@@ -1,8 +1,16 @@
 const admin = require('firebase-admin');
+const fs = require('fs');
+const path = require('path');
 
 let firebaseApp;
+const serviceAccountPath = path.join(__dirname, 'firebaseServiceAccount.json');
 
 const buildCredential = () => {
+  if (fs.existsSync(serviceAccountPath)) {
+    const serviceAccount = JSON.parse(fs.readFileSync(serviceAccountPath, 'utf8'));
+    return admin.credential.cert(serviceAccount);
+  }
+
   if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
     const parsed = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
     return admin.credential.cert(parsed);
@@ -40,7 +48,7 @@ const getFirebaseAdminApp = () => {
     ? admin.app()
     : admin.initializeApp({
         credential,
-        projectId: process.env.FIREBASE_PROJECT_ID || process.env.FIREBASE_ADMIN_PROJECT_ID,
+        projectId: 'parkngo-51eb0',
       });
 
   return firebaseApp;

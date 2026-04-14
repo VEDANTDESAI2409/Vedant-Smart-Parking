@@ -10,13 +10,14 @@ import {
   Zap,
 } from 'lucide-react';
 import Modal from '../../components/Modal';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { bookingsAPI, locationsAPI, paymentsAPI, vehiclesAPI } from '../../services/api';
 import ParkingLotSlotMap from '../components/ParkingLotSlotMap';
 
 const durations = [30, 60, 120, 180, 240, 480, 1440];
 const USE_NEW_SLOT_STEP_MAP = true;
+const PENDING_BOOKING_REDIRECT_QUERY = 'resumeBooking';
 
 const toDateInputValue = (value) => {
   if (!value) return '';
@@ -127,8 +128,9 @@ const getDisplayGeoText = (geo) => {
 };
 
 const Search = () => {
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { user, isAuthenticated, login, register } = useAuth();
+  const { user, isAuthenticated, savePendingBooking, getPendingBooking, clearPendingBooking } = useAuth();
   const [error, setError] = useState('');
   const [authMessage, setAuthMessage] = useState('');
   const [loading, setLoading] = useState(false);
@@ -180,6 +182,7 @@ const Search = () => {
     registrationExpiry: oneYearFromTodayInput(),
     isDefault: true,
   });
+  const [resumePendingBooking, setResumePendingBooking] = useState(false);
 
   const desiredVehicleType = vehicleType === 'bike' ? 'motorcycle' : 'car';
   const compatibleVehicles = useMemo(
@@ -202,6 +205,74 @@ const Search = () => {
       signupEmail: user.email || '',
     }));
   }, [user]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const restorePendingBooking = async () => {
+      if (!isAuthenticated) {
+        return;
+      }
+
+      if (searchParams.get(PENDING_BOOKING_REDIRECT_QUERY) !== '1') {
+        return;
+      }
+
+      const pendingState = getPendingBooking();
+
+      if (!pendingState) {
+        return;
+      }
+
+      try {
+        setResumePendingBooking(true);
+        setUserForm(pendingState.userForm || { name: '', phone: '', email: '' });
+        setBookingForm((current) => ({
+          ...current,
+          ...(pendingState.bookingForm || {}),
+        }));
+        setVehicleType(pendingState.vehicleType || 'car');
+        setSelectedFloor(pendingState.selectedFloor || 1);
+        setAuthModal(false);
+
+        if (pendingState.geo) {
+          setGeo(pendingState.geo);
+        }
+
+        if (pendingState.locationId) {
+          const locationResponse = await locationsAPI.getPublicById(pendingState.locationId);
+          const location = locationResponse?.data?.data;
+
+          if (!cancelled && location) {
+            const normalizedLocation = {
+              ...location,
+              id: location.id || location._id,
+            };
+
+            setLocations((current) => {
+              const exists = current.some(
+                (item) => String(item.id || item._id) === String(normalizedLocation.id),
+              );
+              return exists ? current : [normalizedLocation, ...current];
+            });
+            setSelectedLocation(normalizedLocation);
+          }
+        }
+      } catch (restoreError) {
+        if (!cancelled) {
+          setResumePendingBooking(false);
+          clearPendingBooking();
+          setError(restoreError?.response?.data?.message || 'Unable to restore your pending booking');
+        }
+      }
+    };
+
+    restorePendingBooking();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [clearPendingBooking, getPendingBooking, isAuthenticated, searchParams]);
 
   useEffect(() => {
     if (paymentSession) {
@@ -416,6 +487,51 @@ const Search = () => {
   }, [selectedLocation, vehicleType]);
 
   useEffect(() => {
+    if (!resumePendingBooking || !isAuthenticated || !selectedLocation || !floors.length) {
+      return;
+    }
+
+    const pendingState = getPendingBooking();
+
+    if (!pendingState) {
+      setResumePendingBooking(false);
+      return;
+    }
+
+    const flattenedSlots = floors.flatMap((floor) => floor.slots || []);
+    const restoredSlot =
+      flattenedSlots.find((slot) => String(slot.id || slot._id) === String(pendingState.selectedSlotId)) || null;
+
+    if (!restoredSlot) {
+      return;
+    }
+
+    setSelectedFloor(pendingState.selectedFloor || restoredSlot.floor || 1);
+    setSelectedSlot(restoredSlot);
+    setResumePendingBooking(false);
+    clearPendingBooking();
+
+    window.setTimeout(() => {
+      if (!selectedVehicleId) {
+        setVehicleError('');
+        setPendingBooking(true);
+        setVehicleModal(true);
+        return;
+      }
+
+      createBooking({ vehicleIdOverride: selectedVehicleId });
+    }, 0);
+  }, [
+    clearPendingBooking,
+    floors,
+    getPendingBooking,
+    isAuthenticated,
+    resumePendingBooking,
+    selectedLocation,
+    selectedVehicleId,
+  ]);
+
+  useEffect(() => {
     const parkingLotId = searchParams.get('parkingLot');
     if (!parkingLotId) return;
 
@@ -535,7 +651,17 @@ const Search = () => {
     }
 
     if (!isAuthenticated) {
-      setAuthModal(true);
+      savePendingBooking({
+        userForm,
+        bookingForm,
+        vehicleType,
+        selectedFloor,
+        selectedLocationId: selectedLocation.id,
+        locationId: selectedLocation.id,
+        selectedSlotId: selectedSlot.id,
+        geo,
+      });
+      navigate('/login');
       return;
     }
 
@@ -617,46 +743,19 @@ const Search = () => {
 
   const submitAuth = async (event) => {
     event.preventDefault();
-    setLoading(true);
     setError('');
-    setAuthMessage('');
-
-    try {
-      if (authMode === 'login') {
-        const result = await login(authForm.loginEmail, authForm.loginPassword);
-
-        if (!result.success) {
-          setError(result.error);
-          return;
-        }
-
-        setAuthModal(false);
-        await createBooking();
-        return;
-      }
-
-      const result = await register({
-              name: authForm.signupName,
-              phone: authForm.signupPhone,
-              email: authForm.signupEmail,
-              password: authForm.signupPassword,
-            });
-
-      if (!result.success) {
-        setError(result.error);
-        return;
-      }
-
-      setAuthMode('login');
-      setAuthMessage(result.message || 'Account created successfully. Please login to continue booking.');
-      setAuthForm((state) => ({
-        ...state,
-        loginEmail: state.signupEmail,
-        loginPassword: '',
-      }));
-    } finally {
-      setLoading(false);
-    }
+    setAuthMessage('Redirecting to login to continue your booking.');
+    savePendingBooking({
+      userForm,
+      bookingForm,
+      vehicleType,
+      selectedFloor,
+      selectedLocationId: selectedLocation?.id,
+      locationId: selectedLocation?.id,
+      selectedSlotId: selectedSlot?.id,
+      geo,
+    });
+    navigate('/login');
   };
 
   const verifyPayment = async (status) => {

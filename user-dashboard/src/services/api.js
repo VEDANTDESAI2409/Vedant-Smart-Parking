@@ -29,15 +29,13 @@ const api = createApiClient({
 });
 
 export const authAPI = {
-  login: (credentials) => api.post('/auth/login', credentials),
+  login: (payload) => api.post('/auth/login', payload),
   register: (payload) => api.post('/auth/signup', payload),
-  logout: () => api.post('/auth/logout'),
   getProfile: () => api.get('/auth/profile'),
   sendOtp: (payload) => api.post('/auth/send-otp', payload),
-  resendOtp: (payload) => api.post('/auth/resend-otp', payload),
   verifyOtp: (payload) => api.post('/auth/verify-otp', payload),
-  createFirebaseSession: (payload) => api.post('/auth/firebase/session', payload),
-  getAuthProfile: () => api.get('/auth/me'),
+  verifyLoginOtp: (payload) => api.post('/auth/login/verify', payload),
+  googleLogin: (payload) => api.post('/auth/google', payload),
 };
 
 export const locationsAPI = {
@@ -77,6 +75,13 @@ export const paymentsAPI = {
 };
 
 export const usersAPI = {
+  getProfile: async () => {
+    try {
+      return await api.get('/user/profile');
+    } catch (error) {
+      return api.get('/auth/profile');
+    }
+  },
   updateProfile: (id, data) => api.put(`/users/${id}`, data),
 };
 

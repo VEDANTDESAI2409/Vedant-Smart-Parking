@@ -1,16 +1,13 @@
-import React, { useMemo, useState } from 'react';
-import { Link, Navigate, useSearchParams } from 'react-router-dom';
-import {
-  ArrowLeft,
-  BadgeCheck,
-  Loader2,
-  Mail,
-  Smartphone,
-} from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
+import { ArrowLeft, BadgeCheck, Loader2, Mail, Smartphone } from 'lucide-react';
+import { signInWithPopup } from 'firebase/auth';
 import { useAuth } from '../../context/AuthContext';
+import { firebaseAuth, googleProvider, hasFirebaseConfig } from '../../config/firebase';
 
 const MODE_COPY = {
   login: {
+    label: 'Login',
     title: 'Login',
     subtitle: 'Welcome back!',
     helper: 'If you already have an account, choose phone or email and continue with OTP.',
@@ -19,6 +16,7 @@ const MODE_COPY = {
     switchAction: 'Signup',
   },
   signup: {
+    label: 'Signup',
     title: 'Signup',
     subtitle: 'Create your account',
     helper: 'New users can register with name, phone number, and email before OTP verification.',
@@ -34,7 +32,17 @@ const CHANNELS = [
 ];
 
 const Login = () => {
-  const { isAuthenticated, loading } = useAuth();
+  const {
+    isAuthenticated,
+    loading,
+    sendOtp,
+    signup,
+    login,
+    verifyLogin,
+    loginWithGoogle,
+    getPendingBooking,
+  } = useAuth();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const initialMode = searchParams.get('mode') === 'signup' ? 'signup' : 'login';
   const [mode, setMode] = useState(initialMode);
@@ -58,9 +66,74 @@ const Login = () => {
   });
 
   const copy = useMemo(() => MODE_COPY[mode], [mode]);
+  const redirectPath = getPendingBooking() ? '/search?resumeBooking=1' : '/profile';
+
+  useEffect(() => {
+    const nextMode = searchParams.get('mode') === 'signup' ? 'signup' : 'login';
+    setMode(nextMode);
+  }, [searchParams]);
+
+  const handleGoogleLogin = async (event) => {
+    event.preventDefault();
+    setError('');
+    setInfo('');
+
+    try {
+      if (!hasFirebaseConfig || !firebaseAuth) {
+        throw new Error('Firebase Google login is not available');
+      }
+
+      setInfo('Signing in with Google...');
+      const popupResult = await signInWithPopup(firebaseAuth, googleProvider);
+      const idToken = await popupResult.user.getIdToken();
+      const googleName = popupResult.user.displayName || '';
+      const googleEmail = popupResult.user.email || '';
+
+      setInfo('Authenticating with server...');
+      const session = await loginWithGoogle({ idToken });
+
+      if (!session?.token || !session?.user) {
+        throw new Error('Invalid session response');
+      }
+
+      // For signup mode, populate form fields and show data fetched message
+      if (mode === 'signup') {
+        setSignupForm((current) => ({
+          ...current,
+          name: session.user.name || googleName || '',
+          email: session.user.email || googleEmail || '',
+        }));
+        setInfo(
+          'Account created successfully! Your details have been auto-filled. You are now logged in.'
+        );
+        // Auto-redirect after a brief moment
+        setTimeout(() => {
+          navigate(redirectPath, { replace: true });
+        }, 1500);
+      } else {
+        // For login mode, just redirect
+        setInfo('Login successful! Redirecting...');
+        setLoginForm((current) => ({
+          ...current,
+          email: session.user.email || googleEmail || '',
+        }));
+        setTimeout(() => {
+          navigate(redirectPath, { replace: true });
+        }, 500);
+      }
+    } catch (googleError) {
+      console.error('Google login error:', googleError);
+      setError(
+        googleError.response?.data?.message ||
+          googleError.message ||
+          'Google authentication failed. Please try again.'
+      );
+      setInfo('');
+    }
+  };
 
   if (!loading && isAuthenticated) {
-    return <Navigate to="/profile" replace />;
+    return <Navigate to={redirectPath} replace />;
   }
 
   const switchMode = (nextMode) => {
@@ -87,29 +160,43 @@ const Login = () => {
     setError('');
     setInfo('');
 
+    if (channel !== 'phone') {
+      setError('Phone OTP is supported in this flow. Please use phone.');
+      return;
+    }
+
     const activeForm = mode === 'login' ? loginForm : signupForm;
-    const channelValue = channel === 'phone' ? activeForm.phone : activeForm.email;
+    const phone = activeForm.phone;
 
     if (mode === 'signup' && (!signupForm.name || !signupForm.phone || !signupForm.email)) {
       setError('Please enter name, phone number, and email first.');
       return;
     }
 
-    if (!channelValue) {
-      setError(channel === 'phone' ? 'Please enter your phone number.' : 'Please enter your email.');
+    if (!phone) {
+      setError('Please enter your phone number.');
       return;
     }
 
     setSendingOtp(true);
 
-    window.setTimeout(() => {
-      setSendingOtp(false);
+    try {
+      if (mode === 'login') {
+        const response = await login({ phone });
+        setInfo(response?.message || 'OTP sent successfully.');
+      } else {
+        const response = await sendOtp({ phone });
+        setInfo(response?.message || 'OTP sent successfully.');
+      }
+
       setOtpSent(true);
       setOtpVerified(false);
-      setInfo(
-        `Demo OTP sent via ${channel === 'phone' ? 'phone' : 'email'}. We will connect Twilio/Firebase next. Use 123456 to preview the verification state.`,
-      );
-    }, 900);
+    } catch (apiError) {
+      setOtpSent(false);
+      setError(apiError.response?.data?.message || 'Failed to send OTP');
+    } finally {
+      setSendingOtp(false);
+    }
   };
 
   const handleVerifyOtp = async (event) => {
@@ -131,22 +218,35 @@ const Login = () => {
 
     setVerifyingOtp(true);
 
-    window.setTimeout(() => {
-      setVerifyingOtp(false);
+    try {
+      if (mode === 'login') {
+        const response = await verifyLogin({
+          phone: loginForm.phone,
+          otp: otpValue,
+        });
 
-      if (otpValue !== '123456') {
-        setOtpVerified(false);
-        setError('Invalid OTP. For now, use demo OTP 123456.');
+        setOtpVerified(true);
+        setInfo(response?.message || 'Login successful.');
+        navigate(redirectPath, { replace: true });
         return;
       }
 
+      const response = await signup({
+        name: signupForm.name,
+        phone: signupForm.phone,
+        email: signupForm.email,
+        otp: otpValue,
+      });
+
       setOtpVerified(true);
-      setInfo(
-        mode === 'login'
-          ? 'UI login flow verified. Next we will connect real OTP and session creation.'
-          : 'UI signup flow verified. Next we will connect real OTP and account creation.',
-      );
-    }, 700);
+      setInfo(response?.message || 'Signup successful.');
+      navigate(redirectPath, { replace: true });
+    } catch (apiError) {
+      setOtpVerified(false);
+      setError(apiError.response?.data?.message || 'OTP verification failed');
+    } finally {
+      setVerifyingOtp(false);
+    }
   };
 
   return (
@@ -331,6 +431,7 @@ const Login = () => {
 
           <button
             type="button"
+            onClick={handleGoogleLogin}
             className="inline-flex w-full items-center justify-center gap-3 rounded-[18px] border border-sky-100 bg-white px-5 py-2.5 text-base font-semibold text-slate-800 transition hover:border-cyan-500 hover:bg-cyan-50 sm:text-lg"
           >
             <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-slate-900">G</span>

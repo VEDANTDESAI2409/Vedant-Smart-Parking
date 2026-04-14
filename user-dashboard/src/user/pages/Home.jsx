@@ -16,11 +16,13 @@ import {
   ShieldCheck,
   Sparkles,
   Ticket,
+  User,
   X,
   Youtube,
   Zap,
 } from 'lucide-react';
 import HeroParkingMap from '../components/HeroParkingMap';
+import { useAuth } from '../../context/AuthContext';
 
 const navigation = [
   { label: 'How it Works', href: '#how-it-works' },
@@ -136,12 +138,38 @@ const pricingCards = [
 ];
 
 const Home = () => {
+  const { isAuthenticated, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [openFaq, setOpenFaq] = useState(0);
   const [activeSection, setActiveSection] = useState('how-it-works');
   const [showIntro, setShowIntro] = useState(true);
-  const userLoginUrl = '/login';
+  const userLoginUrl = isAuthenticated ? '/profile' : '/login';
   const userSignupUrl = '/signup';
+  const userAccessLabel = isAuthenticated ? 'Account' : 'Login / Sign Up';
+  const userLoginLabel = isAuthenticated ? 'Account' : 'Login';
+  const supportAccessLabel = isAuthenticated ? 'Account Support' : 'Login for Support';
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      setUserMenuOpen(false);
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+  };
+
+  // Close user menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (userMenuOpen && !event.target.closest('.user-menu-container')) {
+        setUserMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [userMenuOpen]);
 
   useEffect(() => {
     const sectionIds = navigation.map((item) => item.href.slice(1));
@@ -255,12 +283,41 @@ const Home = () => {
             >
               Book Now
             </Link>
-            <Link
-              to={userLoginUrl}
-              className="rounded-full bg-[var(--color-secondary)] px-5 py-2.5 text-sm font-semibold text-white shadow-[0_16px_36px_rgba(9,20,19,0.28)] transition hover:bg-[#163126]"
-            >
-              Login / Sign Up
-            </Link>
+            {isAuthenticated ? (
+              <div className="relative user-menu-container">
+                <button
+                  onClick={() => setUserMenuOpen(!userMenuOpen)}
+                  className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--color-secondary)] text-white shadow-[0_16px_36px_rgba(9,20,19,0.28)] transition hover:bg-[#163126]"
+                  aria-label="User menu"
+                >
+                  <User className="h-5 w-5" />
+                </button>
+                {userMenuOpen && (
+                  <div className="absolute right-0 top-full mt-2 w-48 rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
+                    <Link
+                      to="/profile"
+                      onClick={() => setUserMenuOpen(false)}
+                      className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-slate-900"
+                    >
+                      My Account
+                    </Link>
+                    <button
+                      onClick={handleLogout}
+                      className="block w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 hover:text-slate-900"
+                    >
+                      Log Out
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <Link
+                to="/login"
+                className="rounded-full bg-[var(--color-secondary)] px-5 py-2.5 text-sm font-semibold text-white shadow-[0_16px_36px_rgba(9,20,19,0.28)] transition hover:bg-[#163126]"
+              >
+                Login
+              </Link>
+            )}
           </div>
 
           <button
@@ -298,13 +355,34 @@ const Home = () => {
               >
                 Book Now
               </Link>
-              <Link
-                to={userLoginUrl}
-                onClick={() => setMenuOpen(false)}
-                className="rounded-2xl bg-[var(--color-secondary)] px-4 py-3 text-center text-sm font-semibold text-white"
-              >
-                Login / Sign Up
-              </Link>
+              {isAuthenticated ? (
+                <div className="space-y-2">
+                  <Link
+                    to="/profile"
+                    onClick={() => setMenuOpen(false)}
+                    className="block rounded-2xl bg-slate-100 px-4 py-3 text-center text-sm font-semibold text-slate-700"
+                  >
+                    My Account
+                  </Link>
+                  <button
+                    onClick={() => {
+                      handleLogout();
+                      setMenuOpen(false);
+                    }}
+                    className="block w-full rounded-2xl bg-[var(--color-secondary)] px-4 py-3 text-center text-sm font-semibold text-white"
+                  >
+                    Log Out
+                  </button>
+                </div>
+              ) : (
+                <Link
+                  to="/login"
+                  onClick={() => setMenuOpen(false)}
+                  className="rounded-2xl bg-[var(--color-secondary)] px-4 py-3 text-center text-sm font-semibold text-white"
+                >
+                  Login
+                </Link>
+              )}
             </div>
           </div>
         )}
@@ -338,7 +416,7 @@ const Home = () => {
                   to={userLoginUrl}
                   className="inline-flex items-center justify-center gap-2 rounded-full border border-[rgba(14,165,233,0.16)] bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-[var(--color-secondary)] hover:text-[var(--color-secondary)] sm:text-base"
                 >
-                  Login
+                  {userLoginLabel}
                 </Link>
               </div>
               <div className="reveal-up reveal-delay-4 mt-4 flex flex-wrap gap-2 text-sm text-slate-600">
@@ -514,7 +592,7 @@ const Home = () => {
                         to={userLoginUrl}
                         className="inline-flex items-center justify-center rounded-full bg-[var(--color-secondary)] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#163126]"
                       >
-                        Login for Support
+                        {supportAccessLabel}
                       </Link>
                       <Link
                         to="/search"
@@ -587,7 +665,7 @@ const Home = () => {
                 to={userLoginUrl}
                 className="inline-flex items-center justify-center rounded-full border border-white/14 px-6 py-3.5 text-sm font-semibold text-white transition hover:bg-white/8"
               >
-                Login
+                {userLoginLabel}
               </Link>
             </div>
           </div>
@@ -678,7 +756,7 @@ const Home = () => {
             to={userLoginUrl}
             className="flex-1 rounded-[18px] border border-[rgba(14,165,233,0.14)] px-4 py-3 text-center text-sm font-semibold text-[var(--color-secondary)]"
           >
-            Login
+            {userLoginLabel}
           </Link>
         </div>
       </div>

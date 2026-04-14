@@ -87,6 +87,10 @@ const userSchema = new mongoose.Schema({
   phoneVerified: {
     type: Boolean,
     default: false,
+  },
+  isVerified: {
+    type: Boolean,
+    default: false,
   }
 }, {
   timestamps: true,
