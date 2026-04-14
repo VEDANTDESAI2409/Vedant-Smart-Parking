@@ -2,9 +2,12 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { FaCar, FaChevronRight, FaFileCsv, FaMapMarkerAlt, FaRegClock, FaSearch, FaTrashAlt, FaUser } from 'react-icons/fa';
 import Swal from 'sweetalert2';
 
+import Button from '../../components/Button';
 import Modal from '../../components/Modal';
 import Table from '../../components/Table';
 import { bookingsAPI } from '../../services/api';
+import { shouldConfirmBulkDelete } from '../../utils/adminPreferences';
+import { showError, showSuccess, showWarning } from '../../utils/toastService';
 
 const toAdminBookingId = (booking, index) => {
   const raw = String(booking.bookingReference || booking._id || '').replace(/[^A-Z0-9]/gi, '');
@@ -29,28 +32,9 @@ const Bookings = () => {
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const [viewingBooking, setViewingBooking] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedBookingIds, setSelectedBookingIds] = useState([]);
   const [now, setNow] = useState(() => new Date());
   const hasLoadedRef = useRef(false);
-
-  const showSuccess = (title) =>
-    Swal.fire({
-      title,
-      icon: 'success',
-      timer: 1400,
-      showConfirmButton: false,
-      toast: true,
-      position: 'top-end',
-    });
-
-  const showError = (title) =>
-    Swal.fire({
-      title,
-      icon: 'error',
-      timer: 2000,
-      showConfirmButton: false,
-      toast: true,
-      position: 'top-end',
-    });
 
   const fetchBookings = async ({ silent = false } = {}) => {
     try {
@@ -125,6 +109,10 @@ const Bookings = () => {
     return () => window.clearInterval(clockId);
   }, []);
 
+  useEffect(() => {
+    setSelectedBookingIds((prev) => prev.filter((id) => bookings.some((booking) => booking._id === id)));
+  }, [bookings]);
+
   const filteredBookings = useMemo(() => {
     const query = searchTerm.trim().toLowerCase();
     if (!query) return bookings;
@@ -162,7 +150,7 @@ const Bookings = () => {
 
     try {
       await bookingsAPI.cancel(booking._id);
-      showSuccess('Booking deleted');
+      showSuccess('Booking deleted successfully');
       await fetchBookings({ silent: true });
     } catch (error) {
       console.error('Error deleting booking:', error);
@@ -170,39 +158,58 @@ const Bookings = () => {
     }
   };
 
-  const handleDeleteAll = async () => {
-    if (!filteredBookings.length) return;
+  const handleBookingSelect = (id, checked) => {
+    setSelectedBookingIds((prev) =>
+      checked ? [...new Set([...prev, id])] : prev.filter((selectedId) => selectedId !== id)
+    );
+  };
 
-    const result = await Swal.fire({
-      title: 'Delete all bookings?',
-      text: `This will cancel ${filteredBookings.length} booking(s) in the current list.`,
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonText: 'Yes, Delete All',
-      cancelButtonText: 'Cancel',
-      confirmButtonColor: '#dc2626',
-      cancelButtonColor: '#64748b',
-      background: '#ffffff',
-      color: '#0f172a',
-      borderRadius: '12px',
-    });
+  const handleSelectAllBookings = (checked) => {
+    setSelectedBookingIds(checked ? filteredBookings.map((booking) => booking._id).filter(Boolean) : []);
+  };
 
-    if (!result.isConfirmed) return;
+  const handleDeleteSelected = async () => {
+    if (!selectedBookingIds.length) {
+      showWarning('Please select at least one booking');
+      return;
+    }
+
+    if (shouldConfirmBulkDelete()) {
+      const result = await Swal.fire({
+        title: 'Delete Selected Bookings?',
+        text: `This will cancel ${selectedBookingIds.length} selected booking(s).`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, Delete Selected',
+        cancelButtonText: 'Cancel',
+        confirmButtonColor: '#dc2626',
+        cancelButtonColor: '#64748b',
+        background: '#ffffff',
+        color: '#0f172a',
+        borderRadius: '12px',
+      });
+
+      if (!result.isConfirmed) return;
+    }
 
     try {
       setBulkDeleting(true);
-      const targets = filteredBookings.filter((booking) => booking?._id);
-      const results = await Promise.allSettled(targets.map((booking) => bookingsAPI.cancel(booking._id)));
-      const failures = results.filter((entry) => entry.status === 'rejected').length;
-      if (failures) {
-        showError(`Deleted with ${failures} failure(s)`);
+      const results = await Promise.allSettled(selectedBookingIds.map((id) => bookingsAPI.cancel(id)));
+      const successCount = results.filter((entry) => entry.status === 'fulfilled').length;
+      const failureCount = results.length - successCount;
+      if (successCount && failureCount) {
+        showError(`${successCount} bookings deleted, ${failureCount} failed`);
+      } else if (failureCount) {
+        const firstFailure = results.find((entry) => entry.status === 'rejected');
+        showError(firstFailure?.reason?.response?.data?.message || `Failed to delete ${failureCount} booking(s)`);
       } else {
-        showSuccess('All bookings deleted');
+        showSuccess('Selected bookings deleted successfully');
       }
       await fetchBookings({ silent: true });
+      setSelectedBookingIds([]);
     } catch (error) {
-      console.error('Error deleting all bookings:', error);
-      showError('Failed to delete all bookings');
+      console.error('Error deleting selected bookings:', error);
+      showError('Failed to delete selected bookings');
     } finally {
       setBulkDeleting(false);
     }
@@ -334,7 +341,7 @@ const Bookings = () => {
     {
       header: 'ACTION',
       render: (row) => (
-        <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={() => setViewingBooking(row)}
@@ -388,20 +395,27 @@ const Bookings = () => {
             <FaFileCsv size={20} />
           </button>
 
-          <button
-            type="button"
-            onClick={handleDeleteAll}
-            disabled={bulkDeleting || !filteredBookings.length}
-            className="rounded-2xl bg-rose-600 px-4 py-3 text-xs font-black uppercase tracking-wider text-white shadow-sm transition-colors hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
-            title="Delete all bookings in the current list"
-          >
-            {bulkDeleting ? 'DELETING…' : 'DELETE ALL'}
-          </button>
+          {selectedBookingIds.length > 0 && (
+            <Button variant="danger" onClick={handleDeleteSelected} disabled={bulkDeleting}>
+              <FaTrashAlt className="mr-2" />
+              {bulkDeleting ? 'Deleting...' : 'Delete Selected (' + selectedBookingIds.length + ')'}
+            </Button>
+          )}
         </div>
       </div>
 
       <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-white shadow-xl dark:border-slate-800 dark:bg-[#1E293B] dark:shadow-none">
-        <Table columns={columns} data={filteredBookings} loading={loading} emptyMessage="No bookings found" />
+        <Table
+          columns={columns}
+          data={filteredBookings}
+          loading={loading}
+          emptyMessage={searchTerm.trim() ? `No bookings found matching "${searchTerm}"` : 'No bookings found'}
+          selectable
+          selectedRowIds={selectedBookingIds}
+          onRowSelect={handleBookingSelect}
+          onSelectAll={handleSelectAllBookings}
+          getRowId={(row) => row._id}
+        />
       </div>
 
       <Modal isOpen={!!viewingBooking} onClose={() => setViewingBooking(null)}>
@@ -486,3 +500,4 @@ const ModalField = ({ label, value, span = 1, isCaps = false }) => (
 );
 
 export default Bookings;
+
