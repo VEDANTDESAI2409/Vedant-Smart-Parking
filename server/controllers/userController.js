@@ -134,11 +134,12 @@ exports.updateUser = async (req, res) => {
       });
     }
 
-    const { name, phone, isActive, preferences } = req.body;
+    const { name, phone, address, isActive, preferences } = req.body;
 
     const updateData = {};
     if (name) updateData.name = name;
     if (phone) updateData.phone = phone;
+    if (address !== undefined) updateData.address = address;
     if (preferences) updateData.preferences = preferences;
 
     // Only admin can change isActive status
