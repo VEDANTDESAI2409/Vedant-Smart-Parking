@@ -36,6 +36,12 @@ const userSchema = new mongoose.Schema({
       message: 'Please enter a valid phone number'
     }
   },
+  address: {
+    type: String,
+    trim: true,
+    maxlength: [200, 'Address cannot exceed 200 characters'],
+    default: null
+  },
   role: {
     type: String,
     enum: ['user', 'admin'],
