@@ -16,25 +16,41 @@ const Modal = ({
     lg: 'max-w-2xl',
     xl: 'max-w-4xl',
     full: 'max-w-full',
+    screen: 'max-w-none',
   };
 
+  const isScreen = size === 'screen';
+  const frameClass = isScreen
+    ? 'h-screen w-screen rounded-none border-0'
+    : 'w-full rounded-[30px] border border-slate-200';
+  const panelPaddingClass = isScreen ? 'px-0 py-0' : 'px-6 py-5';
+  const containerPaddingClass = isScreen ? 'px-0 py-0' : 'px-4 py-8';
+  const containerAlignClass = isScreen ? 'items-center justify-center' : 'items-center justify-center';
+  const backdropClass = isScreen ? 'absolute inset-0 bg-black/20 backdrop-blur-md' : 'absolute inset-0 bg-slate-900/70 backdrop-blur-3xl';
+
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
-      <div className="flex min-h-screen items-center justify-center px-4 py-8 text-center">
+    <div className={`fixed inset-0 z-50 ${isScreen ? 'overflow-hidden' : 'overflow-y-auto'}`}>
+      <div className={`flex min-h-screen ${containerAlignClass} ${containerPaddingClass} text-center`}>
         <div className="fixed inset-0 transition-opacity" aria-hidden="true">
           <div
-            className="absolute inset-0 bg-[rgba(241,245,249,0.78)] backdrop-blur-sm"
+            className={backdropClass}
             onClick={onClose}
           />
         </div>
 
         <div
-          className={`relative inline-block w-full transform overflow-hidden rounded-[30px] border border-slate-200 bg-white text-left shadow-[0_24px_70px_rgba(15,23,42,0.14)] transition-all ${sizes[size]}`}
+          className={`relative inline-block transform overflow-hidden text-left transition-all ${sizes[size]} ${frameClass} ${
+            isScreen ? 'bg-transparent shadow-none' : 'bg-white shadow-[0_24px_70px_rgba(15,23,42,0.25)]'
+          }`}
         >
-          <div className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-sky-400 via-cyan-400 to-emerald-400" />
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(255,255,255,0.92),_transparent_26%)]" />
+          {!isScreen ? (
+            <>
+              <div className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-sky-400 via-cyan-400 to-emerald-400" />
+              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(255,255,255,0.92),_transparent_26%)]" />
+            </>
+          ) : null}
           {title && (
-            <div className="flex items-center justify-between border-b border-slate-200 px-6 py-5">
+            <div className={`flex items-center justify-between border-b border-slate-200 ${panelPaddingClass}`}>
               <h3 className="text-lg font-bold tracking-tight text-slate-900">{title}</h3>
               {showCloseButton && (
                 <button
@@ -49,7 +65,7 @@ const Modal = ({
             </div>
           )}
 
-          <div className="px-6 py-5">
+          <div className={panelPaddingClass}>
             {children}
           </div>
         </div>
