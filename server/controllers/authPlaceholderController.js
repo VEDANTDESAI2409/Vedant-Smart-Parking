@@ -3,13 +3,16 @@ const twilio = require('twilio');
 const User = require('../models/User');
 const { getFirebaseAdminAuth } = require('../config/firebaseAdmin');
 
-const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID || 'YOUR_TWILIO_ACCOUNT_SID';
-const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN || 'YOUR_TWILIO_AUTH_TOKEN';
+const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID || '';
+const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN || '';
 const TWILIO_PHONE_NUMBER = process.env.TWILIO_PHONE_NUMBER || '+1234567890';
 const OTP_EXPIRY_MS = 5 * 60 * 1000;
 
 const otpStore = new Map();
-const twilioClient = twilio(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN);
+
+const isValidTwilioAccountSid = (value) => typeof value === 'string' && /^AC[0-9A-Za-z]{32}$/.test(value);
+const isTwilioConfigured = isValidTwilioAccountSid(TWILIO_ACCOUNT_SID) && typeof TWILIO_AUTH_TOKEN === 'string' && TWILIO_AUTH_TOKEN.length > 0;
+const twilioClient = isTwilioConfigured ? twilio(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN) : null;
 
 const normalizeIndianPhone = (phone) => {
   if (typeof phone !== 'string') {
@@ -52,6 +55,16 @@ const sendOtpToPhone = async (normalizedPhone) => {
   otpStore.set(normalizedPhone, { otp, expiry });
 
   try {
+    if (!twilioClient) {
+      return {
+        success: true,
+        message: 'OTP sending is not configured. Returning OTP for development fallback.',
+        phone: normalizedPhone,
+        otp,
+        fallback: true,
+      };
+    }
+
     await twilioClient.messages.create({
       body: `Your OTP is ${otp}. It is valid for 5 minutes.`,
       from: TWILIO_PHONE_NUMBER,
