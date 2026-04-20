@@ -20,10 +20,6 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use('/api', rootRoutes);
 
-app.get('/health', (req, res) => {
-  res.status(200).json({ status: 'ok', message: 'Backend is healthy' });
-});
-
 const PORT = process.env.PORT || 5000;
 
 const startServer = async () => {

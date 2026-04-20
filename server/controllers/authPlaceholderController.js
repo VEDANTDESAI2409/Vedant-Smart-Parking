@@ -3,16 +3,28 @@ const twilio = require('twilio');
 const User = require('../models/User');
 const { getFirebaseAdminAuth } = require('../config/firebaseAdmin');
 
-const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID || '';
-const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN || '';
-const TWILIO_PHONE_NUMBER = process.env.TWILIO_PHONE_NUMBER || '+1234567890';
 const OTP_EXPIRY_MS = 5 * 60 * 1000;
 
 const otpStore = new Map();
 
 const isValidTwilioAccountSid = (value) => typeof value === 'string' && /^AC[0-9A-Za-z]{32}$/.test(value);
-const isTwilioConfigured = isValidTwilioAccountSid(TWILIO_ACCOUNT_SID) && typeof TWILIO_AUTH_TOKEN === 'string' && TWILIO_AUTH_TOKEN.length > 0;
-const twilioClient = isTwilioConfigured ? twilio(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN) : null;
+
+// Get Twilio configuration at runtime
+const getTwilioConfig = () => {
+  const accountSid = process.env.TWILIO_ACCOUNT_SID || '';
+  const authToken = process.env.TWILIO_AUTH_TOKEN || '';
+  const phoneNumber = process.env.TWILIO_PHONE_NUMBER || '';
+  
+  const isConfigured = isValidTwilioAccountSid(accountSid) && authToken.length > 0 && phoneNumber.length > 0;
+  
+  return {
+    isConfigured,
+    accountSid,
+    authToken,
+    phoneNumber,
+    client: isConfigured ? twilio(accountSid, authToken) : null,
+  };
+};
 
 const normalizeIndianPhone = (phone) => {
   if (typeof phone !== 'string') {
@@ -55,35 +67,57 @@ const sendOtpToPhone = async (normalizedPhone) => {
   otpStore.set(normalizedPhone, { otp, expiry });
 
   try {
-    if (!twilioClient) {
+    const { isConfigured, phoneNumber, client } = getTwilioConfig();
+
+    console.log(`[OTP] Twilio Config Check:`, {
+      isConfigured,
+      hasClient: !!client,
+      phoneNumber,
+      normalizedPhone,
+    });
+
+    if (!isConfigured || !client) {
+      console.error('❌ Twilio SMS NOT CONFIGURED');
+      console.error('[OTP] Required env vars:');
+      console.error('  - TWILIO_ACCOUNT_SID:', process.env.TWILIO_ACCOUNT_SID ? '✓ SET' : '✗ MISSING');
+      console.error('  - TWILIO_AUTH_TOKEN:', process.env.TWILIO_AUTH_TOKEN ? '✓ SET' : '✗ MISSING');
+      console.error('  - TWILIO_PHONE_NUMBER:', process.env.TWILIO_PHONE_NUMBER ? '✓ SET' : '✗ MISSING');
+      
       return {
-        success: true,
-        message: 'OTP sending is not configured. Returning OTP for development fallback.',
+        success: false,
+        message: 'SMS service not configured. Contact support.',
         phone: normalizedPhone,
-        otp,
-        fallback: true,
       };
     }
 
-    await twilioClient.messages.create({
-      body: `Your OTP is ${otp}. It is valid for 5 minutes.`,
-      from: TWILIO_PHONE_NUMBER,
+    console.log(`📱 [OTP] Sending OTP to ${normalizedPhone} via Twilio from ${phoneNumber}...`);
+    
+    const messageResponse = await client.messages.create({
+      body: `Your Smart Parking OTP is ${otp}. It is valid for 5 minutes.`,
+      from: phoneNumber,
       to: normalizedPhone,
     });
 
+    console.log(`✅ [OTP] SMS sent successfully. Message SID: ${messageResponse.sid}`);
+    
     return {
       success: true,
-      message: 'OTP sent successfully',
+      message: 'OTP sent successfully to your phone',
       phone: normalizedPhone,
     };
   } catch (twilioError) {
+    console.error('❌ [OTP] Twilio SMS Error:', {
+      message: twilioError.message,
+      code: twilioError.code,
+      status: twilioError.status,
+      fullError: twilioError,
+    });
+
     return {
-      success: true,
-      message: 'Twilio SMS failed. Returning OTP for development fallback.',
+      success: false,
+      message: `Failed to send OTP. Please try again.`,
       phone: normalizedPhone,
-      otp,
-      fallback: true,
-      twilioError: twilioError.message,
+      debugError: process.env.NODE_ENV === 'development' ? twilioError.message : undefined,
     };
   }
 };

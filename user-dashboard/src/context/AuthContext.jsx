@@ -12,17 +12,13 @@ const authService = createAuthService({
 });
 
 const notifyOtpFallback = (payload) => {
-  if (!payload?.fallback || !payload?.otp) {
+  // FALLBACK REMOVED - OTP should only be sent via SMS, never displayed
+  if (payload?.success === false) {
+    console.error('[OTP] Failed to send OTP:', payload.message);
     return;
   }
-
-  const message = `Development OTP: ${payload.otp}`;
-
-  // eslint-disable-next-line no-console
-  console.info(message);
-
-  if (typeof window !== 'undefined' && typeof window.alert === 'function') {
-    window.alert(message);
+  if (payload?.success === true) {
+    console.log('[OTP] OTP sent successfully via SMS');
   }
 };
 

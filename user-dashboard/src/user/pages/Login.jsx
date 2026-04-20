@@ -66,7 +66,7 @@ const Login = () => {
   });
 
   const copy = useMemo(() => MODE_COPY[mode], [mode]);
-  const redirectPath = getPendingBooking() ? '/search?resumeBooking=1' : '/profile';
+  const redirectPath = getPendingBooking() ? '/search?resumeBooking=1' : '/';
 
   useEffect(() => {
     const nextMode = searchParams.get('mode') === 'signup' ? 'signup' : 'login';
