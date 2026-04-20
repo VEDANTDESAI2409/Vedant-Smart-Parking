@@ -1,11 +1,12 @@
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
+const path = require('path');
 
 const connectDB = require('./config/database').connectDB;
 const rootRoutes = require('./routes');
 
-dotenv.config();
+dotenv.config({ path: path.join(__dirname, '.env'), override: true });
 
 const app = express();
 
