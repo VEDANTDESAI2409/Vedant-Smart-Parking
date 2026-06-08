@@ -99,6 +99,7 @@ export const vehiclesAPI = {
 
 export const paymentsAPI = {
   getAll: (params) => api.get('/payments', { params }),
+  getAdminRazorpayPayments: () => api.get('/admin/payments'),
   getById: (id) => api.get(`/payments/${id}`),
   create: (data) => api.post('/payments', data),
   update: (id, data) => api.put(`/payments/${id}`, data),

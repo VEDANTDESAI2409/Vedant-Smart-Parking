@@ -1,6 +1,8 @@
 const express = require('express');
 
 const { getRoot } = require('../controllers/rootController');
+const { getProfile } = require('../controllers/authController');
+const { protect } = require('../middleware/auth');
 
 // Import all route modules
 const authRoutes = require('./auth');
@@ -15,8 +17,12 @@ const usersRoutes = require('./users');
 const vehiclesRoutes = require('./vehicles');
 const reportsRoutes = require('./reports');
 const importsRoutes = require('./imports');
+const razorpayPaymentsRoutes = require('./razorpayPayments');
 
 const router = express.Router();
+
+router.use('/', razorpayPaymentsRoutes);
+router.get('/user/profile', protect, getProfile);
 
 // API routes
 router.use('/auth', authRoutes);

@@ -12,23 +12,27 @@ router.use(protect);
 const paymentValidation = [
   body('bookingId').isMongoId().withMessage('Valid booking id is required'),
   body('paymentMethod')
-    .isIn(['credit_card', 'debit_card', 'paypal', 'apple_pay', 'google_pay', 'bank_transfer', 'cash'])
+    .isIn(['credit_card', 'debit_card', 'paypal', 'apple_pay', 'google_pay', 'bank_transfer', 'cash', 'upi', 'card', 'wallet', 'net_banking', 'pay_later'])
     .withMessage('Invalid payment method'),
   body('amount').isFloat({ min: 0 }).withMessage('Valid amount is required'),
 ];
 
 const initiatePaymentValidation = [
   body('bookingId').isMongoId().withMessage('Valid booking id is required'),
-  body('paymentMethod').isIn(['upi', 'card']).withMessage('Payment method must be upi or card'),
-  body('upiApp').optional().isIn(['gpay', 'phonepe', 'paytm', 'generic']).withMessage('Invalid UPI app'),
+  body('paymentMethod').isIn(['upi', 'card', 'wallet', 'net_banking', 'cash', 'pay_later']).withMessage('Invalid payment method'),
+  body('upiApp').optional().isIn(['gpay', 'phonepe', 'paytm', 'bhim', 'generic', 'manual']).withMessage('Invalid UPI app'),
   body('cardLast4').optional().isLength({ min: 4, max: 4 }).withMessage('cardLast4 must be 4 digits'),
+  body('demoMode').optional().isBoolean().withMessage('demoMode must be a boolean'),
 ];
 
 const verifyPaymentValidation = [
   body('paymentId').isMongoId().withMessage('Valid payment id is required'),
   body('bookingId').isMongoId().withMessage('Valid booking id is required'),
-  body('status').isIn(['success', 'failed', 'pending']).withMessage('Invalid payment status'),
+  body('status').optional().isIn(['success', 'failed', 'pending']).withMessage('Invalid payment status'),
   body('transactionId').optional().notEmpty().withMessage('transactionId cannot be empty'),
+  body('razorpay_order_id').optional().notEmpty().withMessage('razorpay_order_id cannot be empty'),
+  body('razorpay_payment_id').optional().notEmpty().withMessage('razorpay_payment_id cannot be empty'),
+  body('razorpay_signature').optional().notEmpty().withMessage('razorpay_signature cannot be empty'),
 ];
 
 // @route GET /api/payments

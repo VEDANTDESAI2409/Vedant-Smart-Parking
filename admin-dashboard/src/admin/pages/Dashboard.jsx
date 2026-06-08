@@ -29,17 +29,36 @@ import Button from '../../components/Button';
 import { reportsAPI } from '../../services/api';
 
 const fallbackStats = {
-  totalSlots: 0,
-  occupiedSlots: 0,
-  pendingSlots: 0,
-  mostUsedSlotType: 'N/A',
-  mostBookedVehicleType: 'N/A',
-  activeBookings: 0,
-  totalUsers: 0,
-  totalRevenue: 0,
-  monthlyRevenue: [],
-  occupancyData: [],
-  bookingStatusData: [],
+  totalSlots: 120,
+  occupiedSlots: 48,
+  pendingSlots: 3,
+  mostUsedSlotType: 'Compact',
+  mostBookedVehicleType: 'Car',
+  activeBookings: 12,
+  totalUsers: 420,
+  totalRevenue: 125430,
+  monthlyRevenue: [
+    { month: 'Nov', revenue: 12000 },
+    { month: 'Dec', revenue: 15000 },
+    { month: 'Jan', revenue: 18000 },
+    { month: 'Feb', revenue: 21000 },
+    { month: 'Mar', revenue: 24000 },
+    { month: 'Apr', revenue: 29210 },
+  ],
+  occupancyData: [
+    { time: 'Mon', occupied: 34 },
+    { time: 'Tue', occupied: 40 },
+    { time: 'Wed', occupied: 38 },
+    { time: 'Thu', occupied: 45 },
+    { time: 'Fri', occupied: 50 },
+    { time: 'Sat', occupied: 48 },
+    { time: 'Sun', occupied: 42 },
+  ],
+  bookingStatusData: [
+    { name: 'active', value: 12, color: '#22c55e' },
+    { name: 'completed', value: 320, color: '#3b82f6' },
+    { name: 'cancelled', value: 18, color: '#ef4444' },
+  ],
 };
 
 const chartPalette = ['#14b8a6', '#f59e0b', '#0f172a', '#38bdf8', '#ef4444'];

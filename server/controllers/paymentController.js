@@ -1,4 +1,6 @@
 const mongoose = require('mongoose');
+const crypto = require('crypto');
+const Razorpay = require('razorpay');
 const { validationResult } = require('express-validator');
 const Payment = require('../models/Payment');
 const Booking = require('../models/Booking');
@@ -19,6 +21,39 @@ const buildUpiLink = (scheme, { pa, pn, am, cu, tn, tr }) =>
   `${scheme}://pay?pa=${encodeURIComponent(pa)}&pn=${encodeURIComponent(pn)}&am=${encodeURIComponent(
     am
   )}&cu=${encodeURIComponent(cu)}&tn=${encodeURIComponent(tn)}&tr=${encodeURIComponent(tr)}`;
+
+const getRazorpayConfig = () => {
+  const keyId = process.env.RAZORPAY_KEY_ID || '';
+  const keySecret = process.env.RAZORPAY_KEY_SECRET || '';
+
+  if (!keyId || !keySecret) {
+    throw new Error('Razorpay test keys are missing');
+  }
+
+  if (!keyId.startsWith('rzp_test_')) {
+    throw new Error('Only Razorpay TEST MODE keys are allowed');
+  }
+
+  return { keyId, keySecret };
+};
+
+const getRazorpayClient = () => {
+  const { keyId, keySecret } = getRazorpayConfig();
+  return new Razorpay({
+    key_id: keyId,
+    key_secret: keySecret,
+  });
+};
+
+const verifyRazorpaySignature = ({ orderId, paymentId, signature }) => {
+  const { keySecret } = getRazorpayConfig();
+  const expectedSignature = crypto
+    .createHmac('sha256', keySecret)
+    .update(`${orderId}|${paymentId}`)
+    .digest('hex');
+
+  return expectedSignature === signature;
+};
 
 const releaseSlotForBooking = async (booking) => {
   const slot = await ParkingSlot.findById(booking.parkingSlot);
@@ -294,7 +329,7 @@ exports.getPaymentStats = async (req, res) => {
 // @access  Private
 exports.initiatePayment = async (req, res) => {
   try {
-    const { bookingId, paymentMethod, upiApp, cardLast4 } = req.body;
+    const { bookingId, paymentMethod, upiApp, cardLast4, demoMode = false, paymentChannel = '' } = req.body;
     const booking = await Booking.findById(bookingId).populate('user', 'name email phone');
 
     if (!booking) {
@@ -326,19 +361,48 @@ exports.initiatePayment = async (req, res) => {
       });
     }
 
+    let keyId = '';
+    let razorpayOrder = null;
+    const useSimulation = Boolean(demoMode);
+
+    if (!useSimulation) {
+      const razorpay = getRazorpayClient();
+      const razorpayConfig = getRazorpayConfig();
+      keyId = razorpayConfig.keyId;
+      razorpayOrder = await razorpay.orders.create({
+        amount: Math.round(Number(booking.pricing.finalAmount) * 100),
+        currency: 'INR',
+        receipt: String(booking.bookingReference || booking._id).slice(0, 40),
+        notes: {
+          bookingId: String(booking._id),
+          userId: String(req.user.id),
+          mode: 'test',
+        },
+      });
+    }
+
+    const simulatedTransactionId = generateReference(
+      paymentMethod === 'upi' ? 'UPI' : paymentMethod === 'card' ? 'CARD' : 'SIM',
+    );
+
     let payment = booking.payment ? await Payment.findById(booking.payment) : null;
     if (!payment) {
       payment = await Payment.create({
         user: req.user.id,
+        userId: String(req.user.id),
         booking: booking._id,
         amount: booking.pricing.finalAmount,
         paymentMethod,
-        paymentGateway: paymentMethod === 'upi' ? 'upi_intent' : 'simulation',
+        paymentGateway: useSimulation ? (paymentMethod === 'upi' ? 'upi_intent' : 'simulation') : 'razorpay',
         status: 'processing',
-        transactionId: generateReference('TXN'),
+        transactionId: razorpayOrder?.id || simulatedTransactionId,
+        razorpay_order_id: razorpayOrder?.id,
         metadata: {
           upiApp: upiApp || '',
           cardLast4: cardLast4 || '',
+          paymentChannel,
+          demoMode: useSimulation,
+          razorpayMode: useSimulation ? '' : 'test',
         },
         receiptSnapshot: {
           bookingReference: booking.bookingReference,
@@ -353,18 +417,22 @@ exports.initiatePayment = async (req, res) => {
       booking.payment = payment._id;
       booking.paymentStatus = 'processing';
       await booking.save();
+    } else {
+      payment.paymentMethod = paymentMethod;
+      payment.paymentGateway = useSimulation ? (paymentMethod === 'upi' ? 'upi_intent' : 'simulation') : 'razorpay';
+      payment.status = 'processing';
+      payment.transactionId = razorpayOrder?.id || simulatedTransactionId;
+      payment.razorpay_order_id = razorpayOrder?.id;
+      payment.metadata = {
+        ...(payment.metadata || {}),
+        upiApp: upiApp || '',
+        cardLast4: cardLast4 || '',
+        paymentChannel,
+        demoMode: useSimulation,
+        razorpayMode: useSimulation ? '' : 'test',
+      };
+      await payment.save();
     }
-
-    const merchantUpiId = process.env.UPI_MERCHANT_ID || 'merchant@upi';
-    const merchantName = process.env.UPI_MERCHANT_NAME || 'ParkingApp';
-    const upiPayload = {
-      pa: merchantUpiId,
-      pn: merchantName,
-      am: booking.pricing.finalAmount.toFixed(2),
-      cu: 'INR',
-      tn: `SlotBooking ${booking.bookingReference}`,
-      tr: payment.transactionId,
-    };
 
     const session = {
       paymentId: payment._id,
@@ -373,22 +441,17 @@ exports.initiatePayment = async (req, res) => {
       currency: 'INR',
       method: paymentMethod,
       expiresAt: booking.paymentLock.expiresAt,
+      gateway: useSimulation ? payment.paymentGateway : 'razorpay',
+      keyId,
+      razorpayOrder,
+      demoMode: useSimulation,
+      transactionId: simulatedTransactionId,
+      customer: {
+        name: booking.user.name || '',
+        email: booking.user.email || '',
+        phone: booking.user.phone || '',
+      },
     };
-
-    if (paymentMethod === 'upi') {
-      session.upiLinks = {
-        generic: buildUpiLink('upi', upiPayload),
-        gpay: buildUpiLink('gpay://upi', upiPayload),
-        phonepe: buildUpiLink('phonepe', upiPayload),
-        paytm: buildUpiLink('paytmmp', upiPayload),
-      };
-    } else {
-      session.card = {
-        gateway: process.env.CARD_PAYMENT_PROVIDER || 'simulation',
-        clientSecret: generateReference('CARD'),
-        publishableKey: process.env.STRIPE_PUBLISHABLE_KEY || '',
-      };
-    }
 
     res.status(200).json({
       success: true,
@@ -412,7 +475,16 @@ exports.initiatePayment = async (req, res) => {
 // @access  Private
 exports.verifyPayment = async (req, res) => {
   try {
-    const { paymentId, bookingId, status, transactionId, gatewayResponse = {} } = req.body;
+    const {
+      paymentId,
+      bookingId,
+      status,
+      transactionId,
+      gatewayResponse = {},
+      razorpay_order_id,
+      razorpay_payment_id,
+      razorpay_signature,
+    } = req.body;
     const payment = await Payment.findById(paymentId);
     const booking = await Booking.findById(bookingId).populate('user', 'name email phone');
 
@@ -431,15 +503,57 @@ exports.verifyPayment = async (req, res) => {
     }
 
     const slot = await ParkingSlot.findById(booking.parkingSlot);
+    const hasRazorpayResponse = Boolean(razorpay_order_id && razorpay_payment_id && razorpay_signature);
+    const isRazorpayValid = hasRazorpayResponse
+      ? verifyRazorpaySignature({
+          orderId: razorpay_order_id,
+          paymentId: razorpay_payment_id,
+          signature: razorpay_signature,
+        })
+      : false;
 
-    if (status === 'success') {
+    if (hasRazorpayResponse && !isRazorpayValid) {
+      payment.status = 'failed';
+      payment.razorpay_order_id = razorpay_order_id;
+      payment.razorpay_payment_id = razorpay_payment_id;
+      payment.razorpay_signature = razorpay_signature;
+      payment.gatewayResponse = {
+        ...gatewayResponse,
+        verified: false,
+        mode: 'test',
+      };
+      await payment.save();
+
+      booking.status = 'cancelled';
+      booking.paymentStatus = 'failed';
+      await booking.save();
+      await releaseSlotForBooking(booking);
+
+      return res.status(400).json({
+        success: false,
+        message: 'Razorpay payment signature verification failed',
+        data: {
+          booking,
+          payment,
+        },
+      });
+    }
+
+    if (isRazorpayValid || status === 'success') {
       payment.status = 'completed';
-      payment.transactionId = transactionId || payment.transactionId || generateReference('TXN');
-      payment.gatewayResponse = gatewayResponse;
+      payment.transactionId = razorpay_payment_id || transactionId || payment.transactionId || generateReference('TXN');
+      payment.razorpay_order_id = razorpay_order_id || payment.razorpay_order_id;
+      payment.razorpay_payment_id = razorpay_payment_id || payment.razorpay_payment_id;
+      payment.razorpay_signature = razorpay_signature || payment.razorpay_signature;
+      payment.gatewayResponse = {
+        ...gatewayResponse,
+        verified: Boolean(isRazorpayValid),
+        mode: hasRazorpayResponse ? 'test' : gatewayResponse?.demoMode ? 'demo' : 'legacy',
+      };
       payment.verification = {
         verifiedAt: new Date(),
-        verifiedBy: payment.paymentGateway,
-        verificationReference: transactionId || payment.transactionId,
+        verifiedBy: hasRazorpayResponse ? 'razorpay_signature' : payment.paymentGateway,
+        verificationReference: razorpay_order_id || transactionId || payment.transactionId,
       };
       await payment.save();
 

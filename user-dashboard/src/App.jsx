@@ -9,6 +9,7 @@ import Search from './user/pages/Search';
 import Booking from './user/pages/Booking';
 import History from './user/pages/History';
 import Profile from './user/pages/Profile';
+import Payments from './user/pages/Payments';
 import Login from './user/pages/Login';
 import Signup from './user/pages/Signup';
 import ParkingLotDetails from './user/pages/ParkingLotDetails';
@@ -29,6 +30,7 @@ const AppShell = () => {
         <Route path="/booking" element={<Booking />} />
         <Route path="/history" element={<History />} />
         <Route path="/profile" element={<Profile />} />
+        <Route path="/payments" element={<Payments />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
 

@@ -128,7 +128,12 @@ exports.adminLogin = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Validation failed', errors: errors.array() });
     }
     const { email, password } = req.body;
-    const normalizedEmail = email.toLowerCase();
+
+    if (!email || !password) {
+      return res.status(400).json({ success: false, message: 'Email and password are required for admin login' });
+    }
+
+    const normalizedEmail = (email || '').toLowerCase();
 
     if (matchesDevAdminCredentials(normalizedEmail, password)) {
       const devAdmin = getDevAdminUser();

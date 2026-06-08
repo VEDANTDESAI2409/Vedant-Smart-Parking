@@ -3,8 +3,9 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 const path = require('path');
 
-const connectDB = require('./config/database').connectDB;
+const { checkConnection, connectDB } = require('./config/database');
 const rootRoutes = require('./routes');
+const razorpayPaymentsRoutes = require('./routes/razorpayPayments');
 
 dotenv.config({ path: path.join(__dirname, '.env'), override: true });
 
@@ -19,6 +20,15 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+app.get('/health', (req, res) => {
+  res.json({
+    success: true,
+    status: 'ok',
+    database: checkConnection() ? 'connected' : 'disconnected',
+  });
+});
+
+app.use('/', razorpayPaymentsRoutes);
 app.use('/api', rootRoutes);
 
 const PORT = process.env.PORT || 5000;

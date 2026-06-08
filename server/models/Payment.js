@@ -4,12 +4,17 @@ const paymentSchema = new mongoose.Schema({
   user: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: [true, 'Payment must belong to a user']
+    required: false
+  },
+  userId: {
+    type: String,
+    trim: true,
+    index: true
   },
   booking: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Booking',
-    required: [true, 'Payment must belong to a booking']
+    required: false
   },
   paymentReference: {
     type: String,
@@ -29,7 +34,20 @@ const paymentSchema = new mongoose.Schema({
   paymentMethod: {
     type: String,
     required: [true, 'Payment method is required'],
-    enum: ['credit_card', 'debit_card', 'paypal', 'apple_pay', 'google_pay', 'bank_transfer', 'cash', 'upi', 'card']
+    enum: [
+      'credit_card',
+      'debit_card',
+      'paypal',
+      'apple_pay',
+      'google_pay',
+      'bank_transfer',
+      'cash',
+      'upi',
+      'card',
+      'wallet',
+      'net_banking',
+      'pay_later',
+    ]
   },
   paymentGateway: {
     type: String,
@@ -38,8 +56,22 @@ const paymentSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['pending', 'processing', 'completed', 'failed', 'cancelled', 'refunded', 'partial_refund'],
+    enum: ['pending', 'processing', 'completed', 'success', 'failed', 'cancelled', 'refunded', 'partial_refund'],
     default: 'pending'
+  },
+  razorpay_payment_id: {
+    type: String,
+    trim: true,
+    sparse: true,
+  },
+  razorpay_order_id: {
+    type: String,
+    trim: true,
+    sparse: true,
+  },
+  razorpay_signature: {
+    type: String,
+    trim: true,
   },
   transactionId: {
     type: String,
@@ -126,9 +158,12 @@ paymentSchema.virtual('netAmount').get(function() {
 
 // Index for better query performance
 paymentSchema.index({ user: 1, status: 1 });
+paymentSchema.index({ userId: 1, createdAt: -1 });
 paymentSchema.index({ booking: 1 });
 paymentSchema.index({ paymentReference: 1 });
 paymentSchema.index({ transactionId: 1 });
+paymentSchema.index({ razorpay_payment_id: 1 });
+paymentSchema.index({ razorpay_order_id: 1 });
 paymentSchema.index({ paymentDate: 1 });
 paymentSchema.index({ status: 1, paymentDate: -1 });
 

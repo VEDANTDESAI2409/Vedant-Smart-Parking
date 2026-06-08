@@ -1,11 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   CalendarDays,
-  CreditCard,
   Loader2,
   MapPin,
   ShieldCheck,
-  Smartphone,
   TimerReset,
   Zap,
 } from 'lucide-react';
@@ -14,6 +12,9 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { bookingsAPI, locationsAPI, paymentsAPI, vehiclesAPI } from '../../services/api';
 import ParkingLotSlotMap from '../components/ParkingLotSlotMap';
+import PaymentMethodSelector from '../components/payment/PaymentMethodSelector';
+import PaymentSuccessPanel from '../components/payment/PaymentSuccessPanel';
+import ReceiptTicket from '../../components/ReceiptTicket';
 
 const durations = [30, 60, 120, 180, 240, 480, 1440];
 const USE_NEW_SLOT_STEP_MAP = true;
@@ -42,65 +43,88 @@ const pdfEscape = (value) =>
     .replace(/\)/g, '\\)');
 
 const buildReceiptPdfBlob = (receipt) => {
-  const lines = [
-    'Smart Parking Receipt',
-    '',
-    `Booking: ${receipt.bookingId}`,
-    `Receipt: ${receipt.receiptNumber}`,
-    `Name: ${receipt.name}`,
-    `Slot: ${receipt.slot}`,
-    `Location: ${receipt.location}`,
-    `Date & Time: ${new Date(receipt.dateTime).toLocaleString()}`,
-    `Duration: ${receipt.duration} hr`,
-    `Amount: INR ${receipt.amount}`,
-    `Status: ${receipt.paymentStatus}`,
+  const dateText = receipt.dateTime ? new Date(receipt.dateTime).toLocaleString() : 'N/A';
+  const generatedText = new Date().toLocaleString();
+  const amountText = `INR ${receipt.amount}`;
+  const statusText = String(receipt.paymentStatus || 'PAID').toUpperCase();
+  const rows = [
+    ['Booking ID', receipt.bookingId],
+    ['Receipt ID', receipt.receiptNumber],
+    ['Name', receipt.name],
+    ['Location', receipt.location],
+    ['Date & Time', dateText],
+    ['Duration', `${receipt.duration} hr`],
+    ['Status', statusText],
   ];
 
+  const text = (x, y, value, size = 10, font = 'F2') =>
+    `BT /${font} ${size} Tf ${x} ${y} Td (${pdfEscape(value)}) Tj ET`;
+  const line = (x1, y1, x2, y2, dashed = false) =>
+    `${dashed ? '[3 3] 0 d ' : '[] 0 d '} ${x1} ${y1} m ${x2} ${y2} l S`;
+
+  const rowCommands = rows.flatMap(([label, value], index) => {
+    const y = 540 - index * 20;
+    return [
+      text(92, y, label, 8, 'F2'),
+      text(240, y, String(value || 'N/A').slice(0, 32), 9, 'F2'),
+    ];
+  });
+
   const stream = [
-    'BT',
-    '/F1 24 Tf',
-    '50 790 Td',
-    `(${pdfEscape(lines[0])}) Tj`,
-    '/F1 12 Tf',
-    ...lines.slice(2).flatMap((line, index) => [
-      index === 0 ? '0 -40 Td' : '0 -24 Td',
-      `(${pdfEscape(line)}) Tj`,
-    ]),
-    'ET',
+    '0.94 0.97 1 rg 0 0 420 720 re f',
+    '1 0.992 0.965 rg 60 44 300 632 re f',
+    '0.88 0.9 0.94 RG 1 w 60 44 300 632 re S',
+    '0.07 0.09 0.15 RG 1.4 w 188 624 44 44 re S',
+    '0.07 0.09 0.15 rg',
+    text(202, 638, 'P', 20, 'F1'),
+    text(132, 602, 'SMART PARKING', 18, 'F1'),
+    text(116, 584, String(receipt.location || 'PARKING RECEIPT').slice(0, 28), 8, 'F2'),
+    line(82, 562, 338, 562, true),
+    ...rowCommands,
+    '0.96 0.98 1 rg 90 344 240 58 re f',
+    '0.07 0.09 0.15 RG 1.5 w 90 344 240 58 re S',
+    text(190, 380, 'SLOT', 8, 'F2'),
+    text(178, 354, String(receipt.slot || 'N/A'), 28, 'F1'),
+    '0.07 0.09 0.15 rg 90 264 240 58 re f',
+    '1 1 1 rg',
+    text(184, 300, 'AMOUNT', 8, 'F2'),
+    text(150, 278, amountText, 18, 'F1'),
+    '0.07 0.09 0.15 rg',
+    line(82, 244, 338, 244, true),
+    '0.1 0.55 0.24 RG 2 w 151 210 118 30 re S',
+    text(173, 219, statusText, 14, 'F1'),
+    '0.07 0.09 0.15 rg',
+    ...Array.from({ length: 42 }, (_, index) => {
+      const x = 98 + index * 5;
+      const width = index % 5 === 0 ? 3 : index % 2 === 0 ? 2 : 1;
+      return `${x} 150 ${width} 44 re f`;
+    }),
+    text(112, 132, String(receipt.receiptNumber || receipt.bookingId || 'RECEIPT').slice(0, 34), 8, 'F2'),
+    text(112, 104, 'THANK YOU FOR PARKING WITH US', 9, 'F2'),
+    text(92, 74, 'Generated', 8, 'F2'),
+    text(190, 74, generatedText, 8, 'F2'),
   ].join('\n');
 
-  const pdf = `%PDF-1.4
-1 0 obj
-<< /Type /Catalog /Pages 2 0 R >>
-endobj
-2 0 obj
-<< /Type /Pages /Kids [3 0 R] /Count 1 >>
-endobj
-3 0 obj
-<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>
-endobj
-4 0 obj
-<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
-endobj
-5 0 obj
-<< /Length ${stream.length} >>
-stream
-${stream}
-endstream
-endobj
-xref
-0 6
-0000000000 65535 f 
-0000000009 00000 n 
-0000000058 00000 n 
-0000000115 00000 n 
-0000000241 00000 n 
-0000000311 00000 n 
-trailer
-<< /Size 6 /Root 1 0 R >>
-startxref
-${311 + String(stream.length).length}
-%%EOF`;
+  const objects = [
+    '<< /Type /Catalog /Pages 2 0 R >>',
+    '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 420 720] /Resources << /Font << /F1 4 0 R /F2 5 0 R >> >> /Contents 6 0 R >>',
+    '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>',
+    '<< /Type /Font /Subtype /Type1 /BaseFont /Courier >>',
+    `<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`,
+  ];
+
+  let pdf = '%PDF-1.4\n';
+  const offsets = [0];
+  objects.forEach((object, index) => {
+    offsets.push(pdf.length);
+    pdf += `${index + 1} 0 obj\n${object}\nendobj\n`;
+  });
+
+  const xrefOffset = pdf.length;
+  pdf += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
+  pdf += offsets.slice(1).map((offset) => `${String(offset).padStart(10, '0')} 00000 n \n`).join('');
+  pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
 
   return new Blob([pdf], { type: 'application/pdf' });
 };
@@ -148,8 +172,6 @@ const Search = () => {
     date: '',
     time: '',
     durationMinutes: 60,
-    paymentMethod: 'upi',
-    upiApp: 'generic',
   });
   const [userForm, setUserForm] = useState({ name: '', phone: '', email: '' });
   const [authForm, setAuthForm] = useState({
@@ -162,6 +184,7 @@ const Search = () => {
   });
   const [activeBooking, setActiveBooking] = useState(null);
   const [paymentSession, setPaymentSession] = useState(null);
+  const [completedPayment, setCompletedPayment] = useState(null);
   const [receipt, setReceipt] = useState(null);
   const [paymentMessage, setPaymentMessage] = useState('');
   const [vehicles, setVehicles] = useState([]);
@@ -605,6 +628,7 @@ const Search = () => {
       setError('');
       setReceipt(null);
       setPaymentSession(null);
+      setCompletedPayment(null);
 
       const bookingResponse = await bookingsAPI.createSmart({
         locationId: selectedLocation.id,
@@ -622,14 +646,6 @@ const Search = () => {
 
       const booking = bookingResponse.data.data.booking;
       setActiveBooking(booking);
-
-      const paymentResponse = await paymentsAPI.initiate({
-        bookingId: booking._id,
-        paymentMethod: bookingForm.paymentMethod,
-        upiApp: bookingForm.upiApp,
-      });
-
-      setPaymentSession(paymentResponse.data.data.session);
       setPaymentMessage('');
       setPaymentModal(true);
     } catch (e) {
@@ -758,44 +774,67 @@ const Search = () => {
     navigate('/login');
   };
 
-  const verifyPayment = async (status) => {
-    if (!paymentSession || !activeBooking) return;
+  const initiateDemoPayment = async (payload) => {
+    if (!activeBooking) {
+      throw new Error('Booking is not ready for payment');
+    }
 
+    const response = await paymentsAPI.initiate({
+      bookingId: activeBooking._id,
+      ...payload,
+    });
+    const session = response.data.data.session;
+    setPaymentSession(session);
+    return session;
+  };
+
+  const verifyDemoPayment = async ({ session, status = 'success', transactionId, gatewayResponse = {} }) => {
+    if (!session || !activeBooking) return;
     setLoading(true);
     try {
-      setError('');
       const response = await paymentsAPI.verify({
-        paymentId: paymentSession.paymentId,
+        paymentId: session.paymentId,
         bookingId: activeBooking._id,
         status,
-        transactionId: status === 'success' ? `TXN_${Date.now()}` : undefined,
+        transactionId,
+        gatewayResponse,
       });
 
-      if (status === 'success') {
-        setReceipt(response.data.data.receipt);
-        setPaymentModal(false);
-        setPaymentSession(null);
-      } else {
-        setReceipt(null);
-      }
-
-      if (status !== 'success') {
-        setError(status === 'failed' ? 'Payment failed and lock released' : 'Payment pending');
-      }
+      setReceipt(response.data.data.receipt);
+      setCompletedPayment(response.data.data.payment);
+      setPaymentSession(null);
+      setPaymentMessage('');
     } catch (e) {
       setError(e.response?.data?.message || 'Payment verification failed');
+      throw e;
     } finally {
       setLoading(false);
     }
   };
 
-  const launchPaymentApp = (app) => {
-    if (!paymentSession?.upiLinks?.[app]) return;
-    setBookingForm((current) => ({ ...current, upiApp: app }));
-    setPaymentMessage(
-      `${app === 'generic' ? 'UPI app' : app === 'gpay' ? 'Google Pay' : app === 'phonepe' ? 'PhonePe' : 'Paytm'} opening request sent. Complete payment in the app, then return here and tap Success.`,
-    );
-    window.location.href = paymentSession.upiLinks[app];
+  const cancelPayment = async () => {
+    if (!paymentSession || !activeBooking) {
+      setPaymentModal(false);
+      setPaymentMessage('');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await paymentsAPI.verify({
+        paymentId: paymentSession.paymentId,
+        bookingId: activeBooking._id,
+        status: 'failed',
+      });
+      setPaymentModal(false);
+      setPaymentSession(null);
+      setReceipt(null);
+      setError('Payment cancelled and slot lock released');
+    } catch (e) {
+      setError(e.response?.data?.message || 'Unable to cancel payment');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const downloadReceiptPdf = () => {
@@ -1089,49 +1128,8 @@ const Search = () => {
                   />
                 </div>
 
-                <div>
-                  <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">
-                    Payment Method
-                  </p>
-                  <div className="grid grid-cols-2 gap-3">
-                    {[
-                      {
-                        key: 'upi',
-                        label: 'UPI',
-                        icon: <Smartphone className="mx-auto h-5 w-5 text-blue-600" />,
-                      },
-                      {
-                        key: 'card',
-                        label: 'Card',
-                        icon: <CreditCard className="mx-auto h-5 w-5 text-blue-600" />,
-                      },
-                    ].map((item) => (
-                      <button
-                        key={item.key}
-                        type="button"
-                        onClick={() =>
-                          setBookingForm((state) => ({
-                            ...state,
-                            paymentMethod: item.key,
-                          }))
-                        }
-                        className={`rounded-[20px] border px-4 py-4 transition-all duration-200 ${
-                          bookingForm.paymentMethod === item.key
-                            ? 'border-blue-400 bg-blue-50 shadow-sm'
-                            : 'border-slate-100 bg-white hover:border-blue-200 hover:bg-slate-50'
-                        }`}
-                      >
-                        {item.icon}
-                        <div className="mt-2 text-sm font-semibold text-slate-900">{item.label}</div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
                 <div className="rounded-[20px] border border-blue-100 bg-blue-50 px-4 py-4 text-sm text-blue-700">
-                  {bookingForm.paymentMethod === 'upi'
-                    ? 'UPI selected. After the slot is locked, choose your app from the payment panel once and complete the payment.'
-                    : 'Card selected. After the slot is locked, continue in the payment panel and verify the card result there.'}
+                  Your slot will be locked first. Then you can choose UPI, card, net banking, wallet, cash, or pay later on the next screen.
                 </div>
 
                 <div className="flex flex-wrap gap-3">
@@ -1469,11 +1467,11 @@ const Search = () => {
             ) : null}
 
             {receipt ? (
-              <div className="rounded-[28px] border border-slate-100 bg-white p-6 shadow-sm">
-                <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
+              <div className="rounded-[28px] border border-slate-100 bg-white p-5 shadow-sm">
+                <div className="mb-5 flex flex-wrap items-center justify-between gap-4">
                   <div>
                     <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Booking complete</p>
-                    <h2 className="mt-2 text-2xl font-bold text-slate-900">Receipt</h2>
+                    <h2 className="mt-2 text-2xl font-bold text-slate-900">Parking Ticket Receipt</h2>
                   </div>
                   <button
                     type="button"
@@ -1484,135 +1482,34 @@ const Search = () => {
                   </button>
                 </div>
 
-                <div className="mt-5 overflow-hidden rounded-[20px] border border-slate-100 bg-gradient-to-br from-blue-50 to-white">
-                  <div className="grid grid-cols-1 divide-y divide-slate-100 sm:grid-cols-2 sm:divide-x sm:divide-y-0">
-
-                    {[
-                      ['Booking ID', receipt.bookingId],
-                      ['Receipt No', receipt.receiptNumber],
-                      ['Customer', receipt.name],
-                      ['Slot', receipt.slot],
-                      ['Location', receipt.location],
-                      ['Amount', `INR ${receipt.amount}`],
-                      ['Duration', `${receipt.duration} hr`],
-                      ['Status', receipt.paymentStatus],
-                    ].map(([label, value]) => (
-                      <div key={label} className="px-6 py-4">
-                        <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">
-                          {label}
-                        </div>
-                        <div className="mt-2 text-lg font-semibold text-slate-900">{value}</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                <ReceiptTicket receipt={{ ...receipt, generatedAt: new Date().toISOString() }} />
               </div>
             ) : null}
           </div>
         </div>
       </div>
 
-      <Modal isOpen={paymentModal} onClose={() => setPaymentModal(false)} title="Payment" size="full">
-        {paymentSession && (
-          <div>
-            <div className="flex flex-wrap items-start justify-between gap-4 mb-4">
-              <div>
-                <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Step 5</p>
-                <h2 className="mt-1 text-2xl font-bold text-slate-900">Payment</h2>
-                <p className="mt-2 text-sm text-slate-600">
-                  Lock expires at {new Date(paymentSession.expiresAt).toLocaleTimeString()}.
-                </p>
-              </div>
-
-              <div className="rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-700 border border-blue-200">
-                {bookingForm.paymentMethod === 'upi' ? 'UPI checkout' : 'Card checkout'}
-              </div>
-            </div>
-
-            {bookingForm.paymentMethod === 'upi' ? (
-              <div className="mt-5 rounded-[24px] border border-slate-100 bg-white p-5 shadow-sm">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">
-                      UPI Apps
-                    </p>
-                    <h3 className="mt-1 text-lg font-semibold text-slate-900">Choose one app to continue</h3>
-                  </div>
-                  <div className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600 border border-slate-200">
-                    One-time choice
-                  </div>
-                </div>
-
-                <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                  {[
-                    ['generic', 'Any UPI'],
-                    ['gpay', 'Google Pay'],
-                    ['phonepe', 'PhonePe'],
-                    ['paytm', 'Paytm'],
-                  ].map(([app, label]) => (
-                    <button
-                      key={app}
-                      type="button"
-                      onClick={() => launchPaymentApp(app)}
-                      className={`rounded-[20px] border px-4 py-4 text-left transition-all duration-200 ${
-                        bookingForm.upiApp === app
-                          ? 'border-blue-400 bg-blue-50 shadow-sm'
-                          : 'border-slate-100 bg-white hover:border-blue-200 hover:bg-slate-50'
-                      }`}
-                    >
-                      <div className="text-sm font-semibold text-slate-900">{label}</div>
-                      <div className="mt-1 text-xs text-slate-600">Tap to open and pay</div>
-                    </button>
-                  ))}
-                </div>
-
-                {paymentMessage ? (
-                  <div className="mt-4 rounded-[22px] bg-[rgba(186,230,253,0.12)] px-4 py-3 text-sm text-slate-600">
-                    {paymentMessage}
-                  </div>
-                ) : null}
-              </div>
-            ) : (
-              <div className="mt-5 rounded-[24px] border border-slate-100 bg-white p-5 shadow-sm">
-                <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">
-                  Card Checkout
-                </p>
-                <h3 className="mt-1 text-lg font-semibold text-slate-900">Card payment ready</h3>
-                <p className="mt-2 text-sm text-slate-600">
-                  Use the verification controls below to confirm the card transaction result.
-                </p>
-              </div>
-            )}
-
-            <div className="mt-5">
-              <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">
-                Verification Result
-              </p>
-              <div className="flex flex-wrap gap-3">
-                <button
-                  type="button"
-                  onClick={() => verifyPayment('success')}
-                  className="rounded-full bg-blue-600 px-5 py-3 text-sm font-semibold text-white hover:bg-blue-700 transition-colors duration-200 shadow-sm"
-                >
-                  Success
-                </button>
-                <button
-                  type="button"
-                  onClick={() => verifyPayment('pending')}
-                  className="rounded-full border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-900 hover:bg-slate-50 transition-colors duration-200"
-                >
-                  Pending
-                </button>
-                <button
-                  type="button"
-                  onClick={() => verifyPayment('failed')}
-                  className="rounded-full border border-red-100 bg-red-50 px-5 py-3 text-sm font-semibold text-red-700 hover:bg-red-100 transition-colors duration-200"
-                >
-                  Failed
-                </button>
-              </div>
-            </div>
-          </div>
+      <Modal isOpen={paymentModal} onClose={() => setPaymentModal(false)} title="" size="full" showCloseButton={false}>
+        {receipt ? (
+          <PaymentSuccessPanel
+            booking={activeBooking}
+            receipt={receipt}
+            payment={completedPayment}
+            onDownload={downloadReceiptPdf}
+            onShare={setPaymentMessage}
+            onClose={() => setPaymentModal(false)}
+          />
+        ) : (
+          <PaymentMethodSelector
+            booking={activeBooking}
+            paymentSession={paymentSession}
+            onInitiate={initiateDemoPayment}
+            onVerify={verifyDemoPayment}
+            onCancel={cancelPayment}
+            loading={loading}
+            message={paymentMessage}
+            setMessage={setPaymentMessage}
+          />
         )}
       </Modal>
 

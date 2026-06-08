@@ -2,6 +2,7 @@ const jwt = require('jsonwebtoken');
 const twilio = require('twilio');
 const User = require('../models/User');
 const { getFirebaseAdminAuth } = require('../config/firebaseAdmin');
+const { checkConnection } = require('../config/database');
 
 const OTP_EXPIRY_MS = 5 * 60 * 1000;
 
@@ -59,6 +60,28 @@ const buildUserResponse = (user) => ({
   isVerified: user.isVerified,
   createdAt: user.createdAt,
 });
+
+const ensureDatabaseConnection = (res) => {
+  if (checkConnection()) {
+    return true;
+  }
+
+  res.status(503).json({
+    success: false,
+    message: 'Database is not connected. Start MongoDB or check MONGODB_URI, then restart the backend.',
+  });
+
+  return false;
+};
+
+const isDatabaseUnavailableError = (error) =>
+  /buffering timed out|connection.*not connected|database is not connected/i.test(error?.message || '');
+
+const sendDatabaseUnavailable = (res) =>
+  res.status(503).json({
+    success: false,
+    message: 'Database is not connected. Start MongoDB or check MONGODB_URI, then restart the backend.',
+  });
 
 const sendOtpToPhone = async (normalizedPhone) => {
   const otp = generateOtp();
@@ -222,6 +245,10 @@ const verifyOtp = async (req, res) => {
 
 const signup = async (req, res) => {
   try {
+    if (!ensureDatabaseConnection(res)) {
+      return;
+    }
+
     const { name, phone, email, otp } = req.body;
     const normalizedPhone = normalizeIndianPhone(phone);
     const enteredOtp = String(otp || '').trim();
@@ -283,6 +310,10 @@ const signup = async (req, res) => {
       token,
     });
   } catch (error) {
+    if (isDatabaseUnavailableError(error)) {
+      return sendDatabaseUnavailable(res);
+    }
+
     return res.status(500).json({
       success: false,
       message: 'Server error during signup',
@@ -293,6 +324,10 @@ const signup = async (req, res) => {
 
 const login = async (req, res) => {
   try {
+    if (!ensureDatabaseConnection(res)) {
+      return;
+    }
+
     const normalizedPhone = normalizeIndianPhone(req.body?.phone);
 
     if (!normalizedPhone) {
@@ -315,6 +350,10 @@ const login = async (req, res) => {
 
     return res.status(200).json(response);
   } catch (error) {
+    if (isDatabaseUnavailableError(error)) {
+      return sendDatabaseUnavailable(res);
+    }
+
     return res.status(500).json({
       success: false,
       message: 'Server error during login',
@@ -325,6 +364,10 @@ const login = async (req, res) => {
 
 const verifyLogin = async (req, res) => {
   try {
+    if (!ensureDatabaseConnection(res)) {
+      return;
+    }
+
     const normalizedPhone = normalizeIndianPhone(req.body?.phone);
     const enteredOtp = String(req.body?.otp || '').trim();
 
@@ -369,6 +412,10 @@ const verifyLogin = async (req, res) => {
       token,
     });
   } catch (error) {
+    if (isDatabaseUnavailableError(error)) {
+      return sendDatabaseUnavailable(res);
+    }
+
     return res.status(500).json({
       success: false,
       message: 'Server error during login verification',
@@ -379,6 +426,10 @@ const verifyLogin = async (req, res) => {
 
 const googleAuth = async (req, res) => {
   try {
+    if (!ensureDatabaseConnection(res)) {
+      return;
+    }
+
     const idToken = String(req.body?.idToken || '').trim();
 
     if (!idToken) {
@@ -425,6 +476,10 @@ const googleAuth = async (req, res) => {
       token,
     });
   } catch (error) {
+    if (isDatabaseUnavailableError(error)) {
+      return sendDatabaseUnavailable(res);
+    }
+
     return res.status(401).json({
       success: false,
       message: 'Google authentication failed',

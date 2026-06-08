@@ -14,6 +14,8 @@ export const defaultAdminPreferences = {
   confirmBulkDelete: true,
   toastDuration: 3000,
   hideToastProgress: false,
+  enableCashPayments: true,
+  enablePayLaterPayments: false,
 };
 
 export const getAdminPreferences = () => {

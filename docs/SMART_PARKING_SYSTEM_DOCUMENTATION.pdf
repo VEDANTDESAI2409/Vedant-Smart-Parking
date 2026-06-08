@@ -1,0 +1,576 @@
+%PDF-1.4
+%‚„œ”
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [7 0 R 9 0 R 11 0 R 13 0 R 15 0 R 17 0 R 19 0 R 21 0 R 23 0 R 25 0 R] /Count 10 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Courier >>
+endobj
+6 0 obj
+<< /Length 3427 >>
+stream
+BT /F2 18 Tf 54 781 Td (Smart Parking System - Software Design & Technical) Tj ET
+BT /F2 18 Tf 54 757 Td (Documentation) Tj ET
+BT /F2 14 Tf 54 711 Td (1. Executive Summary) Tj ET
+BT /F1 10 Tf 54 685 Td (Project Title: Smart Parking System / Park n Go) Tj ET
+BT /F1 10 Tf 54 664 Td (The Smart Parking System is a full-stack web application for discovering parking locations,) Tj ET
+BT /F1 10 Tf 54 650 Td (viewing slot availability, reserving parking slots, processing payments, and managing parking) Tj ET
+BT /F1 10 Tf 54 636 Td (operations through an admin dashboard.) Tj ET
+BT /F1 10 Tf 54 615 Td (The project contains:) Tj ET
+BT /F1 10 Tf 64 601 Td (* server: Express/MongoDB backend API) Tj ET
+BT /F1 10 Tf 64 587 Td (* user-dashboard: user-facing React/Vite app) Tj ET
+BT /F1 10 Tf 64 573 Td (* admin-dashboard: admin-facing React/Vite app) Tj ET
+BT /F1 10 Tf 64 559 Td (* shared-auth: shared auth/session utilities) Tj ET
+BT /F1 10 Tf 64 545 Td (* client: combined or legacy frontend copy) Tj ET
+BT /F1 10 Tf 54 524 Td (Key capabilities include OTP login, Google login, admin login, slot locking, booking) Tj ET
+BT /F1 10 Tf 54 510 Td (confirmation, Razorpay payment verification, parking-location management, slot bulk creation,) Tj ET
+BT /F1 10 Tf 54 496 Td (reports, users, vehicles, and payments management.) Tj ET
+BT /F2 14 Tf 54 468 Td (2. Project Overview) Tj ET
+BT /F1 10 Tf 54 442 Td (The system supports two main user groups: parking users and administrators. Parking users search) Tj ET
+BT /F1 10 Tf 54 428 Td (locations, select slots, book parking, pay, and view history. Admins manage cities, pincodes,) Tj ET
+BT /F1 10 Tf 54 414 Td (areas, locations, slots, bookings, users, vehicles, payments, and reports.) Tj ET
+BT /F1 10 Tf 54 393 Td (A real-world user can search nearby parking, choose a slot, reserve it temporarily, complete) Tj ET
+BT /F1 10 Tf 54 379 Td (payment, and receive a confirmed booking. Admins maintain the service area and parking inventory.) Tj ET
+BT /F1 10 Tf 54 358 Td (Primary business value:) Tj ET
+BT /F1 10 Tf 64 344 Td (* Reduces time spent finding parking) Tj ET
+BT /F1 10 Tf 64 330 Td (* Prevents duplicate slot reservations) Tj ET
+BT /F1 10 Tf 64 316 Td (* Provides centralized admin control) Tj ET
+BT /F1 10 Tf 64 302 Td (* Maintains booking/payment history) Tj ET
+BT /F1 10 Tf 64 288 Td (* Enables structured parking inventory management) Tj ET
+BT /F2 14 Tf 54 260 Td (3. System Architecture) Tj ET
+BT /F1 10 Tf 54 234 Td (High-level architecture diagram:) Tj ET
+BT /F3 8 Tf 64 213 Td (```mermaid) Tj ET
+BT /F3 8 Tf 64 202 Td (flowchart LR) Tj ET
+BT /F3 8 Tf 64 191 Td (  User[User Browser] --> UserApp[user-dashboard React/Vite]) Tj ET
+BT /F3 8 Tf 64 180 Td (  Admin[Admin Browser] --> AdminApp[admin-dashboard React/Vite]) Tj ET
+BT /F3 8 Tf 64 169 Td (  UserApp --> API[Express REST API]) Tj ET
+BT /F3 8 Tf 64 158 Td (  AdminApp --> API) Tj ET
+BT /F3 8 Tf 64 147 Td (  API --> Mongo[\(MongoDB\)]) Tj ET
+BT /F3 8 Tf 64 136 Td (  API --> Twilio[Twilio SMS OTP]) Tj ET
+BT /F3 8 Tf 64 125 Td (  API --> Firebase[Firebase Admin]) Tj ET
+BT /F3 8 Tf 64 114 Td (  UserApp --> FirebaseClient[Firebase Web Auth]) Tj ET
+BT /F3 8 Tf 64 103 Td (  API --> Razorpay[Razorpay Test API]) Tj ET
+BT /F3 8 Tf 64 92 Td (```) Tj ET
+BT /F1 10 Tf 54 74 Td (The backend starts from server/server.js, loads environment variables, connects to MongoDB) Tj ET
+BT /F1 8 Tf 483 28 Td (Page 1 of 10) Tj ET
+endstream
+endobj
+7 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 6 0 R >>
+endobj
+8 0 obj
+<< /Length 3907 >>
+stream
+BT /F1 10 Tf 54 788 Td (through server/config/database.js, configures CORS, mounts Razorpay routes, and mounts the main) Tj ET
+BT /F1 10 Tf 54 774 Td (/api router from server/routes/index.js.) Tj ET
+BT /F1 10 Tf 54 753 Td (Component architecture:) Tj ET
+BT /F3 8 Tf 64 732 Td (```mermaid) Tj ET
+BT /F3 8 Tf 64 721 Td (flowchart TB) Tj ET
+BT /F3 8 Tf 64 710 Td (  Routes[server/routes] --> Middleware[server/middleware/auth.js]) Tj ET
+BT /F3 8 Tf 64 699 Td (  Routes --> Controllers[server/controllers]) Tj ET
+BT /F3 8 Tf 64 688 Td (  Controllers --> Models[server/models]) Tj ET
+BT /F3 8 Tf 64 677 Td (  Controllers --> Services[server/services]) Tj ET
+BT /F3 8 Tf 64 666 Td (  Models --> MongoDB[\(MongoDB\)]) Tj ET
+BT /F3 8 Tf 64 655 Td (```) Tj ET
+BT /F1 10 Tf 54 637 Td (Request lifecycle:) Tj ET
+BT /F1 10 Tf 54 623 Td (1. Frontend calls an API wrapper from src/services/api.js.) Tj ET
+BT /F1 10 Tf 54 609 Td (2. Shared Axios client attaches Authorization: Bearer <token>.) Tj ET
+BT /F1 10 Tf 54 595 Td (3. Express route validates input.) Tj ET
+BT /F1 10 Tf 54 581 Td (4. Auth middleware verifies JWT where required.) Tj ET
+BT /F1 10 Tf 54 567 Td (5. Controller executes business logic.) Tj ET
+BT /F1 10 Tf 54 553 Td (6. Mongoose model reads/writes MongoDB.) Tj ET
+BT /F1 10 Tf 54 539 Td (7. JSON response is returned to the frontend.) Tj ET
+BT /F1 10 Tf 54 518 Td (Sequence diagram:) Tj ET
+BT /F3 8 Tf 64 497 Td (```mermaid) Tj ET
+BT /F3 8 Tf 64 486 Td (sequenceDiagram) Tj ET
+BT /F3 8 Tf 64 475 Td (  participant Browser) Tj ET
+BT /F3 8 Tf 64 464 Td (  participant React) Tj ET
+BT /F3 8 Tf 64 453 Td (  participant API as Express API) Tj ET
+BT /F3 8 Tf 64 442 Td (  participant Mongo as MongoDB) Tj ET
+BT /F3 8 Tf 64 431 Td (  participant Gateway as External Provider) Tj ET
+BT /F3 8 Tf 64 420 Td (  Browser->>React: User action) Tj ET
+BT /F3 8 Tf 64 409 Td (  React->>API: Axios request) Tj ET
+BT /F3 8 Tf 64 398 Td (  API->>API: Validate request and JWT) Tj ET
+BT /F3 8 Tf 64 387 Td (  API->>Mongo: Query/update models) Tj ET
+BT /F3 8 Tf 64 376 Td (  API->>Gateway: Optional SMS/Firebase/Razorpay call) Tj ET
+BT /F3 8 Tf 64 365 Td (  Gateway-->>API: Provider response) Tj ET
+BT /F3 8 Tf 64 354 Td (  Mongo-->>API: Database result) Tj ET
+BT /F3 8 Tf 64 343 Td (  API-->>React: JSON response) Tj ET
+BT /F3 8 Tf 64 332 Td (  React-->>Browser: Updated UI) Tj ET
+BT /F3 8 Tf 64 321 Td (```) Tj ET
+BT /F2 14 Tf 54 296 Td (4. Technology Stack) Tj ET
+BT /F1 10 Tf 54 270 Td (Backend runtime: Node.js. Executes the Express API server.) Tj ET
+BT /F1 10 Tf 54 256 Td (Backend framework: Express ^4.18.2. Provides routing and middleware.) Tj ET
+BT /F1 10 Tf 54 242 Td (Database: MongoDB with Mongoose ^7.5.0. Provides document storage, schemas, validation, indexes,) Tj ET
+BT /F1 10 Tf 54 228 Td (and model methods.) Tj ET
+BT /F1 10 Tf 54 214 Td (Authentication: jsonwebtoken ^9.0.2 and bcryptjs ^2.4.3. JWTs are used for stateless sessions;) Tj ET
+BT /F1 10 Tf 54 200 Td (bcrypt hashes passwords.) Tj ET
+BT /F1 10 Tf 54 186 Td (Validation: express-validator ^7.0.1. Performs route-level request validation.) Tj ET
+BT /F1 10 Tf 54 172 Td (SMS: Twilio ^5.5.3. Sends OTP messages.) Tj ET
+BT /F1 10 Tf 54 158 Td (Firebase: firebase-admin ^13.10.0 and firebase ^12.1.0. Used for Google authentication) Tj ET
+BT /F1 10 Tf 54 144 Td (verification.) Tj ET
+BT /F1 10 Tf 54 130 Td (Payments: Razorpay ^2.9.6. Creates orders and verifies payment signatures in test mode.) Tj ET
+BT /F1 10 Tf 54 116 Td (Frontend: React and React DOM ^18.2.0. Builds user and admin SPAs.) Tj ET
+BT /F1 10 Tf 54 102 Td (Build tool: Vite ^7.3.1. Provides development server and frontend build pipeline.) Tj ET
+BT /F1 10 Tf 54 88 Td (Routing: react-router-dom ^6.15.0. Handles SPA navigation.) Tj ET
+BT /F1 10 Tf 54 74 Td (HTTP client: Axios ^1.5.0. Performs API calls with auth interceptors.) Tj ET
+BT /F1 8 Tf 483 28 Td (Page 2 of 10) Tj ET
+endstream
+endobj
+9 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 8 0 R >>
+endobj
+10 0 obj
+<< /Length 4147 >>
+stream
+BT /F1 10 Tf 54 788 Td (Styling: Tailwind CSS ^3.3.3, PostCSS, Autoprefixer. Provides utility-first CSS.) Tj ET
+BT /F1 10 Tf 54 774 Td (Forms: react-hook-form, yup, @hookform/resolvers. Handles form state and validation.) Tj ET
+BT /F1 10 Tf 54 760 Td (UI helpers: lucide-react, react-icons, react-toastify, SweetAlert2. Provides icons,) Tj ET
+BT /F1 10 Tf 54 746 Td (notifications, and dialogs.) Tj ET
+BT /F1 10 Tf 54 732 Td (Charts: Recharts ^2.7.2. Supports admin analytics.) Tj ET
+BT /F1 10 Tf 54 718 Td (Maps: Leaflet, React Leaflet, Google Maps wrapper. Supports parking location/map features.) Tj ET
+BT /F1 10 Tf 54 704 Td (CSV import: PapaParse ^5.5.3. Supports admin data import parsing.) Tj ET
+BT /F2 14 Tf 54 676 Td (5. Folder Structure Explanation) Tj ET
+BT /F1 10 Tf 54 650 Td (server/server.js: Backend entrypoint.) Tj ET
+BT /F1 10 Tf 54 636 Td (server/routes: REST route definitions.) Tj ET
+BT /F1 10 Tf 54 622 Td (server/controllers: Request handlers and business logic.) Tj ET
+BT /F1 10 Tf 54 608 Td (server/models: Mongoose schemas.) Tj ET
+BT /F1 10 Tf 54 594 Td (server/middleware: Auth, authorization, and error middleware.) Tj ET
+BT /F1 10 Tf 54 580 Td (server/config: Database and Firebase Admin setup.) Tj ET
+BT /F1 10 Tf 54 566 Td (server/services: Email, OTP, Firebase user sync, Twilio helpers.) Tj ET
+BT /F1 10 Tf 54 552 Td (server/utils: Common helper utilities.) Tj ET
+BT /F1 10 Tf 54 538 Td (admin-dashboard/src/admin/pages: Admin dashboard pages.) Tj ET
+BT /F1 10 Tf 54 524 Td (admin-dashboard/src/components: Shared admin UI components.) Tj ET
+BT /F1 10 Tf 54 510 Td (admin-dashboard/src/context: Admin auth context.) Tj ET
+BT /F1 10 Tf 54 496 Td (admin-dashboard/src/services/api.js: Admin API client.) Tj ET
+BT /F1 10 Tf 54 482 Td (user-dashboard/src/user/pages: User-facing pages.) Tj ET
+BT /F1 10 Tf 54 468 Td (user-dashboard/src/user/components: Parking map and payment components.) Tj ET
+BT /F1 10 Tf 54 454 Td (user-dashboard/src/context: User auth context.) Tj ET
+BT /F1 10 Tf 54 440 Td (user-dashboard/src/services/api.js: User API client.) Tj ET
+BT /F1 10 Tf 54 426 Td (shared-auth: Shared auth storage, service, and Axios client.) Tj ET
+BT /F1 10 Tf 54 412 Td (docs: Existing project documentation.) Tj ET
+BT /F1 10 Tf 54 398 Td (client: Combined or legacy frontend copy.) Tj ET
+BT /F2 14 Tf 54 370 Td (6. Functional Modules) Tj ET
+BT /F1 10 Tf 54 344 Td (Authentication: Implemented through routes/auth.js, authController.js,) Tj ET
+BT /F1 10 Tf 54 330 Td (authPlaceholderController.js, and middleware/auth.js. Supports OTP login/signup, Google login,) Tj ET
+BT /F1 10 Tf 54 316 Td (admin login, and JWT profile lookup.) Tj ET
+BT /F1 10 Tf 54 295 Td (Location hierarchy: Implemented through cities, pincodes, areas, and locations) Tj ET
+BT /F1 10 Tf 54 281 Td (routes/controllers/models. Provides admin CRUD for geographic hierarchy.) Tj ET
+BT /F1 10 Tf 54 260 Td (Parking slots: Implemented through slots.js, slotController.js, and ParkingSlot.js. Supports slot) Tj ET
+BT /F1 10 Tf 54 246 Td (CRUD, bulk slot creation, status, lock fields, and pricing.) Tj ET
+BT /F1 10 Tf 54 225 Td (Booking: Implemented through bookings.js, bookingController.js, and Booking.js. Supports smart) Tj ET
+BT /F1 10 Tf 54 211 Td (booking, slot locking, cancellation, extension, check-in, and check-out.) Tj ET
+BT /F1 10 Tf 54 190 Td (Payment: Implemented through payments.js, razorpayPayments.js, paymentController.js, and) Tj ET
+BT /F1 10 Tf 54 176 Td (razorpayController.js. Supports payment initiation, Razorpay verification, simulation, payment) Tj ET
+BT /F1 10 Tf 54 162 Td (history, and receipts.) Tj ET
+BT /F1 10 Tf 54 141 Td (Vehicles: Implemented through vehicles.js, vehicleController.js, and Vehicle.js. Supports user) Tj ET
+BT /F1 10 Tf 54 127 Td (vehicle CRUD.) Tj ET
+BT /F1 10 Tf 54 106 Td (Users: Implemented through users.js, userController.js, and User.js. Supports profile and admin) Tj ET
+BT /F1 10 Tf 54 92 Td (user management.) Tj ET
+BT /F1 10 Tf 54 71 Td (Reports: Implemented through reports.js, reportController.js, and Report.js. Supports dashboard) Tj ET
+BT /F1 8 Tf 483 28 Td (Page 3 of 10) Tj ET
+endstream
+endobj
+11 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 10 0 R >>
+endobj
+12 0 obj
+<< /Length 3600 >>
+stream
+BT /F1 10 Tf 54 788 Td (stats and report records.) Tj ET
+BT /F1 10 Tf 54 767 Td (Imports: Implemented through imports.js and importController.js. Supports admin data import.) Tj ET
+BT /F1 10 Tf 54 746 Td (Notifications and activity logs: Implemented through Notification.js and ActivityLog.js. Persist) Tj ET
+BT /F1 10 Tf 54 732 Td (notifications and audit events.) Tj ET
+BT /F2 14 Tf 54 704 Td (7. User Workflows) Tj ET
+BT /F1 10 Tf 54 678 Td (Registration/Login workflow:) Tj ET
+BT /F3 8 Tf 64 657 Td (```mermaid) Tj ET
+BT /F3 8 Tf 64 646 Td (flowchart TD) Tj ET
+BT /F3 8 Tf 64 635 Td (  Start[Start] --> Method{Choose auth method}) Tj ET
+BT /F3 8 Tf 64 624 Td (  Method --> Phone[Enter phone]) Tj ET
+BT /F3 8 Tf 64 613 Td (  Phone --> OTP[Send OTP]) Tj ET
+BT /F3 8 Tf 64 602 Td (  OTP --> Verify[Verify OTP]) Tj ET
+BT /F3 8 Tf 64 591 Td (  Verify --> JWT[Issue JWT]) Tj ET
+BT /F3 8 Tf 64 580 Td (  Method --> Google[Google sign-in]) Tj ET
+BT /F3 8 Tf 64 569 Td (  Google --> FirebaseToken[Send Firebase ID token]) Tj ET
+BT /F3 8 Tf 64 558 Td (  FirebaseToken --> ServerVerify[Verify with Firebase Admin]) Tj ET
+BT /F3 8 Tf 64 547 Td (  ServerVerify --> JWT) Tj ET
+BT /F3 8 Tf 64 536 Td (  JWT --> Store[Store token and user in localStorage]) Tj ET
+BT /F3 8 Tf 64 525 Td (```) Tj ET
+BT /F1 10 Tf 54 507 Td (Parking discovery workflow:) Tj ET
+BT /F3 8 Tf 64 486 Td (```mermaid) Tj ET
+BT /F3 8 Tf 64 475 Td (flowchart TD) Tj ET
+BT /F3 8 Tf 64 464 Td (  Search[Search page] --> Nearby[GET /api/locations/nearby]) Tj ET
+BT /F3 8 Tf 64 453 Td (  Nearby --> Match[Match by radius, city, area, or pincode]) Tj ET
+BT /F3 8 Tf 64 442 Td (  Match --> Count[Count available slots]) Tj ET
+BT /F3 8 Tf 64 431 Td (  Count --> Blueprint[GET /api/locations/:id/slots]) Tj ET
+BT /F3 8 Tf 64 420 Td (  Blueprint --> SlotMap[Render floor-wise slot map]) Tj ET
+BT /F3 8 Tf 64 409 Td (```) Tj ET
+BT /F1 10 Tf 54 391 Td (Slot reservation and payment workflow:) Tj ET
+BT /F3 8 Tf 64 370 Td (```mermaid) Tj ET
+BT /F3 8 Tf 64 359 Td (flowchart TD) Tj ET
+BT /F3 8 Tf 64 348 Td (  Select[Select slot] --> Create[POST /api/bookings/create]) Tj ET
+BT /F3 8 Tf 64 337 Td (  Create --> Validate[Validate slot, location, vehicle, time]) Tj ET
+BT /F3 8 Tf 64 326 Td (  Validate --> Conflict[Check overlapping bookings]) Tj ET
+BT /F3 8 Tf 64 315 Td (  Conflict --> Lock[Lock slot for 5 minutes]) Tj ET
+BT /F3 8 Tf 64 304 Td (  Lock --> Initiate[POST /api/payments/initiate]) Tj ET
+BT /F3 8 Tf 64 293 Td (  Initiate --> Verify[POST /api/payments/verify]) Tj ET
+BT /F3 8 Tf 64 282 Td (  Verify --> Success{Payment valid?}) Tj ET
+BT /F3 8 Tf 64 271 Td (  Success -->|Yes| Confirm[Booking confirmed and slot occupied]) Tj ET
+BT /F3 8 Tf 64 260 Td (  Success -->|No| Release[Booking cancelled and slot released]) Tj ET
+BT /F3 8 Tf 64 249 Td (```) Tj ET
+BT /F1 10 Tf 54 231 Td (Admin workflow:) Tj ET
+BT /F3 8 Tf 64 210 Td (```mermaid) Tj ET
+BT /F3 8 Tf 64 199 Td (flowchart TD) Tj ET
+BT /F3 8 Tf 64 188 Td (  Login[Admin login] --> Dashboard[Dashboard]) Tj ET
+BT /F3 8 Tf 64 177 Td (  Dashboard --> Master[Manage cities, pincodes, areas, locations]) Tj ET
+BT /F3 8 Tf 64 166 Td (  Dashboard --> Slots[Manage slots and bulk creation]) Tj ET
+BT /F3 8 Tf 64 155 Td (  Dashboard --> Ops[Manage users, vehicles, bookings, payments]) Tj ET
+BT /F3 8 Tf 64 144 Td (  Dashboard --> Reports[View reports and stats]) Tj ET
+BT /F3 8 Tf 64 133 Td (```) Tj ET
+BT /F2 14 Tf 54 108 Td (8. Database Design) Tj ET
+BT /F1 10 Tf 54 82 Td (Entity relationship diagram:) Tj ET
+BT /F3 8 Tf 64 61 Td (```mermaid) Tj ET
+BT /F1 8 Tf 483 28 Td (Page 4 of 10) Tj ET
+endstream
+endobj
+13 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 12 0 R >>
+endobj
+14 0 obj
+<< /Length 3912 >>
+stream
+BT /F3 8 Tf 64 788 Td (erDiagram) Tj ET
+BT /F3 8 Tf 64 777 Td (  USER ||--o{ VEHICLE : owns) Tj ET
+BT /F3 8 Tf 64 766 Td (  USER ||--o{ BOOKING : creates) Tj ET
+BT /F3 8 Tf 64 755 Td (  USER ||--o{ PAYMENT : makes) Tj ET
+BT /F3 8 Tf 64 744 Td (  USER ||--o{ NOTIFICATION : receives) Tj ET
+BT /F3 8 Tf 64 733 Td (  ADMIN ||--o{ REPORT : generates) Tj ET
+BT /F3 8 Tf 64 722 Td (  CITY ||--o{ PINCODE : contains) Tj ET
+BT /F3 8 Tf 64 711 Td (  CITY ||--o{ AREA : contains) Tj ET
+BT /F3 8 Tf 64 700 Td (  CITY ||--o{ LOCATION : contains) Tj ET
+BT /F3 8 Tf 64 689 Td (  PINCODE ||--o{ AREA : contains) Tj ET
+BT /F3 8 Tf 64 678 Td (  PINCODE ||--o{ LOCATION : contains) Tj ET
+BT /F3 8 Tf 64 667 Td (  AREA ||--o{ LOCATION : contains) Tj ET
+BT /F3 8 Tf 64 656 Td (  LOCATION ||--o{ PARKING_SLOT : has) Tj ET
+BT /F3 8 Tf 64 645 Td (  PARKING_SLOT ||--o{ BOOKING : reserved_by) Tj ET
+BT /F3 8 Tf 64 634 Td (  VEHICLE ||--o{ BOOKING : used_for) Tj ET
+BT /F3 8 Tf 64 623 Td (  BOOKING ||--o| PAYMENT : has) Tj ET
+BT /F3 8 Tf 64 612 Td (```) Tj ET
+BT /F1 10 Tf 54 594 Td (Models and important fields:) Tj ET
+BT /F1 10 Tf 54 580 Td (User: name, email, phone, password, firebaseUid, role, isActive, authProviders.) Tj ET
+BT /F1 10 Tf 54 566 Td (Admin: name, email, password, role, permissions, isActive.) Tj ET
+BT /F1 10 Tf 54 552 Td (City: name, state, status.) Tj ET
+BT /F1 10 Tf 54 538 Td (Pincode: pincode, cityId, status.) Tj ET
+BT /F1 10 Tf 54 524 Td (Area: name, pincodeId, cityId, status.) Tj ET
+BT /F1 10 Tf 54 510 Td (Location: name, lat, lng, areaId, pincodeId, cityId, floors.) Tj ET
+BT /F1 10 Tf 54 496 Td (ParkingSlot: slotNumber, locationId, city, area, pincode, vehicleType, slotType, price, status,) Tj ET
+BT /F1 10 Tf 54 482 Td (lockExpiresAt.) Tj ET
+BT /F1 10 Tf 54 468 Td (Booking: user, parkingSlot, vehicle, bookingReference, status, startTime, endTime, pricing,) Tj ET
+BT /F1 10 Tf 54 454 Td (paymentLock.) Tj ET
+BT /F1 10 Tf 54 440 Td (Payment: user, booking, amount, method, gateway, status, Razorpay IDs, verification.) Tj ET
+BT /F1 10 Tf 54 426 Td (Vehicle: owner, licensePlate, make, model, year, color, vehicleType.) Tj ET
+BT /F1 10 Tf 54 412 Td (Notification: user, type, title, message, channels, status.) Tj ET
+BT /F1 10 Tf 54 398 Td (ActivityLog: user, admin, action, resource, description, severity.) Tj ET
+BT /F1 10 Tf 54 384 Td (Report: title, type, parameters, data, summary, generatedBy.) Tj ET
+BT /F1 10 Tf 54 363 Td (Key constraints include unique user email/phone, unique admin email, unique city/state, unique) Tj ET
+BT /F1 10 Tf 54 349 Td (pincode per city, unique area per city/pincode, and ObjectId relationships across models.) Tj ET
+BT /F2 14 Tf 54 321 Td (9. API Documentation) Tj ET
+BT /F1 10 Tf 54 295 Td (Base API path: /api) Tj ET
+BT /F1 10 Tf 54 274 Td (Health:) Tj ET
+BT /F1 10 Tf 54 260 Td (GET /health - server/database health, public.) Tj ET
+BT /F1 10 Tf 54 239 Td (Authentication:) Tj ET
+BT /F1 10 Tf 54 225 Td (POST /api/auth/send-otp - send OTP, public.) Tj ET
+BT /F1 10 Tf 54 211 Td (POST /api/auth/verify-otp - verify OTP, public.) Tj ET
+BT /F1 10 Tf 54 197 Td (POST /api/auth/signup - signup with OTP, public.) Tj ET
+BT /F1 10 Tf 54 183 Td (POST /api/auth/login - start OTP login, public.) Tj ET
+BT /F1 10 Tf 54 169 Td (POST /api/auth/login/verify - verify login OTP, public.) Tj ET
+BT /F1 10 Tf 54 155 Td (POST /api/auth/google - Google auth, public.) Tj ET
+BT /F1 10 Tf 54 141 Td (GET /api/auth/profile - current profile, JWT required.) Tj ET
+BT /F1 10 Tf 54 127 Td (POST /api/auth/admin/login - admin login, public.) Tj ET
+BT /F1 10 Tf 54 106 Td (Locations:) Tj ET
+BT /F1 10 Tf 54 92 Td (GET /api/locations/nearby - nearby locations, public.) Tj ET
+BT /F1 10 Tf 54 78 Td (GET /api/locations/:id/slots - slot blueprint, public.) Tj ET
+BT /F1 10 Tf 54 64 Td (GET /api/locations/public - public locations, public.) Tj ET
+BT /F1 8 Tf 483 28 Td (Page 5 of 10) Tj ET
+endstream
+endobj
+15 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 14 0 R >>
+endobj
+16 0 obj
+<< /Length 3633 >>
+stream
+BT /F1 10 Tf 54 788 Td (GET/POST /api/locations - list/create locations, admin.) Tj ET
+BT /F1 10 Tf 54 774 Td (GET/PUT/DELETE /api/locations/:id - manage location, admin.) Tj ET
+BT /F1 10 Tf 54 753 Td (Cities, Pincodes, Areas:) Tj ET
+BT /F1 10 Tf 54 739 Td (GET/POST /api/cities - list/create cities, admin.) Tj ET
+BT /F1 10 Tf 54 725 Td (GET/PUT/DELETE /api/cities/:id - manage city, admin.) Tj ET
+BT /F1 10 Tf 54 711 Td (GET/POST /api/pincodes - list/create pincodes, admin.) Tj ET
+BT /F1 10 Tf 54 697 Td (GET/PUT/DELETE /api/pincodes/:id - manage pincode, admin.) Tj ET
+BT /F1 10 Tf 54 683 Td (GET/POST /api/areas - list/create areas, admin.) Tj ET
+BT /F1 10 Tf 54 669 Td (GET/PUT/DELETE /api/areas/:id - manage area, admin.) Tj ET
+BT /F1 10 Tf 54 648 Td (Slots:) Tj ET
+BT /F1 10 Tf 54 634 Td (GET /api/slots - list slots, public.) Tj ET
+BT /F1 10 Tf 54 620 Td (GET /api/slots/available - available slot endpoint, public.) Tj ET
+BT /F1 10 Tf 54 606 Td (GET /api/slots/:id - get slot, public.) Tj ET
+BT /F1 10 Tf 54 592 Td (POST /api/slots - create slot, admin.) Tj ET
+BT /F1 10 Tf 54 578 Td (POST /api/slots/bulk - bulk create slots, admin.) Tj ET
+BT /F1 10 Tf 54 564 Td (PUT/DELETE /api/slots/:id - update/delete slot, admin.) Tj ET
+BT /F1 10 Tf 54 543 Td (Bookings:) Tj ET
+BT /F1 10 Tf 54 529 Td (GET /api/bookings - list bookings, JWT required.) Tj ET
+BT /F1 10 Tf 54 515 Td (GET /api/bookings/me - current user bookings, JWT required.) Tj ET
+BT /F1 10 Tf 54 501 Td (POST /api/bookings/create - smart booking, JWT required.) Tj ET
+BT /F1 10 Tf 54 487 Td (POST /api/bookings - legacy booking, JWT required.) Tj ET
+BT /F1 10 Tf 54 473 Td (GET/PUT /api/bookings/:id - get/update booking, owner/admin.) Tj ET
+BT /F1 10 Tf 54 459 Td (PUT /api/bookings/:id/cancel - cancel booking, owner/admin.) Tj ET
+BT /F1 10 Tf 54 445 Td (PUT /api/bookings/:id/extend - extend booking, owner/admin.) Tj ET
+BT /F1 10 Tf 54 431 Td (POST /api/bookings/:id/checkin - check in, owner.) Tj ET
+BT /F1 10 Tf 54 417 Td (POST /api/bookings/:id/checkout - check out, owner.) Tj ET
+BT /F1 10 Tf 54 396 Td (Payments:) Tj ET
+BT /F1 10 Tf 54 382 Td (GET /api/payments - list payments, JWT required.) Tj ET
+BT /F1 10 Tf 54 368 Td (POST /api/payments/initiate - initiate payment, JWT required.) Tj ET
+BT /F1 10 Tf 54 354 Td (POST /api/payments/verify - verify payment, JWT required.) Tj ET
+BT /F1 10 Tf 54 340 Td (GET /api/payments/:id - payment details, owner/admin.) Tj ET
+BT /F1 10 Tf 54 319 Td (Vehicles:) Tj ET
+BT /F1 10 Tf 54 305 Td (GET/POST /api/vehicles - user vehicles, JWT required.) Tj ET
+BT /F1 10 Tf 54 291 Td (GET/PUT/DELETE /api/vehicles/:id - manage vehicle, JWT required.) Tj ET
+BT /F1 10 Tf 54 270 Td (Users:) Tj ET
+BT /F1 10 Tf 54 256 Td (GET /api/users - list users, admin.) Tj ET
+BT /F1 10 Tf 54 242 Td (GET/PUT /api/users/:id - get/update user, JWT required.) Tj ET
+BT /F1 10 Tf 54 228 Td (DELETE /api/users/:id - delete user, admin.) Tj ET
+BT /F1 10 Tf 54 207 Td (Reports and Imports:) Tj ET
+BT /F1 10 Tf 54 193 Td (GET /api/reports/dashboard - dashboard stats, admin.) Tj ET
+BT /F1 10 Tf 54 179 Td (GET/POST /api/reports - reports, admin.) Tj ET
+BT /F1 10 Tf 54 165 Td (GET/DELETE /api/reports/:id - report details/delete, admin.) Tj ET
+BT /F1 10 Tf 54 151 Td (POST /api/imports/:type - import data, admin.) Tj ET
+BT /F1 10 Tf 54 130 Td (Common success response: { "success": true, "message": "Optional message", "data": {} }) Tj ET
+BT /F1 10 Tf 54 116 Td (Common error response: { "success": false, "message": "Error message" }) Tj ET
+BT /F2 14 Tf 54 88 Td (10. Authentication & Security) Tj ET
+BT /F1 8 Tf 483 28 Td (Page 6 of 10) Tj ET
+endstream
+endobj
+17 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 16 0 R >>
+endobj
+18 0 obj
+<< /Length 3830 >>
+stream
+BT /F1 10 Tf 54 788 Td (Authentication is JWT-based. Tokens are signed with JWT_SECRET and expire using JWT_EXPIRE or a) Tj ET
+BT /F1 10 Tf 54 774 Td (default of seven days.) Tj ET
+BT /F1 10 Tf 54 753 Td (Security mechanisms found:) Tj ET
+BT /F1 10 Tf 64 739 Td (* Password hashing with bcrypt pre-save hooks.) Tj ET
+BT /F1 10 Tf 64 725 Td (* JWT verification in protect middleware.) Tj ET
+BT /F1 10 Tf 64 711 Td (* Role checks through authorize middleware.) Tj ET
+BT /F1 10 Tf 64 697 Td (* Admin/superadmin protected routes.) Tj ET
+BT /F1 10 Tf 64 683 Td (* Input validation through express-validator.) Tj ET
+BT /F1 10 Tf 64 669 Td (* CORS origin configuration from CLIENT_URL.) Tj ET
+BT /F1 10 Tf 64 655 Td (* Razorpay HMAC signature verification.) Tj ET
+BT /F1 10 Tf 64 641 Td (* Inactive user blocking.) Tj ET
+BT /F1 10 Tf 64 627 Td (* Activity logging for important events.) Tj ET
+BT /F1 10 Tf 54 606 Td (Session handling:) Tj ET
+BT /F1 10 Tf 64 592 Td (* shared-auth/authStorage.js stores token and user in localStorage.) Tj ET
+BT /F1 10 Tf 64 578 Td (* shared-auth/apiClient.js injects Bearer tokens.) Tj ET
+BT /F1 10 Tf 64 564 Td (* HTTP 401 clears local storage and redirects.) Tj ET
+BT /F1 10 Tf 54 543 Td (Security risks and recommendations:) Tj ET
+BT /F1 10 Tf 64 529 Td (* OTP is stored in memory. Use Redis or database storage for production.) Tj ET
+BT /F1 10 Tf 64 515 Td (* Some Razorpay routes are public. Add JWT and ownership checks.) Tj ET
+BT /F1 10 Tf 64 501 Td (* JWT is stored in localStorage. Harden CSP or use httpOnly cookies.) Tj ET
+BT /F1 10 Tf 64 487 Td (* Logout route is GET and not protected. Use protected POST logout.) Tj ET
+BT /F1 10 Tf 64 473 Td (* Firebase web config is hardcoded. Move it to environment variables.) Tj ET
+BT /F2 14 Tf 54 445 Td (11. Core Business Logic) Tj ET
+BT /F1 10 Tf 54 419 Td (Smart Booking Logic:) Tj ET
+BT /F1 10 Tf 54 405 Td (1. Receive locationId, parkingSlotId, vehicleType, start time, and duration.) Tj ET
+BT /F1 10 Tf 54 391 Td (2. Validate location and slot.) Tj ET
+BT /F1 10 Tf 54 377 Td (3. Resolve user vehicle or create placeholder vehicle.) Tj ET
+BT /F1 10 Tf 54 363 Td (4. Release expired slot lock if needed.) Tj ET
+BT /F1 10 Tf 54 349 Td (5. Reject reserved, occupied, inactive, incompatible, or unpriced slot.) Tj ET
+BT /F1 10 Tf 54 335 Td (6. Check conflicting confirmed/active bookings.) Tj ET
+BT /F1 10 Tf 54 321 Td (7. Reject slot locked by another user.) Tj ET
+BT /F1 10 Tf 54 307 Td (8. Calculate subtotal, 18 percent tax, and final amount.) Tj ET
+BT /F1 10 Tf 54 293 Td (9. Create pending booking with payment lock.) Tj ET
+BT /F1 10 Tf 54 279 Td (10. Mark slot as locked for five minutes.) Tj ET
+BT /F1 10 Tf 54 265 Td (11. Return booking and lock expiry.) Tj ET
+BT /F1 10 Tf 54 244 Td (Conflict Detection:) Tj ET
+BT /F1 10 Tf 54 230 Td (The Booking.findConflictingBookings method checks same parking slot, active/confirmed statuses,) Tj ET
+BT /F1 10 Tf 54 216 Td (and interval overlap using existing.startTime < requestedEnd and existing.endTime >) Tj ET
+BT /F1 10 Tf 54 202 Td (requestedStart.) Tj ET
+BT /F1 10 Tf 54 181 Td (Payment Verification:) Tj ET
+BT /F1 10 Tf 54 167 Td (On success, payment becomes completed, booking becomes confirmed, booking payment status becomes) Tj ET
+BT /F1 10 Tf 54 153 Td (paid, slot lock is cleared, and slot status becomes occupied. On failure, payment becomes failed,) Tj ET
+BT /F1 10 Tf 54 139 Td (booking becomes cancelled, and slot is released to available.) Tj ET
+BT /F1 10 Tf 54 118 Td (Slot Bulk Creation:) Tj ET
+BT /F1 10 Tf 54 104 Td (slotController.createBulkSlots accepts prefixes, ranges, floor, vehicle type, slot type, and) Tj ET
+BT /F1 10 Tf 54 90 Td (price. It generates slot numbers, skips existing duplicates, and inserts remaining slots.) Tj ET
+BT /F1 8 Tf 483 28 Td (Page 7 of 10) Tj ET
+endstream
+endobj
+19 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 18 0 R >>
+endobj
+20 0 obj
+<< /Length 3009 >>
+stream
+BT /F2 14 Tf 54 781 Td (12. Frontend Documentation) Tj ET
+BT /F1 10 Tf 54 755 Td (User Dashboard Routes:) Tj ET
+BT /F1 10 Tf 54 741 Td (/ - Home) Tj ET
+BT /F1 10 Tf 54 727 Td (/login - Login) Tj ET
+BT /F1 10 Tf 54 713 Td (/signup - Signup) Tj ET
+BT /F1 10 Tf 54 699 Td (/search - Search) Tj ET
+BT /F1 10 Tf 54 685 Td (/parking/:parkingLotId - Parking lot details) Tj ET
+BT /F1 10 Tf 54 671 Td (/booking - Booking) Tj ET
+BT /F1 10 Tf 54 657 Td (/history - History) Tj ET
+BT /F1 10 Tf 54 643 Td (/profile - Profile) Tj ET
+BT /F1 10 Tf 54 629 Td (/payments - Payments) Tj ET
+BT /F1 10 Tf 54 608 Td (Important user components:) Tj ET
+BT /F1 10 Tf 54 594 Td (ParkingLotSlotMap.jsx, HeroParkingMap.jsx, PaymentButton.jsx, Receipt.jsx, ReceiptTicket.jsx,) Tj ET
+BT /F1 10 Tf 54 580 Td (PaymentMethodSelector.jsx, PaymentSuccessPanel.jsx.) Tj ET
+BT /F1 10 Tf 54 559 Td (Admin Dashboard Routes:) Tj ET
+BT /F1 10 Tf 54 545 Td (/admin/login - Login) Tj ET
+BT /F1 10 Tf 54 531 Td (/admin/dashboard - Dashboard) Tj ET
+BT /F1 10 Tf 54 517 Td (/admin/parking-slots - Parking slots) Tj ET
+BT /F1 10 Tf 54 503 Td (/admin/bookings - Bookings) Tj ET
+BT /F1 10 Tf 54 489 Td (/admin/users - Users) Tj ET
+BT /F1 10 Tf 54 475 Td (/admin/vehicles - Vehicles) Tj ET
+BT /F1 10 Tf 54 461 Td (/admin/payments - Payments) Tj ET
+BT /F1 10 Tf 54 447 Td (/admin/city - City) Tj ET
+BT /F1 10 Tf 54 433 Td (/admin/pincode - Pincode) Tj ET
+BT /F1 10 Tf 54 419 Td (/admin/area - Area) Tj ET
+BT /F1 10 Tf 54 405 Td (/admin/location - Location) Tj ET
+BT /F1 10 Tf 54 391 Td (/admin/reports - Reports) Tj ET
+BT /F1 10 Tf 54 377 Td (/admin/settings - Settings) Tj ET
+BT /F1 10 Tf 54 363 Td (/admin/profile - Profile) Tj ET
+BT /F1 10 Tf 54 342 Td (Frontend state is handled with React Context, not Redux. Routing uses React Router. API access) Tj ET
+BT /F1 10 Tf 54 328 Td (uses Axios wrappers with shared auth storage and interceptors.) Tj ET
+BT /F2 14 Tf 54 300 Td (13. Backend Documentation) Tj ET
+BT /F1 10 Tf 54 274 Td (Backend layers:) Tj ET
+BT /F1 10 Tf 64 260 Td (* server/server.js: entrypoint.) Tj ET
+BT /F1 10 Tf 64 246 Td (* server/routes/*.js: routing.) Tj ET
+BT /F1 10 Tf 64 232 Td (* server/controllers/*.js: business logic.) Tj ET
+BT /F1 10 Tf 64 218 Td (* server/models/*.js: database schemas.) Tj ET
+BT /F1 10 Tf 64 204 Td (* server/middleware/auth.js and errorHandler.js: auth and errors.) Tj ET
+BT /F1 10 Tf 64 190 Td (* server/config/database.js and firebaseAdmin.js: configuration.) Tj ET
+BT /F1 10 Tf 64 176 Td (* server/services/*.js: Firebase user sync, email templates, OTP throttling, Twilio Verify) Tj ET
+BT /F1 10 Tf 64 162 Td (  helpers.) Tj ET
+BT /F1 10 Tf 54 141 Td (The backend uses controller-level business logic rather than a repository pattern. Mongoose) Tj ET
+BT /F1 10 Tf 54 127 Td (models include validation, indexes, virtuals, hooks, and helper methods.) Tj ET
+BT /F2 14 Tf 54 99 Td (14. Deployment Process) Tj ET
+BT /F1 10 Tf 54 73 Td (Environment variables:) Tj ET
+BT /F1 8 Tf 483 28 Td (Page 8 of 10) Tj ET
+endstream
+endobj
+21 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 20 0 R >>
+endobj
+22 0 obj
+<< /Length 3776 >>
+stream
+BT /F1 10 Tf 54 788 Td (NODE_ENV, PORT, CLIENT_URL, MONGODB_URI, MONGODB_CONNECT_ON_START,) Tj ET
+BT /F1 10 Tf 54 774 Td (MONGODB_SERVER_SELECTION_TIMEOUT_MS, ALLOW_SERVER_WITHOUT_DB, JWT_SECRET, JWT_EXPIRE,) Tj ET
+BT /F1 10 Tf 54 760 Td (ALLOW_DEV_ADMIN_LOGIN, DEV_ADMIN_EMAIL, DEV_ADMIN_PASSWORD, TWILIO_ACCOUNT_SID,) Tj ET
+BT /F1 10 Tf 54 746 Td (TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER, TWILIO_VERIFY_SERVICE_SID, RAZORPAY_KEY_ID,) Tj ET
+BT /F1 10 Tf 54 732 Td (RAZORPAY_KEY_SECRET, FIREBASE_SERVICE_ACCOUNT_JSON, FIREBASE_ADMIN_PROJECT_ID,) Tj ET
+BT /F1 10 Tf 54 718 Td (FIREBASE_ADMIN_CLIENT_EMAIL, FIREBASE_ADMIN_PRIVATE_KEY, VITE_API_BASE_URL,) Tj ET
+BT /F1 10 Tf 54 704 Td (VITE_AUTH_REDIRECT_PATH.) Tj ET
+BT /F1 10 Tf 54 683 Td (Run/build commands:) Tj ET
+BT /F1 10 Tf 54 669 Td (server: npm run dev, npm start.) Tj ET
+BT /F1 10 Tf 54 655 Td (admin-dashboard: npm run dev, npm run build, npm run preview.) Tj ET
+BT /F1 10 Tf 54 641 Td (user-dashboard: npm run dev, npm run build, npm run preview.) Tj ET
+BT /F1 10 Tf 54 627 Td (client: npm run dev, npm run build, npm run preview.) Tj ET
+BT /F1 10 Tf 54 606 Td (Recommended production layout:) Tj ET
+BT /F1 10 Tf 54 592 Td (Static hosting/CDN serves user and admin SPAs. Both call the Node Express API. The API connects) Tj ET
+BT /F1 10 Tf 54 578 Td (to MongoDB Atlas and external services such as Twilio, Razorpay, and Firebase.) Tj ET
+BT /F2 14 Tf 54 550 Td (15. Testing) Tj ET
+BT /F1 10 Tf 54 524 Td (No formal unit-test or integration-test framework was found in package scripts. Existing manual) Tj ET
+BT /F1 10 Tf 54 510 Td (backend helpers include server/testApi.js, server/testTwilio.js, server/seed.js, and) Tj ET
+BT /F1 10 Tf 54 496 Td (server/cleanup.js.) Tj ET
+BT /F1 10 Tf 54 475 Td (Recommended testing additions:) Tj ET
+BT /F1 10 Tf 64 461 Td (* Unit tests for booking conflict detection.) Tj ET
+BT /F1 10 Tf 64 447 Td (* Integration tests for smart booking and payment verification.) Tj ET
+BT /F1 10 Tf 64 433 Td (* Admin CRUD API tests.) Tj ET
+BT /F1 10 Tf 64 419 Td (* Frontend smoke tests for login, booking, and slot creation.) Tj ET
+BT /F1 10 Tf 64 405 Td (* CI pipeline running lint, build, and tests.) Tj ET
+BT /F2 14 Tf 54 377 Td (16. Design Decisions) Tj ET
+BT /F1 10 Tf 54 351 Td (Separate user/admin dashboards provide cleaner role-specific UI.) Tj ET
+BT /F1 10 Tf 54 337 Td (Shared auth utilities reduce duplicated token and API-client logic.) Tj ET
+BT /F1 10 Tf 54 323 Td (Slot lock before payment reduces double booking risk.) Tj ET
+BT /F1 10 Tf 54 309 Td (Snapshot data in bookings/payments keeps receipts stable after master-data edits.) Tj ET
+BT /F1 10 Tf 54 295 Td (REST-only updates simplify deployment but reduce real-time accuracy.) Tj ET
+BT /F1 10 Tf 54 281 Td (Razorpay test-mode restriction is safer for project/demo mode.) Tj ET
+BT /F2 14 Tf 54 253 Td (17. Future Improvements) Tj ET
+BT /F1 10 Tf 64 227 Td (* Add WebSocket or SSE live slot updates.) Tj ET
+BT /F1 10 Tf 64 213 Td (* Move OTP storage/rate limiting to Redis.) Tj ET
+BT /F1 10 Tf 64 199 Td (* Add background cleanup for expired slot locks.) Tj ET
+BT /F1 10 Tf 64 185 Td (* Protect all Razorpay user routes.) Tj ET
+BT /F1 10 Tf 64 171 Td (* Implement true time-based filtering in /api/slots/available.) Tj ET
+BT /F1 10 Tf 64 157 Td (* Add complete OpenAPI specification.) Tj ET
+BT /F1 10 Tf 64 143 Td (* Add automated tests and CI.) Tj ET
+BT /F1 10 Tf 64 129 Td (* Move Firebase client config to environment variables.) Tj ET
+BT /F1 10 Tf 64 115 Td (* Add fine-grained admin permissions.) Tj ET
+BT /F1 10 Tf 64 101 Td (* Add production-grade logging and monitoring.) Tj ET
+BT /F1 10 Tf 64 87 Td (* Add database transactions for booking/payment/slot state changes.) Tj ET
+BT /F1 8 Tf 483 28 Td (Page 9 of 10) Tj ET
+endstream
+endobj
+23 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 22 0 R >>
+endobj
+24 0 obj
+<< /Length 1052 >>
+stream
+BT /F2 14 Tf 54 781 Td (18. Conclusion) Tj ET
+BT /F1 10 Tf 54 755 Td (The Smart Parking System is a complete full-stack parking management application built around) Tj ET
+BT /F1 10 Tf 54 741 Td (React dashboards, an Express API, MongoDB persistence, JWT authentication, OTP/Google login, slot) Tj ET
+BT /F1 10 Tf 54 727 Td (locking, booking management, and payment verification.) Tj ET
+BT /F1 10 Tf 54 706 Td (Its strongest implemented workflow is the smart booking flow: users discover locations, inspect) Tj ET
+BT /F1 10 Tf 54 692 Td (slot blueprints, lock a slot, initiate payment, verify payment, and receive a confirmed booking) Tj ET
+BT /F1 10 Tf 54 678 Td (while the backend updates slot occupancy state. The project is suitable for a final-year) Tj ET
+BT /F1 10 Tf 54 664 Td (engineering demonstration and can be evolved toward production with stronger testing, real-time) Tj ET
+BT /F1 10 Tf 54 650 Td (updates, hardened payment/auth routes, persistent OTP storage, and operational monitoring.) Tj ET
+BT /F1 8 Tf 483 28 Td (Page 10 of 10) Tj ET
+endstream
+endobj
+25 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 24 0 R >>
+endobj
+xref
+0 26
+0000000000 65535 f 
+0000000015 00000 n 
+0000000064 00000 n 
+0000000184 00000 n 
+0000000254 00000 n 
+0000000329 00000 n 
+0000000397 00000 n 
+0000003876 00000 n 
+0000004022 00000 n 
+0000007981 00000 n 
+0000008127 00000 n 
+0000012327 00000 n 
+0000012475 00000 n 
+0000016128 00000 n 
+0000016276 00000 n 
+0000020241 00000 n 
+0000020389 00000 n 
+0000024075 00000 n 
+0000024223 00000 n 
+0000028106 00000 n 
+0000028254 00000 n 
+0000031316 00000 n 
+0000031464 00000 n 
+0000035293 00000 n 
+0000035441 00000 n 
+0000036546 00000 n 
+trailer
+<< /Size 26 /Root 1 0 R >>
+startxref
+36694
+%%EOF

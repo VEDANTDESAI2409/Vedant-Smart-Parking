@@ -228,6 +228,13 @@ const Profile = () => {
                   Book Parking
                   <ChevronRight className="h-4 w-4" />
                 </Link>
+                <Link
+                  to="/payments"
+                  className="inline-flex items-center justify-between rounded-full border border-[rgba(14,165,233,0.16)] bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
+                >
+                  Razorpay Payments
+                  <ChevronRight className="h-4 w-4" />
+                </Link>
                 <button
                   type="button"
                   onClick={handleLogout}

@@ -74,14 +74,14 @@ export const paymentsAPI = {
   getAll: (params) => api.get('/payments', { params }),
 };
 
+export const razorpayPaymentsAPI = {
+  createOrder: (data) => api.post('/create-order', data),
+  verifyPayment: (data) => api.post('/verify-payment', data),
+  getUserPayments: (userId) => api.get(`/user-payments/${userId}`),
+};
+
 export const usersAPI = {
-  getProfile: async () => {
-    try {
-      return await api.get('/user/profile');
-    } catch (error) {
-      return api.get('/auth/profile');
-    }
-  },
+  getProfile: () => api.get('/auth/profile'),
   updateProfile: (id, data) => api.put(`/users/${id}`, data),
 };
 

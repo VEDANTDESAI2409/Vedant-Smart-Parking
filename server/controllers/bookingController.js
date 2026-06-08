@@ -7,10 +7,26 @@ const Payment = require('../models/Payment');
 const Notification = require('../models/Notification');
 const ActivityLog = require('../models/ActivityLog');
 const Location = require('../models/Location');
+const { checkConnection } = require('../config/database');
 
 const LOCK_WINDOW_MS = 5 * 60 * 1000;
 
 const isAdminRole = (role) => role === 'admin' || role === 'superadmin';
+
+const sendDatabaseUnavailable = (res) =>
+  res.status(503).json({
+    success: false,
+    message: 'Database is not connected. Start MongoDB or allow your current IP in MongoDB Atlas Network Access, then restart the backend.',
+  });
+
+const ensureDatabaseConnection = (res) => {
+  if (checkConnection()) {
+    return true;
+  }
+
+  sendDatabaseUnavailable(res);
+  return false;
+};
 
 const toShortDisplayCode = (value, prefix) => {
   const normalized = String(value || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
@@ -124,6 +140,8 @@ const getEffectiveSlotState = (slot) => ({
 // @access  Private/Admin or Own Bookings
 exports.getBookings = async (req, res) => {
   try {
+    if (!ensureDatabaseConnection(res)) return;
+
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
@@ -208,6 +226,8 @@ exports.getBookings = async (req, res) => {
 // @access  Private/Admin or Booking Owner
 exports.getBooking = async (req, res) => {
   try {
+    if (!ensureDatabaseConnection(res)) return;
+
     const booking = await Booking.findById(req.params.id)
       .populate('user', 'name email phone')
       .populate('parkingSlot', 'slotNumber slotLocation location area floor slotType')
@@ -248,6 +268,8 @@ exports.getBooking = async (req, res) => {
 // @access  Private
 exports.createBooking = async (req, res) => {
   try {
+    if (!ensureDatabaseConnection(res)) return;
+
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({
@@ -416,6 +438,8 @@ exports.createBooking = async (req, res) => {
 // @access  Private/Admin or Booking Owner
 exports.updateBooking = async (req, res) => {
   try {
+    if (!ensureDatabaseConnection(res)) return;
+
     const booking = await Booking.findById(req.params.id);
 
     if (!booking) {
@@ -495,6 +519,8 @@ exports.updateBooking = async (req, res) => {
 // @access  Private/Admin or Booking Owner
 exports.cancelBooking = async (req, res) => {
   try {
+    if (!ensureDatabaseConnection(res)) return;
+
     const booking = await Booking.findById(req.params.id);
 
     if (!booking) {
@@ -569,6 +595,8 @@ exports.cancelBooking = async (req, res) => {
 // @access  Private/Admin or Booking Owner
 exports.extendBooking = async (req, res) => {
   try {
+    if (!ensureDatabaseConnection(res)) return;
+
     const { additionalHours } = req.body;
 
     if (!additionalHours || additionalHours < 0.5) {
@@ -671,6 +699,8 @@ exports.extendBooking = async (req, res) => {
 // @access  Private/Booking Owner
 exports.checkInBooking = async (req, res) => {
   try {
+    if (!ensureDatabaseConnection(res)) return;
+
     const { checkInCode } = req.body;
 
     const booking = await Booking.findById(req.params.id);
@@ -741,6 +771,8 @@ exports.checkInBooking = async (req, res) => {
 // @access  Private/Booking Owner
 exports.checkOutBooking = async (req, res) => {
   try {
+    if (!ensureDatabaseConnection(res)) return;
+
     const { checkOutCode } = req.body;
 
     const booking = await Booking.findById(req.params.id);
@@ -811,6 +843,8 @@ exports.checkOutBooking = async (req, res) => {
 // @access  Private
 exports.createSmartBooking = async (req, res) => {
   try {
+    if (!ensureDatabaseConnection(res)) return;
+
     const {
       locationId,
       parkingSlotId,
@@ -1041,6 +1075,8 @@ exports.createSmartBooking = async (req, res) => {
 // @access  Private
 exports.getCurrentUserBookings = async (req, res) => {
   try {
+    if (!ensureDatabaseConnection(res)) return;
+
     const bookings = await Booking.find({ user: req.user.id })
       .populate('user', 'name email phone')
       .populate('parkingSlot', 'slotNumber floor slotType')
